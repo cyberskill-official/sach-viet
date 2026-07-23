@@ -6,7 +6,7 @@ type: chore
 module: discovery
 author: "@codex"
 department: product
-status: reviewing
+status: ready_to_test
 entered_via: audit
 priority: p0
 created_at: "2026-07-23T03:38:48Z"
