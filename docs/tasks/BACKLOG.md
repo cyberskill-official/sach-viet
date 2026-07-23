@@ -20,7 +20,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [ready_to_implement] TASK-CUTOVER-001-define-b2c-parity - Define and verify B2C parity before cutover (improvement)
 - [done] TASK-DISCOVERY-001-reconcile-handoff-sources - Reconcile the handoff with the application and live TODO (improvement)
 - [ready_to_implement] TASK-EMAIL-001-enable-transactional-email - Enable transactional email flows
-- [ready_to_implement] TASK-EMPLOYEE-001-wire-home-config-editor - Connect the employee home-config editor to its backend
+- [ready_to_review] TASK-EMPLOYEE-001-wire-home-config-editor - Connect the employee home-config editor to its backend
 - [ready_to_implement] TASK-EMPLOYEE-002-add-real-dashboard-kpis - Replace mocked employee dashboard KPIs with real data
 - [ready_to_implement] TASK-I18N-001-localize-datatable-pagination - Localize DataTable pagination for vi and en (improvement)
 - [ready_to_implement] TASK-INSTITUTION-001-add-budget-tracking-and-pos - Add institutional budget tracking and PO submission

@@ -1,0 +1,40 @@
+# source-gap-execution@1
+task_id: TASK-EMPLOYEE-001
+generated_at: "2026-07-23T10:00:54Z"
+implementation_output:
+  - docs/gaps/employee-home-config-editor.md
+conditional_steps:
+  - step: 3
+    skill: architecture-decision-record-author
+    reason: "No outside-domain file will be modified."
+  - step: 4
+    skill: architecture-decision-record-audit
+    reason: "No ADR was required because step 3 was not triggered."
+  - step: 5
+    skill: edge-case-matrix-author
+    reason: "No application behavior can be exercised without the missing source tree."
+  - step: 6
+    skill: edge-case-matrix-audit
+    reason: "No runtime edge-case matrix applies to a source-gap record."
+  - step: 7
+    skill: mock-contract-author
+    reason: "The task does not integrate an external dependency."
+  - step: 8
+    skill: mock-contract-audit
+    reason: "No mock contract was required."
+  - step: 9
+    skill: implementation-plan-author
+    reason: "No source-confirmed editor or backend contract can be planned."
+  - step: 10
+    skill: implementation-plan-audit
+    reason: "No implementation plan was required because step 9 was not applicable."
+  - step: 11
+    skill: observability-injection-author
+    reason: "The task adds no runtime path, external IO, or application state transition."
+  - step: 12
+    skill: observability-injection-audit
+    reason: "No observability plan was required because step 11 was not applicable."
+review_basis:
+  - "The record names each boundary that blocks safe editor connection."
+  - "Every gap is grounded in an available handoff document or the missing application tree."
+  - "The record does not invent a home-config contract or change existing employee behavior."
