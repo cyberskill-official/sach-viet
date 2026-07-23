@@ -1,0 +1,9 @@
+# review-acceptance@1
+task_id: TASK-AUTHOR-001
+recorded_at: "2026-07-23T11:26:00Z"
+verdict: approved
+approval_source: user-chat
+approval_mode: temporary-hitl-bypass-authorized
+reviewed_commit: b64076a
+reviewed_artefacts: [docs/gaps/author-lifecycle-and-earnings.md, docs/tasks/.workflow/TASK-AUTHOR-001-document-review.md]
+effect: "Authorize the reviewing to ready_to_test transition. This does not accept a financial rule or author access behavior."
