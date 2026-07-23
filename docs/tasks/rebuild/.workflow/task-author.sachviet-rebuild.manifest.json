@@ -1,0 +1,480 @@
+{
+  "manifest_version": "manifest@1",
+  "skill_id": "task-author",
+  "skill_version": "1.0.0",
+  "trace_id": "e4119b86-0af1-464a-9f81-71ccc9fd3029",
+  "source_hash": "fe8f2b465c0593211857dea6ba6309089e415f06830d375f3e569e2e12be825e",
+  "source_files": [
+    {
+      "path": "docs/README.md",
+      "media_type": "text/markdown",
+      "hash": "ee281485ba6c436100e8645d453dd79e8435d695fb02af71f2c4b621a19e3f76",
+      "size_bytes": 2019,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/01-vision.md",
+      "media_type": "text/markdown",
+      "hash": "85bd3a7365b7c6ed3eb5dc449e867b08316b23fb2b055db69a0d5ecb8f0cac23",
+      "size_bytes": 3347,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/02-architecture.md",
+      "media_type": "text/markdown",
+      "hash": "5f8e397921ba3cd0661924ae6e3b23afb868506844a36ef4689f79e3661ae943",
+      "size_bytes": 5817,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/03-portals.md",
+      "media_type": "text/markdown",
+      "hash": "5be2732cfbbdd1093172b9070afd37a2617a6f569e1fd49d28bc7e3404880485",
+      "size_bytes": 4654,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/04-roles-permissions.md",
+      "media_type": "text/markdown",
+      "hash": "7a14198c45c344d94c4753e3d370e2fe90a5623d455daa5eddce1c84cfa7431d",
+      "size_bytes": 4429,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/05-data-model.md",
+      "media_type": "text/markdown",
+      "hash": "6c59dd10d4d5e9ba1fe5ae8313f51428b1f6bd8d7b6176b49dc223e5192c8b1c",
+      "size_bytes": 2914,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/06-tech-stack.md",
+      "media_type": "text/markdown",
+      "hash": "8c41ac63bd47446666b3ea682a2ec4a704bc7c0968393a0ddab5c088026f49c4",
+      "size_bytes": 4134,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/07-status-roadmap.md",
+      "media_type": "text/markdown",
+      "hash": "2104f7ddad7ac430bfa2629d9a2708477e8f3d9e1f4520bbde5545c894ff9fb3",
+      "size_bytes": 3796,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    }
+  ],
+  "plan": {
+    "status": "APPROVED",
+    "approval_hash": "68fdabc278366b6e7131d87e207bad9d975b184ff108d90d12d2da6d2dd47908",
+    "created_at": "2026-07-23T16:22:43.145Z",
+    "approved_at": "2026-07-23T16:24:52.424Z",
+    "approved_by": "operator"
+  },
+  "artefacts": [
+    {
+      "id": "TASK-REBUILD-001",
+      "slug": "bootstrap-platform-foundation",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/spec.md",
+      "source_refs": [
+        "docs/README.md:1-31",
+        "docs/02-architecture.md:28-94",
+        "docs/06-tech-stack.md:3-22"
+      ],
+      "depends_on": [],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "a275480d40b4e26036717a155fa46b2ba30c05a649217a061ccd20df7a2a2c71",
+      "audit_hash": "97033eba29f3c27010a6682d003fa9afdb90c0cea886813abf92e71fdc87fcfa",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-002",
+      "slug": "build-identity-and-access-core",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-002-build-identity-and-access-core/spec.md",
+      "source_refs": [
+        "docs/02-architecture.md:20-26",
+        "docs/04-roles-permissions.md:3-82",
+        "docs/05-data-model.md:17-18"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "d6803ca8055b9fbb77453dae2bbe23f75f6744d6748fbb9eb7b0857d30ed448d",
+      "audit_hash": "0bb7784950266309d560c06d52eb889d9ae5e2d5656d75915022688d7195888a",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-003",
+      "slug": "build-shared-web-foundations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-003-build-shared-web-foundations/spec.md",
+      "source_refs": [
+        "docs/02-architecture.md:28-70",
+        "docs/03-portals.md:62-68",
+        "docs/06-tech-stack.md:3-14"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "fd52427608db5cdd1b25f3bdb97e07b48a5b95a554fd60cfb55615c1d0ce58fd",
+      "audit_hash": "99a2d869cea94e74a39d0e0e3a6bf6c965f190de22e27837ac1ba92dae50e1ff",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-004",
+      "slug": "build-catalog-and-marketplace-core",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-004-build-catalog-and-marketplace-core/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:13-15",
+        "docs/03-portals.md:9-26",
+        "docs/05-data-model.md:5-29"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-005",
+      "slug": "build-storefront-cart-and-checkout",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-005-build-storefront-cart-and-checkout/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:13-15",
+        "docs/03-portals.md:9-26",
+        "docs/05-data-model.md:17-29"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-006",
+      "slug": "build-customer-support-features",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-006-build-customer-support-features/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-26",
+        "docs/04-roles-permissions.md:61-79",
+        "docs/05-data-model.md:55-62"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-004"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-007",
+      "slug": "build-admin-commerce-operations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-007-build-admin-commerce-operations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:32-34",
+        "docs/05-data-model.md:30-36",
+        "docs/07-status-roadmap.md:5-18"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-008",
+      "slug": "build-vendor-portal-and-payouts",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-008-build-vendor-portal-and-payouts/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:28-30",
+        "docs/05-data-model.md:30-36",
+        "docs/07-status-roadmap.md:20-25"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-007"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-009",
+      "slug": "build-employee-and-retail-operations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-009-build-employee-and-retail-operations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:36-42",
+        "docs/04-roles-permissions.md:7-64",
+        "docs/07-status-roadmap.md:20-28"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-010",
+      "slug": "build-notification-and-preferences",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-010-build-notification-and-preferences/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:62-68",
+        "docs/05-data-model.md:55-62",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-011",
+      "slug": "define-and-build-live-notifications",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-011-define-and-build-live-notifications/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:62-68",
+        "docs/06-tech-stack.md:29-35,43-50",
+        "docs/07-status-roadmap.md:29-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-010"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-012",
+      "slug": "define-supplier-portal-scope",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-012-define-supplier-portal-scope/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:56-58",
+        "docs/04-roles-permissions.md:7-29,47-63",
+        "docs/07-status-roadmap.md:29-37"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-013",
+      "slug": "build-b2b-quote-pipeline",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-013-build-b2b-quote-pipeline/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:44-46",
+        "docs/05-data-model.md:38-45"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003",
+        "TASK-REBUILD-004"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-014",
+      "slug": "build-b2b-order-contract-po-flow",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-014-build-b2b-order-contract-po-flow/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:44-46",
+        "docs/07-status-roadmap.md:29-37"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-013"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-015",
+      "slug": "build-institution-buyer-portal",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-015-build-institution-buyer-portal/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:48-50",
+        "docs/05-data-model.md:38-45"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-013",
+        "TASK-REBUILD-014"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-016",
+      "slug": "define-royalty-and-earnings-policy",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-016-define-royalty-and-earnings-policy/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:19-21",
+        "docs/03-portals.md:52-58",
+        "docs/06-tech-stack.md:43-50",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-017",
+      "slug": "build-publisher-portal-and-royalties",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-017-build-publisher-portal-and-royalties/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:52-54",
+        "docs/05-data-model.md:47-53",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-016"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-018",
+      "slug": "build-author-portal-and-earnings",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-018-build-author-portal-and-earnings/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:56-58",
+        "docs/05-data-model.md:47-53",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-016"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-019",
+      "slug": "build-email-and-zalo-integrations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-019-build-email-and-zalo-integrations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-34",
+        "docs/05-data-model.md:55-62",
+        "docs/06-tech-stack.md:52-57",
+        "docs/07-status-roadmap.md:29-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-010"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-020",
+      "slug": "build-vietnamese-search",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-020-build-vietnamese-search/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-26",
+        "docs/06-tech-stack.md:29-35,43-50",
+        "docs/07-status-roadmap.md:29-44"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-021",
+      "slug": "build-wordpress-import-compatibility",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-021-build-wordpress-import-compatibility/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:24-29",
+        "docs/02-architecture.md:71-80",
+        "docs/05-data-model.md:64-69",
+        "docs/07-status-roadmap.md:39-55"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-022",
+      "slug": "establish-quality-and-preview-release",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-022-establish-quality-and-preview-release/spec.md",
+      "source_refs": [
+        "docs/README.md:19-31",
+        "docs/02-architecture.md:81-94",
+        "docs/06-tech-stack.md:3-22,43-57",
+        "docs/07-status-roadmap.md:53-58"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-023",
+      "slug": "prove-b2c-parity-and-plan-cutover",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:24-40",
+        "docs/06-tech-stack.md:38-41",
+        "docs/07-status-roadmap.md:29-55"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-007",
+        "TASK-REBUILD-008",
+        "TASK-REBUILD-021",
+        "TASK-REBUILD-022"
+      ],
+      "status": "PENDING",
+      "iterations": 0,
+      "blocking_issues": []
+    }
+  ],
+  "hitl_pending": {
+    "any_blocking": false,
+    "issue_count": 0
+  },
+  "last_audit_at": "2026-07-23T16:34:55.440Z"
+}

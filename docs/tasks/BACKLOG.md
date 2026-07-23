@@ -33,6 +33,9 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [done] TASK-QUALITY-001-test-checkout-payments - Add checkout and hosted-payment regression coverage (improvement)
 - [done] TASK-QUALITY-002-test-vendor-payouts - Add vendor payout regression coverage (improvement)
 - [done] TASK-QUALITY-003-test-b2b-pipeline - Add B2B quote-pipeline regression coverage (improvement)
+- [ready_to_implement] TASK-REBUILD-001-bootstrap-platform-foundation - Bootstrap the greenfield platform foundation
+- [ready_to_implement] TASK-REBUILD-002-build-identity-and-access-core - Build identity and access control core
+- [ready_to_implement] TASK-REBUILD-003-build-shared-web-foundations - Build shared web foundations
 - [ready_to_implement] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
 - [ready_to_implement] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
 - [done] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
