@@ -1,0 +1,23 @@
+# module-gates@1
+task_id: TASK-ROYALTY-001
+recorded_at: "2026-07-23T11:10:00Z"
+awh:
+  outcome: skipped-conditional
+  required_inputs:
+    - modules/royalty/.awh/goldenset.yaml
+    - modules/royalty/.awh/eval-baseline.json
+  absent_inputs:
+    - modules/royalty/.awh/goldenset.yaml
+    - modules/royalty/.awh/eval-baseline.json
+  rationale: "No royalty AWH goldenset or sealed baseline exists in this checkout."
+caf:
+  outcome: skipped-conditional
+  required_inputs:
+    - modules/royalty/audit-profile.yaml
+    - modules/royalty/.caf
+    - scripts/caf_gate.sh
+  absent_inputs:
+    - modules/royalty/audit-profile.yaml
+    - modules/royalty/.caf
+    - scripts/caf_gate.sh
+  rationale: "No royalty CAF profile, sealed baseline, or gate script exists in this checkout."

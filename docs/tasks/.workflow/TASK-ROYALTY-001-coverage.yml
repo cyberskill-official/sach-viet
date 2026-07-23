@@ -1,0 +1,65 @@
+# coverage-gate@1
+task_id: TASK-ROYALTY-001
+generated_at: "2026-07-23T11:10:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 11
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/royalty/royalty-policy-proposal-v0.1.md
+    coverage_pct: 100
+    lines_covered: 42
+    lines_total: 42
+  - path: docs/royalty/royalty-input-inventory.md
+    coverage_pct: 100
+    lines_covered: 26
+    lines_total: 26
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes read-only policy and inventory documents and has no executable royalty application code. Coverage measures every required policy boundary and safety assertion on the committed documents."
+checks:
+  - id: DOC-TEST-001
+    assertion: "The committed policy proposal has exactly eight financial decision rows."
+    result: passed
+  - id: DOC-TEST-002
+    assertion: "The committed input inventory has exactly eight recovered-input rows."
+    result: passed
+  - id: DOC-TEST-003
+    assertion: "Every financial rule remains unresolved or is explicitly partial source context with its financial rule unresolved."
+    result: passed
+  - id: DOC-TEST-004
+    assertion: "The proposal requires owner acceptance and a separate implementation task before financial activation."
+    result: passed
+  - id: DOC-TEST-005
+    assertion: "The proposal claims no calculation, ledger, payout, payment instruction, or dashboard value."
+    result: passed
+  - id: DOC-TEST-006
+    assertion: "The policy and inventory contain no royalty rate, split, or calculation value."
+    result: passed
+  - id: DOC-TEST-007
+    assertion: "The inventory preserves the absent authoritative relationship and rejects default financial rules."
+    result: passed
+  - id: DOC-TEST-008
+    assertion: "The committed tree has no app path, matching the read-only source-recovery outcome."
+    result: passed
+  - id: DOC-TEST-009
+    assertion: "The proposal excludes production data, credentials, application execution, deployment, push, and merge."
+    result: passed
+  - id: DOC-TEST-010
+    assertion: "The task spec passes task-lint with only task@1 TRACE-001 information."
+    result: passed
+  - id: DOC-TEST-011
+    assertion: "The committed diff and documents have no Git whitespace error."
+    result: passed
+raw_terminal: |
+  policy_decision_rows=8
+  inventory_input_rows=8
+  all financial rule rows are unresolved or explicitly partial-source context
+  owner acceptance gate is present before financial activation
+  proposal makes no calculation, ledger, payout, payment instruction, or dashboard-value claim
+  inventory preserves absent relationships and rejects default financial rules
+  committed_app_path=absent
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check HEAD^..HEAD exited 0
+  git show --check HEAD exited 0
