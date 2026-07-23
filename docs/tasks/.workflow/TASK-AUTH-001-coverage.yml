@@ -1,0 +1,37 @@
+# coverage-gate@1
+task_id: TASK-AUTH-001
+generated_at: "2026-07-23T11:20:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 11
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/gaps/auth-role-guard-alignment.md
+    coverage_pct: 100
+    lines_covered: 28
+    lines_total: 28
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes a static source and security-assessment gap record and has no executable authorization application code. Coverage measures every required boundary and safety assertion on the committed document."
+checks:
+  - { id: DOC-TEST-001, assertion: "The committed record has exactly six required authorization role-guard boundary rows.", result: passed }
+  - { id: DOC-TEST-002, assertion: "The committed record names the guard implementation and role-helper path gap.", result: passed }
+  - { id: DOC-TEST-003, assertion: "The committed record names the frontend and API guard behavior gaps.", result: passed }
+  - { id: DOC-TEST-004, assertion: "The committed record names the alias and security-conflict gap.", result: passed }
+  - { id: DOC-TEST-005, assertion: "The committed record names the test-entry and safe-fixture gap.", result: passed }
+  - { id: DOC-TEST-006, assertion: "The committed record names the approved non-production verification-route gap.", result: passed }
+  - { id: DOC-TEST-007, assertion: "The committed tree has no app path, matching the source and security-assessment outcome.", result: passed }
+  - { id: DOC-TEST-008, assertion: "The committed record states no authorization change, security approval, or regression result was claimed.", result: passed }
+  - { id: DOC-TEST-009, assertion: "The committed record preserves the authentication-control and unsupported-detail limits.", result: passed }
+  - { id: DOC-TEST-010, assertion: "The task spec passes task-lint with only task@1 TRACE-001 information.", result: passed }
+  - { id: DOC-TEST-011, assertion: "The committed diff and record have no Git whitespace error.", result: passed }
+raw_terminal: |
+  recorded_gap_rows=6
+  committed_app_path=absent
+  all six required authorization role-guard boundary rows matched in docs/gaps/auth-role-guard-alignment.md
+  committed record states no authorization change, security approval, or regression result was claimed
+  committed record retains authentication-control and unsupported-detail limits
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check HEAD^..HEAD exited 0
+  git show --check HEAD exited 0
