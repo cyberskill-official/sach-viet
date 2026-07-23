@@ -6,7 +6,7 @@ type: feature
 module: author
 author: "@codex"
 department: engineering
-status: testing
+status: done
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T05:59:54Z"

@@ -1,0 +1,8 @@
+# final-acceptance@1
+task_id: TASK-AUTHOR-001
+recorded_at: "2026-07-23T11:30:00Z"
+verdict: approved
+approval_source: user-chat
+approval_mode: temporary-hitl-bypass-authorized
+acceptance_packet: docs/tasks/.workflow/TASK-AUTHOR-001-final-acceptance.md
+effect: "Authorize the testing to done transition. This does not accept a financial rule or author access behavior."
