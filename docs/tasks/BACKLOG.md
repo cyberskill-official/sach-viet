@@ -35,7 +35,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [done] TASK-QUALITY-003-test-b2b-pipeline - Add B2B quote-pipeline regression coverage (improvement)
 - [ready_to_implement] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
 - [ready_to_implement] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
-- [ready_to_review] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
+- [testing] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
 - [ready_to_implement] TASK-SEARCH-001-add-vietnamese-fuzzy-search - Add Vietnamese fuzzy search with Meilisearch
 - [ready_to_implement] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (improvement)
 - [ready_to_implement] TASK-SUPPLIER-001-resolve-portal-scope - Resolve and implement the supplier portal scope

@@ -1,0 +1,12 @@
+# review-acceptance@1
+task_id: TASK-ROYALTY-001
+recorded_at: "2026-07-23T11:07:00Z"
+verdict: approved
+approval_source: user-chat
+approval_mode: temporary-hitl-bypass-authorized
+reviewed_commit: 802ff9d
+reviewed_artefacts:
+  - docs/royalty/royalty-policy-proposal-v0.1.md
+  - docs/royalty/royalty-input-inventory.md
+  - docs/tasks/.workflow/TASK-ROYALTY-001-document-review.md
+effect: "Authorize the reviewing to ready_to_test transition. This does not accept a financial rule."
