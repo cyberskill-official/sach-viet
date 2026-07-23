@@ -1,0 +1,41 @@
+# policy-foundation-execution@1
+task_id: TASK-ROYALTY-001
+generated_at: "2026-07-23T11:03:09Z"
+implementation_output:
+  - docs/royalty/royalty-policy-proposal-v0.1.md
+  - docs/royalty/royalty-input-inventory.md
+conditional_steps:
+  - step: 3
+    skill: architecture-decision-record-author
+    reason: "No application architecture or outside-domain file will be modified."
+  - step: 4
+    skill: architecture-decision-record-audit
+    reason: "No ADR was required because step 3 was not triggered."
+  - step: 5
+    skill: edge-case-matrix-author
+    reason: "No royalty computation or runtime behavior is in scope. The proposal preserves unresolved financial decisions instead."
+  - step: 6
+    skill: edge-case-matrix-audit
+    reason: "No runtime edge-case matrix applies to read-only policy documents."
+  - step: 7
+    skill: mock-contract-test-author
+    reason: "No source-confirmed financial contract is available to model."
+  - step: 8
+    skill: mock-contract-test-audit
+    reason: "No mock contract was required."
+  - step: 9
+    skill: implementation-plan-author
+    reason: "No financial implementation, persistence model, calculation, dashboard, payout, or payment action is authorized."
+  - step: 10
+    skill: implementation-plan-audit
+    reason: "No implementation plan was required because step 9 was not applicable."
+  - step: 11
+    skill: observability-injection-author
+    reason: "The task adds no runtime path, external IO, or application state transition."
+  - step: 12
+    skill: observability-injection-audit
+    reason: "No observability plan was required because step 11 was not applicable."
+review_basis:
+  - "The proposal labels each financial rule as source-confirmed, owner-accepted, or unresolved."
+  - "The inventory records only source-confirmed inputs and explicit relationship gaps."
+  - "The documents require owner acceptance before any financial behavior and contain no rate, split, calculation, payout, payment, or dashboard value."
