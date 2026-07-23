@@ -1,0 +1,28 @@
+{
+  "artefact": "batch-selection@1",
+  "eligible": ["TASK-QUALITY-002", "TASK-QUALITY-003", "TASK-ROYALTY-001", "TASK-AUTH-001", "TASK-B2B-001", "TASK-B2B-003", "TASK-CUTOVER-001", "TASK-EMAIL-001", "TASK-EMPLOYEE-002", "TASK-INSTITUTION-001", "TASK-INSTITUTION-002", "TASK-RETAIL-001", "TASK-VENDOR-001", "TASK-VENDOR-002", "TASK-ADMIN-001", "TASK-I18N-001", "TASK-INTEGRATIONS-001", "TASK-NOTIFICATIONS-002", "TASK-SEARCH-001", "TASK-SUPPLIER-001", "TASK-MIGRATION-001"],
+  "batch": ["TASK-QUALITY-002"],
+  "swarm_required": false,
+  "excluded": [
+    {"id": "TASK-QUALITY-003", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-ROYALTY-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-AUTH-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-B2B-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-B2B-003", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-CUTOVER-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-EMAIL-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-EMPLOYEE-002", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-INSTITUTION-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-INSTITUTION-002", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-RETAIL-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-VENDOR-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-VENDOR-002", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-ADMIN-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-I18N-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-INTEGRATIONS-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-NOTIFICATIONS-002", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-SEARCH-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-SUPPLIER-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"},
+    {"id": "TASK-MIGRATION-001", "blocked_by": null, "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch, ships alone when nothing declared is eligible"}
+  ]
+}
