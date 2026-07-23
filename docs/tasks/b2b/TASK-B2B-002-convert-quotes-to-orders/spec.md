@@ -6,7 +6,7 @@ type: feature
 module: b2b
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: ready_to_review
 entered_via: audit
 priority: p0
 created_at: "2026-07-23T05:59:06Z"
