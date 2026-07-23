@@ -1,0 +1,29 @@
+# backlog-state-update@2
+task_id: TASK-ROYALTY-001
+generated_at: "2026-07-23T11:11:00Z"
+backlog_path: docs/tasks/BACKLOG.md
+prior_status: testing
+new_status: done
+transition_kind: forward
+routed_back_count_delta: 0
+entered_via: null
+line_number: 38
+old_line: "- [testing] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings"
+new_line: "- [done] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings"
+evidence_artefact_ids:
+  context_map: memory-audit-seq-58
+  adr: null
+  edge_case_matrix: null
+  mock_contract: null
+  impl_plan: null
+  obs_injection: null
+  coverage_report: docs/tasks/.workflow/TASK-ROYALTY-001-coverage.yml
+  debug_trace: null
+  task_audit: docs/tasks/royalty/TASK-ROYALTY-001-model-royalties-and-earnings/post-implementation-audit.md
+  coverage_gate_audit: docs/tasks/.workflow/TASK-ROYALTY-001-coverage.audit.yml
+rework_reason: null
+mutation_kind: status-cell-only
+memory_emit:
+  row_kind: workflow_complete
+  task_id: TASK-ROYALTY-001
+  outcome_summary: "The temporary operator instruction accepted the royalty policy foundation after all static checks passed, without accepting a financial rule."
