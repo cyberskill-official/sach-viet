@@ -1,0 +1,21 @@
+# code-review-audit@1
+task_id: TASK-NOTIFICATIONS-001
+audited_at: "2026-07-23T10:15:00Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: XREF-FINDINGS-COUNT
+    result: pass
+    evidence: "The review lists no findings and the sibling JSON array is empty."
+  - rule: NOTIFICATIONS-001
+    result: pass
+    evidence: "The record names the portal, badge, deeplink, approved-access, and preview boundaries."
+  - rule: NOTIFICATIONS-002
+    result: pass
+    evidence: "No application source, verification result, or behavior change is claimed."
+  - rule: NOTIFICATIONS-003
+    result: pass
+    evidence: "The scope outcome excludes credentials and unsupported portal, route, badge, deeplink, fixture, delivery, preference, and preview details."
+scope_exception: "Runtime code-review rules are not applicable to this source and access-gap documentation task."
