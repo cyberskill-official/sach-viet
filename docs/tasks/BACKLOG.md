@@ -32,7 +32,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [ready_to_implement] TASK-PUBLISHER-001-build-financial-dashboard - Add publisher sales rollups, royalties, and contract management
 - [done] TASK-QUALITY-001-test-checkout-payments - Add checkout and hosted-payment regression coverage (improvement)
 - [done] TASK-QUALITY-002-test-vendor-payouts - Add vendor payout regression coverage (improvement)
-- [testing] TASK-QUALITY-003-test-b2b-pipeline - Add B2B quote-pipeline regression coverage (improvement)
+- [done] TASK-QUALITY-003-test-b2b-pipeline - Add B2B quote-pipeline regression coverage (improvement)
 - [ready_to_implement] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
 - [ready_to_implement] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
 - [ready_to_implement] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
