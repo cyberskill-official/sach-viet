@@ -1,0 +1,29 @@
+# backlog-state-update@2
+task_id: TASK-DISCOVERY-001
+generated_at: "2026-07-23T08:43:00Z"
+backlog_path: docs/tasks/BACKLOG.md
+prior_status: ready_to_review
+new_status: reviewing
+transition_kind: forward
+routed_back_count_delta: 0
+entered_via: null
+line_number: 21
+old_line: "- [ready_to_review] TASK-DISCOVERY-001-reconcile-handoff-sources - Reconcile the handoff with the application and live TODO (improvement)"
+new_line: "- [reviewing] TASK-DISCOVERY-001-reconcile-handoff-sources - Reconcile the handoff with the application and live TODO (improvement)"
+evidence_artefact_ids:
+  context_map: memory-audit-seq-11
+  adr: null
+  edge_case_matrix: null
+  mock_contract: null
+  impl_plan: null
+  obs_injection: null
+  coverage_report: null
+  debug_trace: null
+  task_audit: null
+  coverage_gate_audit: null
+rework_reason: null
+mutation_kind: status-cell-only
+memory_emit:
+  row_kind: workflow_phase_complete
+  task_id: TASK-DISCOVERY-001
+  outcome_summary: "The task is ready for a document-focused review against its five-reference inventory and unavailable-source boundary."
