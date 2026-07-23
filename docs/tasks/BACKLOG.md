@@ -14,7 +14,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [ready_to_implement] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
 - [done] TASK-AUTH-001-align-role-guards - Align frontend and API role guards (improvement)
 - [done] TASK-AUTHOR-001-build-lifecycle-and-earnings - Add author manuscript lifecycle stages and earnings views
-- [ready_to_implement] TASK-B2B-001-add-quote-click-through - Add B2B quote-kanban click-through
+- [ready_to_review] TASK-B2B-001-add-quote-click-through - Add B2B quote-kanban click-through
 - [done] TASK-B2B-002-convert-quotes-to-orders - Convert approved B2B quotes into orders
 - [ready_to_implement] TASK-B2B-003-manage-contracts-and-pos - Manage B2B contracts and purchase-order artifacts
 - [ready_to_implement] TASK-CUTOVER-001-define-b2c-parity - Define and verify B2C parity before cutover (improvement)
