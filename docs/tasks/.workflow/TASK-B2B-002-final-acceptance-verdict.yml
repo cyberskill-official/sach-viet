@@ -1,0 +1,8 @@
+# final-acceptance@1
+task_id: TASK-B2B-002
+recorded_at: "2026-07-23T09:56:46Z"
+verdict: approved
+approval_source: user-chat
+approval_mode: temporary-hitl-bypass-authorized
+acceptance_packet: docs/tasks/.workflow/TASK-B2B-002-final-acceptance.md
+effect: "Authorize the testing to done transition."
