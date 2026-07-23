@@ -1,0 +1,55 @@
+# coverage-gate@1
+task_id: TASK-DISCOVERY-001
+generated_at: "2026-07-23T08:53:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 10
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/handoff-reconciliation.md
+    coverage_pct: 100
+    lines_covered: 25
+    lines_total: 25
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes one static document and has no executable application code. Coverage measures all required inventory and safety assertions on the committed document."
+checks:
+  - id: DOC-TEST-001
+    assertion: "The committed inventory has exactly five named reference rows."
+    result: passed
+  - id: DOC-TEST-002
+    assertion: "The committed inventory names app/misc/docs/project_full_map.md."
+    result: passed
+  - id: DOC-TEST-003
+    assertion: "The committed inventory names app/docs/architecture.md."
+    result: passed
+  - id: DOC-TEST-004
+    assertion: "The committed inventory names app/TODO.md."
+    result: passed
+  - id: DOC-TEST-005
+    assertion: "The committed inventory names app/misc/TEST_ACCOUNTS*."
+    result: passed
+  - id: DOC-TEST-006
+    assertion: "The committed inventory names the root README.md."
+    result: passed
+  - id: DOC-TEST-007
+    assertion: "The committed tree has no app path, matching the unavailable record."
+    result: passed
+  - id: DOC-TEST-008
+    assertion: "The committed tree has no root README.md, matching the unavailable record."
+    result: passed
+  - id: DOC-TEST-009
+    assertion: "The task spec and the full task diff have no lint or whitespace failure."
+    result: passed
+  - id: DOC-TEST-010
+    assertion: "The committed reconciliation has no Git whitespace error."
+    result: passed
+raw_terminal: |
+  row_count=5
+  all five required handoff references matched in docs/handoff-reconciliation.md
+  git ls-tree -r --name-only HEAD found no app/ path
+  git ls-tree -r --name-only HEAD found no root README.md
+  git diff --check 8ae0eac..HEAD exited 0
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git show --check HEAD -- docs/handoff-reconciliation.md exited 0
