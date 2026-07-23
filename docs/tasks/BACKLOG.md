@@ -27,7 +27,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [ready_to_implement] TASK-INSTITUTION-002-deliver-purchased-marc-records - Deliver MARC records for purchased titles
 - [ready_to_implement] TASK-INTEGRATIONS-001-complete-admin-integrations - Complete Zalo and email settings screens
 - [ready_to_implement] TASK-MIGRATION-001-reconcile-wp-order-items - Reconcile unmatched WordPress order items (improvement)
-- [testing] TASK-NOTIFICATIONS-001-verify-notification-bell - Verify notification badge and deeplink behavior (improvement)
+- [done] TASK-NOTIFICATIONS-001-verify-notification-bell - Verify notification badge and deeplink behavior (improvement)
 - [ready_to_implement] TASK-NOTIFICATIONS-002-add-live-notifications - Add live notification delivery
 - [ready_to_implement] TASK-PUBLISHER-001-build-financial-dashboard - Add publisher sales rollups, royalties, and contract management
 - [ready_to_implement] TASK-QUALITY-001-test-checkout-payments - Add checkout and hosted-payment regression coverage (improvement)
