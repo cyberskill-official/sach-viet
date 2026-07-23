@@ -1,0 +1,12 @@
+# repo-context-map-audit@1
+task_id: TASK-NOTIFICATIONS-001
+audited_at: "2026-07-23T10:12:00Z"
+score: exempt
+verdict: skipped-conditional
+issues_open: 0
+issues_resolved: 0
+reason: "The task records source and access gaps instead of notification behavior because the expected application module and secure test route are absent. The required portal patterns cannot be observed without inventing evidence or using credentials."
+evidence:
+  - "docs/tasks/notifications/TASK-NOTIFICATIONS-001-verify-notification-bell/spec.md:61-80"
+  - "docs/README.md:21-25"
+next_workflow_action: "Continue as a source-gap record under the operator's temporary HITL-bypass instruction."

@@ -1,0 +1,40 @@
+# source-gap-execution@1
+task_id: TASK-NOTIFICATIONS-001
+generated_at: "2026-07-23T10:12:00Z"
+implementation_output:
+  - docs/gaps/notification-bell-verification.md
+conditional_steps:
+  - step: 3
+    skill: architecture-decision-record-author
+    reason: "No outside-domain file will be modified."
+  - step: 4
+    skill: architecture-decision-record-audit
+    reason: "No ADR was required because step 3 was not triggered."
+  - step: 5
+    skill: edge-case-matrix-author
+    reason: "No notification behavior can be exercised without source or approved preview access."
+  - step: 6
+    skill: edge-case-matrix-audit
+    reason: "No runtime edge-case matrix applies to a source and access gap record."
+  - step: 7
+    skill: mock-contract-author
+    reason: "The task does not integrate an external dependency."
+  - step: 8
+    skill: mock-contract-audit
+    reason: "No mock contract was required."
+  - step: 9
+    skill: implementation-plan-author
+    reason: "No portal route, badge source, deeplink mapping, or test fixture can be planned without source evidence."
+  - step: 10
+    skill: implementation-plan-audit
+    reason: "No implementation plan was required because step 9 was not applicable."
+  - step: 11
+    skill: observability-injection-author
+    reason: "The task adds no runtime path, external IO, or application state transition."
+  - step: 12
+    skill: observability-injection-audit
+    reason: "No observability plan was required because step 11 was not applicable."
+review_basis:
+  - "The record names each boundary that blocks safe notification verification."
+  - "Every gap is grounded in an available handoff document or unavailable source and access."
+  - "The record does not invent a portal result, route, credential, fixture, or notification behavior."
