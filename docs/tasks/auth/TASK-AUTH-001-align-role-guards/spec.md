@@ -6,7 +6,7 @@ type: improvement
 module: auth
 author: "@codex"
 department: engineering
-status: ready_to_review
+status: testing
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T05:40:18Z"
