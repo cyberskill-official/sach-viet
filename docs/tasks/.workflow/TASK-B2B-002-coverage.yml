@@ -1,0 +1,56 @@
+# coverage-gate@1
+task_id: TASK-B2B-002
+generated_at: "2026-07-23T09:18:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 10
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/gaps/b2b-quote-to-order-conversion.md
+    coverage_pct: 100
+    lines_covered: 26
+    lines_total: 26
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes a static source-gap record and has no executable application code. Coverage measures every required conversion-boundary and safety assertion on the committed document."
+checks:
+  - id: DOC-TEST-001
+    assertion: "The committed record has exactly four required conversion-boundary rows."
+    result: passed
+  - id: DOC-TEST-002
+    assertion: "The committed record names the eligible quote-state gap."
+    result: passed
+  - id: DOC-TEST-003
+    assertion: "The committed record names the order-path and duplicate-prevention gap."
+    result: passed
+  - id: DOC-TEST-004
+    assertion: "The committed record names the employee_b2b and admin authorization gap."
+    result: passed
+  - id: DOC-TEST-005
+    assertion: "The committed record names the broker-privacy gap and requires source verification before returning order data."
+    result: passed
+  - id: DOC-TEST-006
+    assertion: "The committed tree has no app path, matching the source-gap outcome."
+    result: passed
+  - id: DOC-TEST-007
+    assertion: "The committed record states that no conversion code was added."
+    result: passed
+  - id: DOC-TEST-008
+    assertion: "The committed record excludes unsupported order schema, approval, financial, shipping, contract, purchase-order, and supplier-disclosure behavior."
+    result: passed
+  - id: DOC-TEST-009
+    assertion: "The task spec passes task-lint with only the task@1 TRACE-001 information, and the full diff has no whitespace error."
+    result: passed
+  - id: DOC-TEST-010
+    assertion: "The committed source-gap record has no Git whitespace error."
+    result: passed
+raw_terminal: |
+  recorded_gap_rows=4
+  committed_app_path=absent
+  all four required conversion-boundary rows matched in docs/gaps/b2b-quote-to-order-conversion.md
+  committed record states no conversion code was added
+  committed record retains the commercial and supplier-disclosure exclusions
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check 8ae0eac..HEAD exited 0
+  git show --check HEAD -- docs/gaps/b2b-quote-to-order-conversion.md exited 0
