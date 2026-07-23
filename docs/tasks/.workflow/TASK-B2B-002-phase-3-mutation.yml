@@ -1,0 +1,29 @@
+# backlog-state-update@2
+task_id: TASK-B2B-002
+generated_at: "2026-07-23T09:12:21Z"
+backlog_path: docs/tasks/BACKLOG.md
+prior_status: reviewing
+new_status: ready_to_test
+transition_kind: forward
+routed_back_count_delta: 0
+entered_via: null
+line_number: 18
+old_line: "- [reviewing] TASK-B2B-002-convert-quotes-to-orders - Convert approved B2B quotes into orders"
+new_line: "- [ready_to_test] TASK-B2B-002-convert-quotes-to-orders - Convert approved B2B quotes into orders"
+evidence_artefact_ids:
+  context_map: memory-audit-seq-18
+  adr: null
+  edge_case_matrix: null
+  mock_contract: null
+  impl_plan: null
+  obs_injection: null
+  coverage_report: null
+  debug_trace: null
+  task_audit: null
+  coverage_gate_audit: null
+rework_reason: null
+mutation_kind: status-cell-only
+memory_emit:
+  row_kind: workflow_phase_complete
+  task_id: TASK-B2B-002
+  outcome_summary: "The human reviewer approved the B2B source-gap record, authorizing document verification before final acceptance."

@@ -1,0 +1,10 @@
+# review-acceptance@1
+task_id: TASK-B2B-002
+recorded_at: "2026-07-23T09:12:21Z"
+verdict: approved
+approval_source: user-chat
+reviewed_commit: 6f00a97
+reviewed_artefacts:
+  - docs/gaps/b2b-quote-to-order-conversion.md
+  - docs/tasks/.workflow/TASK-B2B-002-document-review.md
+effect: "Authorize the reviewing to ready_to_test transition."
