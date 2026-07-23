@@ -1,0 +1,23 @@
+# module-gates@1
+task_id: TASK-QUALITY-002
+recorded_at: "2026-07-23T10:47:00Z"
+awh:
+  outcome: skipped-conditional
+  required_inputs:
+    - modules/quality/.awh/goldenset.yaml
+    - modules/quality/.awh/eval-baseline.json
+  absent_inputs:
+    - modules/quality/.awh/goldenset.yaml
+    - modules/quality/.awh/eval-baseline.json
+  rationale: "No quality AWH goldenset or sealed baseline exists in this checkout."
+caf:
+  outcome: skipped-conditional
+  required_inputs:
+    - modules/quality/audit-profile.yaml
+    - modules/quality/.caf
+    - scripts/caf_gate.sh
+  absent_inputs:
+    - modules/quality/audit-profile.yaml
+    - modules/quality/.caf
+    - scripts/caf_gate.sh
+  rationale: "No quality CAF profile, sealed baseline, or gate script exists in this checkout."

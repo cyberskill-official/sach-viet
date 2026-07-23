@@ -1,0 +1,59 @@
+# coverage-gate@1
+task_id: TASK-QUALITY-002
+generated_at: "2026-07-23T10:47:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 11
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/gaps/vendor-payout-regression-coverage.md
+    coverage_pct: 100
+    lines_covered: 28
+    lines_total: 28
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes a static source and access-gap record and has no executable payout application code. Coverage measures every required regression-coverage boundary and safety assertion on the committed document."
+checks:
+  - id: DOC-TEST-001
+    assertion: "The committed record has exactly six required vendor payout regression-coverage boundary rows."
+    result: passed
+  - id: DOC-TEST-002
+    assertion: "The committed record names the payout implementation and test-path gap."
+    result: passed
+  - id: DOC-TEST-003
+    assertion: "The committed record names the settlement state and calculation-source gap."
+    result: passed
+  - id: DOC-TEST-004
+    assertion: "The committed record names the frontend and backend test-entry gap."
+    result: passed
+  - id: DOC-TEST-005
+    assertion: "The committed record names the administrator-managed action and authorization gap."
+    result: passed
+  - id: DOC-TEST-006
+    assertion: "The committed record names the safe fixture or test-double gap."
+    result: passed
+  - id: DOC-TEST-007
+    assertion: "The committed record names the approved non-production verification-route gap."
+    result: passed
+  - id: DOC-TEST-008
+    assertion: "The committed tree has no app path, matching the source and access-gap outcome."
+    result: passed
+  - id: DOC-TEST-009
+    assertion: "The committed record states that no payout code, test, settlement action, provider request, payment action, behavior change, or regression result was claimed."
+    result: passed
+  - id: DOC-TEST-010
+    assertion: "The committed record excludes unsupported payout state, calculation, action, authorization, test, fixture, credential, preview, and settlement detail."
+    result: passed
+  - id: DOC-TEST-011
+    assertion: "The task spec passes task-lint with only task@1 TRACE-001 information, and the committed diff and record have no Git whitespace error."
+    result: passed
+raw_terminal: |
+  recorded_gap_rows=6
+  committed_app_path=absent
+  all six required vendor payout regression-coverage rows matched in docs/gaps/vendor-payout-regression-coverage.md
+  committed record states no payout code, test, settlement action, provider request, payment action, behavior change, or regression result was claimed
+  committed record retains source, access, fixture, credential, and unsupported-detail limits
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check HEAD^..HEAD exited 0
+  git show --check HEAD exited 0
