@@ -25,12 +25,11 @@ async function readPasswordFromStdin() {
   return Buffer.concat(chunks).toString("utf8").replace(/\r?\n$/, "");
 }
 
-export async function runHashPassword(argv = process.argv.slice(2)) {
-  const fromArgv = typeof argv[0] === "string" ? argv[0] : "";
-  const password = fromArgv || (await readPasswordFromStdin());
+export async function runHashPassword() {
+  const password = await readPasswordFromStdin();
   if (!password) {
-    console.error("Usage: npm run hash-password -- <password>");
-    console.error("   or: printf '%s' '<password>' | npm run hash-password");
+    console.error("Usage: printf '%s' '<password>' | npm run hash-password");
+    console.error("   or: npm run hash-password   # then type the password and press Enter");
     process.exitCode = 1;
     return null;
   }

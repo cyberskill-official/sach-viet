@@ -49,22 +49,23 @@ cp app/.env.docker.example app/.env.docker
 openssl rand -hex 32
 ```
 
-3. Set `BOOTSTRAP_ADMIN_EMAIL`, then generate `BOOTSTRAP_ADMIN_PASSWORD_HASH` from `app/web` (prints one hash line; paste into `app/.env.docker` — never commit hash values or document sample hashes here):
+3. Set `BOOTSTRAP_ADMIN_EMAIL`, then generate `BOOTSTRAP_ADMIN_PASSWORD_HASH` from `app/web` (prints one hash line; paste into `app/.env.docker` — never commit hash values or document sample hashes here). Prefer stdin so the password is not stored in shell history:
 
 ```bash
 cd app/web
-npm run hash-password -- 'your-password'
+printf '%s' 'your-password' | npm run hash-password
 ```
 
-4. From `app/`, build and start:
+4. From `app/` (explicit `cd` if you stayed in `app/web` after step 3), build and start:
 
 ```bash
+cd ../
 docker compose up --build
 ```
 
 5. Open `http://localhost:3000`. First login at `/login` with the bootstrap email and password creates the first admin when the user store is empty.
 
-6. Tear down:
+6. Tear down (from `app/`):
 
 ```bash
 docker compose down
