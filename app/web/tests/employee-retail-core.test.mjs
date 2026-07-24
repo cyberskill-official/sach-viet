@@ -1,0 +1,152 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import test from "node:test";
+import { createAdminCommerceStore, submitVendorApplication } from "../src/lib/admin-commerce-core.mjs";
+import { createAuthStore, hashPassword } from "../src/lib/auth-core.mjs";
+import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
+import { createCommerceStore, createPendingOrder } from "../src/lib/commerce-core.mjs";
+import {
+  createEmployeeRetailStore,
+  getEmployeeDashboard,
+  listHomeSections,
+  listRetailOrders,
+  upsertHomeSection,
+} from "../src/lib/employee-retail-core.mjs";
+import { createSupportStore, createTicket, createGoodsRequest } from "../src/lib/support-core.mjs";
+
+function fixture(run) {
+  const directory = mkdtempSync(join(tmpdir(), "sachviet-employee-retail-"));
+  const dbPath = join(directory, "ops.sqlite");
+  const auth = createAuthStore({ dbPath, log: () => {} });
+  const catalog = createCatalogStore({ dbPath, log: () => {} });
+  const commerce = createCommerceStore({ dbPath, log: () => {} });
+  const support = createSupportStore({ dbPath, log: () => {} });
+  const admin = createAdminCommerceStore({ dbPath, log: () => {} });
+  const ops = createEmployeeRetailStore({ dbPath, log: () => {}, clock: () => 3000 });
+  const addUser = (id, role) =>
+    auth.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)").run(
+      id,
+      `${id}@example.test`,
+      hashPassword("correct horse battery staple"),
+      role,
+      1000,
+    );
+  try {
+    return run({ auth, catalog, commerce, support, admin, ops, addUser });
+  } finally {
+    ops.close();
+    admin.close();
+    support.close();
+    commerce.close();
+    catalog.close();
+    auth.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function seedCommerce({ catalog, commerce, support, admin, addUser }) {
+  addUser("admin", "admin");
+  addUser("employee", "employee");
+  addUser("retailer", "employee_b2c");
+  addUser("b2b", "employee_b2b");
+  addUser("vendor", "vendor");
+  addUser("customer", "customer");
+  addUser("applicant", "customer");
+  createCategory(catalog, { slug: "books", name: "Books" });
+  const product = createProduct(catalog, { categorySlug: "books", slug: "book", title: "Book", description: "A book" });
+  const offer = writeVendorOffer(catalog, { id: "vendor", role: "vendor" }, { productId: product.id, vendorId: "vendor", priceUsd: "10.00", stockQuantity: 5 });
+  createPendingOrder(commerce, { id: "customer", role: "customer" }, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  const order = commerce.db.prepare("SELECT id FROM orders LIMIT 1").get();
+  commerce.db.prepare("UPDATE orders SET status = 'paid' WHERE id = ?").run(order.id);
+  createTicket(support, { id: "customer", role: "customer" }, { subject: "Help" });
+  createGoodsRequest(support, { id: "customer", role: "customer" }, { details: "Find this title" });
+  submitVendorApplication(admin, { id: "applicant", role: "customer" });
+  return { orderId: order.id };
+}
+
+test("employee dashboard derives counts and approval queue without customer secrets", () =>
+  fixture((stores) => {
+    seedCommerce(stores);
+    const dashboard = getEmployeeDashboard(stores.ops, { id: "employee", role: "employee" });
+    assert.equal(dashboard.orderCount, 1);
+    assert.equal(dashboard.paidOrderCount, 1);
+    assert.equal(dashboard.openTicketCount, 1);
+    assert.equal(dashboard.openGoodsRequestCount, 1);
+    assert.equal(dashboard.pendingVendorApplicationCount, 1);
+    assert.equal(dashboard.approvalQueue.length, 1);
+    assert.equal(Object.hasOwn(dashboard.approvalQueue[0], "email"), false);
+    assert.throws(() => getEmployeeDashboard(stores.ops, { id: "customer", role: "customer" }), /Employee access/);
+    assert.throws(() => getEmployeeDashboard(stores.ops, { id: "vendor", role: "vendor" }), /Employee access/);
+  }));
+
+test("employee and admin persist home sections while unauthorized roles cannot", () =>
+  fixture((stores) => {
+    seedCommerce(stores);
+    assert.throws(
+      () => upsertHomeSection(stores.ops, { id: "customer", role: "customer" }, { sectionKey: "hero", title: "Hero" }),
+      /Employee access/,
+    );
+    assert.throws(
+      () => upsertHomeSection(stores.ops, { id: "employee", role: "employee" }, { sectionKey: "Hero!", title: "Hero" }),
+      /snake_case/,
+    );
+    const created = upsertHomeSection(stores.ops, { id: "employee", role: "employee" }, {
+      sectionKey: "hero",
+      title: "Hero",
+      body: "Welcome",
+      sortOrder: 1,
+      isEnabled: true,
+    });
+    assert.equal(created.sectionKey, "hero");
+    assert.equal(created.isEnabled, true);
+    const updated = upsertHomeSection(stores.ops, { id: "admin", role: "admin" }, {
+      sectionKey: "hero",
+      title: "Hero updated",
+      body: "Updated",
+      sortOrder: 2,
+      isEnabled: false,
+    });
+    assert.equal(updated.title, "Hero updated");
+    assert.equal(updated.isEnabled, false);
+    const sections = listHomeSections(stores.ops, { id: "b2b", role: "employee_b2b" });
+    assert.equal(sections.length, 1);
+    assert.equal(sections[0].title, "Hero updated");
+  }));
+
+test("retail roles list orders without email or payment secrets and non-retail roles are rejected", () =>
+  fixture((stores) => {
+    seedCommerce(stores);
+    const orders = listRetailOrders(stores.ops, { id: "retailer", role: "employee_b2c" });
+    assert.equal(orders.length, 1);
+    assert.equal(orders[0].status, "paid");
+    assert.equal(Object.hasOwn(orders[0], "email"), false);
+    assert.equal(Object.hasOwn(orders[0], "stripe_session_id"), false);
+    assert.equal(Object.hasOwn(orders[0], "checkout_url"), false);
+    const adminOrders = listRetailOrders(stores.ops, { id: "admin", role: "admin" });
+    assert.equal(adminOrders.length, 1);
+    assert.throws(() => listRetailOrders(stores.ops, { id: "employee", role: "employee" }), /Retail access/);
+    assert.throws(() => listRetailOrders(stores.ops, { id: "b2b", role: "employee_b2b" }), /Retail access/);
+    assert.throws(() => listRetailOrders(stores.ops, { id: "customer", role: "customer" }), /Retail access/);
+  }));
+
+test("home-config validation and empty-store dashboard paths stay safe", () =>
+  fixture((stores) => {
+    stores.addUser("employee", "employee");
+    stores.addUser("retailer", "employee_b2c");
+    assert.throws(() => getEmployeeDashboard(stores.ops, null), /Authentication/);
+    assert.throws(() => listRetailOrders(stores.ops, {}), /Authentication/);
+    const empty = getEmployeeDashboard(stores.ops, { id: "employee", role: "employee" });
+    assert.equal(empty.orderCount, 0);
+    assert.equal(empty.pendingVendorApplicationCount, 0);
+    assert.deepEqual(empty.approvalQueue, []);
+    assert.throws(
+      () => upsertHomeSection(stores.ops, { id: "employee", role: "employee" }, { sectionKey: "hero", title: "Hero", body: "x".repeat(4001) }),
+      /too long/,
+    );
+    const section = upsertHomeSection(stores.ops, { id: "employee", role: "employee" }, { sectionKey: "promo", title: "Promo" });
+    assert.equal(section.sortOrder, 0);
+    assert.equal(section.isEnabled, true);
+    assert.equal(listRetailOrders(stores.ops, { id: "retailer", role: "employee_b2c" }).length, 0);
+  }));
