@@ -1,0 +1,5 @@
+npm run prepare:preview → prepared_local (credentials_present=false, deployed=false)
+bash .cyberos/cuo/gates/run-gates.sh → GREEN
+quality-preview-release-core.mjs line coverage ≥ 97% on dedicated suite
+wordpress-import-core left intact (verify asserts importWordpressFixture)
+No push / deploy / merge / CapRover tokens added

@@ -6,7 +6,7 @@ type: improvement
 module: security
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: on_hold
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T04:18:00Z"

@@ -6,7 +6,7 @@ type: feature
 module: institution
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: closed
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T05:54:52Z"
@@ -21,6 +21,7 @@ source_ref:
   - docs/05-data-model.md:41-52
   - docs/README.md:21-25
 provenance:
+  - "closed_as_superseded: TASK-REBUILD-015 on 2026-07-24 (operator session judgment; see docs/tasks/rebuild/.workflow/on-hold-supersession-2026-07-24.md)"
   - "source_path: docs/01-vision.md"
   - "source_hash: 85bd3a7365b7c6ed3eb5dc449e867b08316b23fb2b055db69a0d5ecb8f0cac23"
   - "source_refs: docs/01-vision.md:16-18; docs/03-portals.md:48-50; docs/05-data-model.md:41-52; docs/README.md:21-25"

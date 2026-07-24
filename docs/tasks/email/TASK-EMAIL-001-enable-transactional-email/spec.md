@@ -6,7 +6,7 @@ type: feature
 module: email
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: closed
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T05:52:00Z"
@@ -22,6 +22,7 @@ source_ref:
   - docs/07-status-roadmap.md:35
   - docs/README.md:21-25
 provenance:
+  - "closed_as_superseded: TASK-REBUILD-019 on 2026-07-24 (operator session judgment; see docs/tasks/rebuild/.workflow/on-hold-supersession-2026-07-24.md)"
   - "source_path: docs/07-status-roadmap.md"
   - "source_hash: 2104f7ddad7ac430bfa2629d9a2708477e8f3d9e1f4520bbde5545c894ff9fb3"
   - "source_refs: docs/03-portals.md:26; docs/06-tech-stack.md:29-35,52-57; docs/07-status-roadmap.md:35; docs/README.md:21-25"

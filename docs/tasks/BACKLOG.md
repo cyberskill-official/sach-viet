@@ -11,40 +11,52 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 ## ready_to_implement
 
 - (none yet - add rows as `- [ready_to_implement] TASK-001-slug - title`; append `(improvement)` for hardening tasks)
-- [ready_to_implement] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
+- [on_hold] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
 - [done] TASK-AUTH-001-align-role-guards - Align frontend and API role guards (improvement)
 - [done] TASK-AUTHOR-001-build-lifecycle-and-earnings - Add author manuscript lifecycle stages and earnings views
-- [ready_to_review] TASK-B2B-001-add-quote-click-through - Add B2B quote-kanban click-through
 - [done] TASK-B2B-002-convert-quotes-to-orders - Convert approved B2B quotes into orders
-- [ready_to_implement] TASK-B2B-003-manage-contracts-and-pos - Manage B2B contracts and purchase-order artifacts
-- [ready_to_implement] TASK-CUTOVER-001-define-b2c-parity - Define and verify B2C parity before cutover (improvement)
+- [on_hold] TASK-CUTOVER-001-define-b2c-parity - Define and verify B2C parity before cutover (improvement)
 - [done] TASK-DISCOVERY-001-reconcile-handoff-sources - Reconcile the handoff with the application and live TODO (improvement)
-- [ready_to_implement] TASK-EMAIL-001-enable-transactional-email - Enable transactional email flows
 - [done] TASK-EMPLOYEE-001-wire-home-config-editor - Connect the employee home-config editor to its backend
-- [ready_to_implement] TASK-EMPLOYEE-002-add-real-dashboard-kpis - Replace mocked employee dashboard KPIs with real data
-- [ready_to_implement] TASK-I18N-001-localize-datatable-pagination - Localize DataTable pagination for vi and en (improvement)
-- [ready_to_implement] TASK-INSTITUTION-001-add-budget-tracking-and-pos - Add institutional budget tracking and PO submission
-- [ready_to_implement] TASK-INSTITUTION-002-deliver-purchased-marc-records - Deliver MARC records for purchased titles
-- [ready_to_implement] TASK-INTEGRATIONS-001-complete-admin-integrations - Complete Zalo and email settings screens
-- [ready_to_implement] TASK-MIGRATION-001-reconcile-wp-order-items - Reconcile unmatched WordPress order items (improvement)
+- [on_hold] TASK-I18N-001-localize-datatable-pagination - Localize DataTable pagination for vi and en (improvement)
+- [on_hold] TASK-INTEGRATIONS-001-complete-admin-integrations - Complete Zalo and email settings screens
+- [on_hold] TASK-MIGRATION-001-reconcile-wp-order-items - Reconcile unmatched WordPress order items (improvement)
 - [done] TASK-NOTIFICATIONS-001-verify-notification-bell - Verify notification badge and deeplink behavior (improvement)
-- [ready_to_implement] TASK-NOTIFICATIONS-002-add-live-notifications - Add live notification delivery
-- [ready_to_implement] TASK-PUBLISHER-001-build-financial-dashboard - Add publisher sales rollups, royalties, and contract management
+- [on_hold] TASK-PUBLISHER-001-build-financial-dashboard - Add publisher sales rollups, royalties, and contract management
 - [done] TASK-QUALITY-001-test-checkout-payments - Add checkout and hosted-payment regression coverage (improvement)
 - [done] TASK-QUALITY-002-test-vendor-payouts - Add vendor payout regression coverage (improvement)
 - [done] TASK-QUALITY-003-test-b2b-pipeline - Add B2B quote-pipeline regression coverage (improvement)
-- [ready_to_implement] TASK-REBUILD-001-bootstrap-platform-foundation - Bootstrap the greenfield platform foundation
-- [ready_to_implement] TASK-REBUILD-002-build-identity-and-access-core - Build identity and access control core
-- [ready_to_implement] TASK-REBUILD-003-build-shared-web-foundations - Build shared web foundations
-- [ready_to_implement] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
-- [ready_to_implement] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
+- [done] TASK-REBUILD-001-bootstrap-platform-foundation - Bootstrap the greenfield platform foundation
+- [done] TASK-REBUILD-002-build-identity-and-access-core - Build identity and access control core
+- [done] TASK-REBUILD-003-build-shared-web-foundations - Build shared web foundations
+- [done] TASK-REBUILD-004-build-catalog-and-marketplace-core - Build catalog and marketplace core
+- [done] TASK-REBUILD-005-build-storefront-cart-and-checkout - Build storefront cart and checkout
+- [done] TASK-REBUILD-006-build-customer-support-features - Build customer support features
+- [done] TASK-REBUILD-007-build-admin-commerce-operations - Build admin commerce operations
+- [done] TASK-REBUILD-008-build-vendor-portal-and-payouts - Build vendor portal and payouts
+- [done] TASK-REBUILD-009-build-employee-and-retail-operations - Build employee and retail operations
+- [done] TASK-REBUILD-010-build-notification-and-preferences - Build notification and preferences
+- [done] TASK-REBUILD-011-define-and-build-live-notifications - Define and build live notifications
+- [done] TASK-REBUILD-012-define-supplier-portal-scope - Define supplier portal scope
+- [done] TASK-REBUILD-013-build-b2b-quote-pipeline - Build B2B quote pipeline
+- [done] TASK-REBUILD-014-build-b2b-order-contract-po-flow - Build B2B order, contract, and PO flow
+- [done] TASK-REBUILD-015-build-institution-buyer-portal - Build institution buyer portal
+- [done] TASK-REBUILD-016-define-royalty-and-earnings-policy - Define royalty and earnings policy
+- [done] TASK-REBUILD-017-build-publisher-portal-and-royalties - Build publisher portal and royalties
+- [done] TASK-REBUILD-018-build-author-portal-and-earnings - Build author portal and earnings
+- [done] TASK-REBUILD-019-build-email-and-zalo-integrations - Build email and Zalo integrations
+- [done] TASK-REBUILD-020-build-vietnamese-search - Build Vietnamese search
+- [done] TASK-REBUILD-021-build-wordpress-import-compatibility - Build WordPress import compatibility
+- [done] TASK-REBUILD-022-establish-quality-and-preview-release - Establish quality and preview release
+- [done] TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover - Prove B2C parity and plan cutover
+- [on_hold] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
+- [on_hold] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
 - [done] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
-- [ready_to_implement] TASK-SEARCH-001-add-vietnamese-fuzzy-search - Add Vietnamese fuzzy search with Meilisearch
-- [ready_to_implement] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (improvement)
-- [ready_to_implement] TASK-SUPPLIER-001-resolve-portal-scope - Resolve and implement the supplier portal scope
-- [ready_to_implement] TASK-VENDOR-001-verify-vendor-fulfillment - Verify vendor fulfillment and tracking behavior (improvement)
-- [ready_to_implement] TASK-VENDOR-002-add-dashboard-analytics - Add vendor dashboard analytics with real API data
-- [ready_to_implement] TASK-VENDOR-003-add-report-export - Add vendor report export
+- [on_hold] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (improvement)
+- [on_hold] TASK-SUPPLIER-001-resolve-portal-scope - Resolve and implement the supplier portal scope
+- [on_hold] TASK-VENDOR-001-verify-vendor-fulfillment - Verify vendor fulfillment and tracking behavior (improvement)
+- [on_hold] TASK-VENDOR-002-add-dashboard-analytics - Add vendor dashboard analytics with real API data
+- [on_hold] TASK-VENDOR-003-add-report-export - Add vendor report export
 
 ## in flight
 
@@ -58,3 +70,11 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 - (deferred or killed tasks)
 - [on_hold] TASK-CUTOVER-002-execute-wordpress-cutover - Execute the approved WordPress cutover
+- [closed] TASK-B2B-001-add-quote-click-through - Add B2B quote-kanban click-through
+- [closed] TASK-B2B-003-manage-contracts-and-pos - Manage B2B contracts and purchase-order artifacts
+- [closed] TASK-EMAIL-001-enable-transactional-email - Enable transactional email flows
+- [closed] TASK-EMPLOYEE-002-add-real-dashboard-kpis - Replace mocked employee dashboard KPIs with real data
+- [closed] TASK-INSTITUTION-001-add-budget-tracking-and-pos - Add institutional budget tracking and PO submission
+- [closed] TASK-INSTITUTION-002-deliver-purchased-marc-records - Deliver MARC records for purchased titles
+- [closed] TASK-NOTIFICATIONS-002-add-live-notifications - Add live notification delivery
+- [closed] TASK-SEARCH-001-add-vietnamese-fuzzy-search - Add Vietnamese fuzzy search with Meilisearch

@@ -1,0 +1,4 @@
+verify-wordpress-import-core.mjs: passed
+gates run-gates.sh: GREEN
+PHPass login + dry_run/apply/idempotent tests: passed
+TASK-MIGRATION-001 remains on_hold

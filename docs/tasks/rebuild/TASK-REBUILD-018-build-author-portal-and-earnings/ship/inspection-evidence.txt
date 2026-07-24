@@ -1,0 +1,9 @@
+# Inspection evidence
+
+- Author can create/list/detail/withdraw own manuscript requests with submitted/withdrawn log trail
+- Unauthorized and cross-author access fail
+- Dashboard returns non-financial counts and policyPending for earnings and stages
+- Earnings/sales/payout paths refuse while activation gate pending
+- Storage keys omitted from public responses
+- Publisher portal verify still passes; publisher core free of author_manuscript_requests
+- No invented royalty rates/splits or review-stage status strings

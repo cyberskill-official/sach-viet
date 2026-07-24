@@ -1,12 +1,12 @@
 ---
 audit_template_version: "audit_rubric@2.0"
 audited_file: "docs/tasks/rebuild/TASK-REBUILD-003-build-shared-web-foundations/spec.md"
-audited_file_sha256: "7fb7cdcaab9037b7193eeccc9b89859cbc2086c71982ff205a0604f717a8c4af"
-audited_body_sha256: "a52268666df663b3dd4a1d99b1d3cba867262e2c410e0f6886eb1bc25d00a118"
+audited_file_sha256: "63b33a812e0a8daa70b0ba4645925ff9e364c341e16f2302824a276d22905aa3"
+audited_body_sha256: "864cf5cfc213427886e586528b6992b6e11f151c06d25bd0118ef125f04ada67"
 rubric_version: "audit_rubric@2.0"
 skill_id: "task-audit"
 skill_version: "1.0.0"
-last_audit_at: "2026-07-23T16:34:20.586Z"
+last_audit_at: "2026-07-23T18:03:35Z"
 overall_status: "pass"
 iterations: 2
 issue_counts: { total: 6, open: 0, needs_human: 0, fixed: 6, wontfix: 0 }
@@ -18,9 +18,9 @@ caller_persona: "cuo-cpo"
 
 The machine floor returned no error findings. TRACE-001 is informational for this task@1 profile because it has no grafted numbered acceptance and verification sections. <!-- authority: llm-explicit -->
 
-The manual audit checked shared-web scope, localization authority, access dependency, source limits, metrics, and provenance. The task has no unresolved human question. <!-- authority: llm-explicit -->
+The manual audit checked shared-web scope, localization authority, access dependency, Next.js direction, source limits, metrics, and provenance. The task has no unresolved human question. <!-- authority: llm-explicit -->
 
-+ISSUE
+ISSUE
 id: ISS-001
 rule_id: FM-107
 status: fixed
@@ -32,7 +32,7 @@ auto_fix_applied: true
 resolution: "Assisted task metadata is complete."
 resolved_at: "2026-07-23T16:34:20.586Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 ISSUE
 id: ISS-002
@@ -46,7 +46,7 @@ auto_fix_applied: true
 resolution: "The disclosure states the authoring boundary."
 resolved_at: "2026-07-23T16:34:20.586Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 ISSUE
 id: ISS-003
@@ -60,7 +60,7 @@ auto_fix_applied: true
 resolution: "The metric authority is sufficient."
 resolved_at: "2026-07-23T16:34:20.586Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 ISSUE
 id: ISS-004
@@ -74,35 +74,35 @@ auto_fix_applied: true
 resolution: "The task avoids fabricated contracts."
 resolved_at: "2026-07-23T16:34:20.586Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 ISSUE
 id: ISS-005
 rule_id: SEC-005
 status: fixed
 severity: warning
-evidence: "The source defines vi/en and shared architecture constraints."
-description: "Scope preserves shared localization and access boundaries."
+evidence: "The source defines vi/en and shared architecture constraints, and the approved Next.js decision replaces Nuxt implementation details."
+description: "Scope preserves shared localization and access boundaries without carrying forward the retired stack."
 suggestion: "Retain the source-grounded task wording."
 auto_fix_applied: true
-resolution: "Security and localization constraints are retained."
-resolved_at: "2026-07-23T16:34:20.586Z"
+resolution: "Security and localization constraints are retained in the Next.js App Router direction."
+resolved_at: "2026-07-23T18:03:35Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 ISSUE
 id: ISS-006
 rule_id: XCHAIN-001
 status: fixed
 severity: warning
-evidence: "The task depends on architecture, portal, and technology references."
-description: "Provenance names the source and its hash."
+evidence: "The task depends on portal and technology references plus the operator's Next.js decision."
+description: "Provenance must record the approved architecture direction as well as the source task chain."
 suggestion: "Retain the source-grounded task wording."
 auto_fix_applied: true
-resolution: "The source chain is auditable."
-resolved_at: "2026-07-23T16:34:20.586Z"
+resolution: "The source chain and architecture decision are auditable."
+resolved_at: "2026-07-23T18:03:35Z"
 opened_at: "2026-07-23T16:34:20.586Z"
-updated_at: "2026-07-23T16:34:20.586Z"
+updated_at: "2026-07-23T18:03:35Z"
 
 SUMMARY
 verdict: pass

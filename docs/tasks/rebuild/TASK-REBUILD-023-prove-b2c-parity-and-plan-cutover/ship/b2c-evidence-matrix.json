@@ -1,0 +1,105 @@
+{
+  "task_id": "TASK-REBUILD-023",
+  "claim_mode": "greenfield_capability_coverage",
+  "live_wp_parity_claimed": false,
+  "generated_by": "b2c-parity-cutover-core",
+  "row_count": 15,
+  "counts": {
+    "greenfield_proven": 12,
+    "source_gap": 1,
+    "evidence_unavailable": 1,
+    "deferred_out_of_scope": 1
+  },
+  "rows": [
+    {
+      "id": "catalog_browse_detail",
+      "label": "Catalog browse, filter, and product detail",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-catalog-core.mjs"
+    },
+    {
+      "id": "cart_hosted_checkout",
+      "label": "Cart and Stripe hosted checkout",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-commerce-core.mjs"
+    },
+    {
+      "id": "customer_order_history",
+      "label": "Customer orders and order history",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-commerce-core.mjs"
+    },
+    {
+      "id": "auth_login_session",
+      "label": "Customer auth login and signed session",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-identity.mjs"
+    },
+    {
+      "id": "support_tickets",
+      "label": "Support tickets",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-support-core.mjs"
+    },
+    {
+      "id": "goods_requests",
+      "label": "Goods requests",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-support-core.mjs"
+    },
+    {
+      "id": "vendor_self_registration",
+      "label": "Vendor self-registration and admin approval",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-admin-commerce-core.mjs"
+    },
+    {
+      "id": "vendor_orders_payouts",
+      "label": "Vendor orders and payouts",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-vendor-commerce-core.mjs"
+    },
+    {
+      "id": "admin_commerce_ops",
+      "label": "Admin commerce operations dashboard",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-admin-commerce-core.mjs"
+    },
+    {
+      "id": "vietnamese_search",
+      "label": "Vietnamese-aware catalog search",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-vietnamese-search-core.mjs"
+    },
+    {
+      "id": "wordpress_import_compat",
+      "label": "WordPress import compatibility (fixture-driven)",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-wordpress-import-core.mjs"
+    },
+    {
+      "id": "quality_preview_bar",
+      "label": "Quality checklist and offline preview prepare",
+      "status": "greenfield_proven",
+      "evidence_key": "verify-quality-preview-release-core.mjs"
+    },
+    {
+      "id": "wishlist_share",
+      "label": "Wishlist and public share link",
+      "status": "source_gap",
+      "evidence_key": null
+    },
+    {
+      "id": "paypal_checkout",
+      "label": "PayPal hosted checkout (legacy storefront listed Stripe/PayPal)",
+      "status": "deferred_out_of_scope",
+      "evidence_key": null
+    },
+    {
+      "id": "live_wp_storefront_comparison",
+      "label": "Side-by-side live WordPress vs greenfield storefront comparison",
+      "status": "evidence_unavailable",
+      "evidence_key": null
+    }
+  ]
+}

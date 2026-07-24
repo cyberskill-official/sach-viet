@@ -6,7 +6,7 @@ type: feature
 module: b2b
 author: "@codex"
 department: engineering
-status: ready_to_review
+status: closed
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T04:10:00Z"
@@ -21,6 +21,7 @@ source_ref:
   - docs/05-data-model.md:38-45
   - docs/README.md:21-25
 provenance:
+  - "closed_as_superseded: TASK-REBUILD-013 on 2026-07-24 (operator session judgment; see docs/tasks/rebuild/.workflow/on-hold-supersession-2026-07-24.md)"
   - "source_path: docs/03-portals.md"
   - "source_hash: 5be2732cfbbdd1093172b9070afd37a2617a6f569e1fd49d28bc7e3404880485"
   - "source_refs: docs/03-portals.md:44-46; docs/07-status-roadmap.md:47; docs/05-data-model.md:38-45; docs/README.md:21-25"

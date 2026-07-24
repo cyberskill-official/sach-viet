@@ -1,0 +1,21 @@
+=== supplier product surfaces (expect empty/absent) ===
+-- api/supplier --
+ls: app/web/src/app/api/supplier: No such file or directory
+-- pages with supplier in name --
+-- supplier lib cores --
+
+=== reserved placeholders (expect present) ===
+app/web/src/lib/web-foundations.mjs:10:  publisher: { label: "Publisher", accent: "purple" }, author: { label: "Author", accent: "orange" }, supplier: { label: "Supplier", accent: "amber" },
+app/web/src/lib/access.mjs:10:  "employee_supplier",
+app/web/src/lib/access.mjs:24:  supplier: ["employee_supplier", "admin"],
+
+=== TASK-SUPPLIER-001 status (expect on_hold) ===
+9:status: on_hold
+
+=== decision artefact ===
+PRESENT
+
+=== notification/SSE intact markers ===
+live-notifications-core PRESENT
+stream-route PRESENT
+11:  matcher: ["/admin/:path*", "/vendor/:path*", "/publisher/:path*", "/author/:path*", "/institution/:path*", "/employee/:path*", "/retail/:path*", "/b2b/:path*", "/supplier/:path*"],

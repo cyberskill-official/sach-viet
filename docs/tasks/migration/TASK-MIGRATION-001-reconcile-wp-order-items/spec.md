@@ -6,7 +6,7 @@ type: improvement
 module: migration
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: on_hold
 entered_via: audit
 priority: p3
 created_at: "2026-07-23T04:16:00Z"

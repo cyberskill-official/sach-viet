@@ -6,7 +6,7 @@ type: feature
 module: search
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: closed
 entered_via: audit
 priority: p2
 created_at: "2026-07-23T05:51:00Z"
@@ -23,6 +23,7 @@ source_ref:
   - docs/07-status-roadmap.md:34
   - docs/README.md:21-25
 provenance:
+  - "closed_as_superseded: TASK-REBUILD-020 on 2026-07-24 (operator session judgment; see docs/tasks/rebuild/.workflow/on-hold-supersession-2026-07-24.md)"
   - "source_path: docs/06-tech-stack.md"
   - "source_hash: 8c41ac63bd47446666b3ea682a2ec4a704bc7c0968393a0ddab5c088026f49c4"
   - "source_refs: docs/03-portals.md:26; docs/06-tech-stack.md:29-36,43-49; docs/07-status-roadmap.md:12,34; docs/README.md:21-25"

@@ -6,7 +6,7 @@ type: feature
 module: rebuild
 author: "@codex"
 department: engineering
-status: ready_to_implement
+status: done
 priority: p0
 created_at: "2026-07-23T00:00:00Z"
 ai_authorship: assisted
@@ -17,53 +17,51 @@ depends_on:
   - TASK-REBUILD-001
   - TASK-REBUILD-002
 source_ref:
-  - docs/02-architecture.md:28-70
   - docs/03-portals.md:62-68
   - docs/06-tech-stack.md:3-14
+  - user decision: full-stack Next.js
 provenance:
-  - "source_path: docs/02-architecture.md"
-  - "source_hash: 5f8e397921ba3cd0661924ae6e3b23afb868506844a36ef4689f79e3661ae943"
-  - "operator_resolution: greenfield rebuild on 2026-07-23"
+  - "source_path: docs/03-portals.md"
+  - "operator_resolution: single full-stack Next.js application on 2026-07-24"
+  - "author_manifest: docs/tasks/rebuild/.workflow/task-author.sachviet-rebuild.manifest.json"
 ---
 
 # Task
 
 ## Summary
 
-Build the shared Nuxt web structure used by all SachViet portals: portal layouts, navigation shell, i18n setup, theme behavior, shared API access, and reusable UI components. This is a greenfield implementation of the documented web structure. <!-- authority: human-confirmed -->
+Build the shared Next.js web structure used by all SachViet portals: layouts, navigation shell, i18n, theme behavior, typed server-access helpers, and reusable UI components. This is a greenfield implementation of the documented shared-web intent. <!-- authority: human-confirmed -->
 
 ## Problem
 
-The handoff describes nine portal page roots, shared components, portal layouts, middleware, Pinia stores, composables, server routes, and Vietnamese and English locales. The new workspace has no shared web implementation yet. <!-- authority: llm-explicit -->
+The handoff describes nine portal roots, shared components, portal layouts, route guards, state, and Vietnamese and English locales. The new Next.js workspace has no shared portal implementation yet. <!-- authority: llm-explicit -->
 
-The platform requires a light, dark, and glass theme, while some legacy pagination text was hardcoded in Vietnamese. The rebuild must establish localization at the shared-component layer instead of carrying forward that gap. <!-- authority: llm-explicit -->
+The platform requires light, dark, and glass themes, while shared pagination was previously hardcoded in Vietnamese. The rebuild must establish localization at the shared-component layer. <!-- authority: llm-explicit -->
 
 ## Proposed Solution
 
-Create the documented Nuxt folder structure for portal pages, layouts, shared components, middleware, stores, composables, server proxy routes, and vi/en locale files. Provide reusable portal-shell and data-table foundations that later tasks extend without duplicating portal access behavior. <!-- authority: human-confirmed -->
-
-Keep the established Tailwind and liquid-glass visual direction, including reduced-motion support where the source specifies it. Route access remains delegated to the identity and access foundation. <!-- authority: llm-explicit -->
+Create Next.js App Router route groups, shared layouts, server-safe access helpers, client components only where browser state is required, vi/en message catalogs, theme tokens, and reusable portal-shell and data-table foundations. Route access remains delegated to TASK-REBUILD-002. <!-- authority: human-confirmed -->
 
 ## Alternatives Considered
 
-Build each portal with its own unrelated layout and component set. This was rejected because the handoff identifies shared layouts and components as common platform structure. <!-- authority: llm-explicit -->
+Build each portal with an unrelated layout and component set. This is rejected because the handoff identifies shared layouts and components as common platform structure. <!-- authority: llm-explicit -->
 
-Ship only Vietnamese strings and add English later. This was rejected because the handoff defines vi/en as current platform support. <!-- authority: llm-explicit -->
+Retain Nuxt middleware, Pinia, and server proxy routes. This is rejected because the operator selected the Next.js App Router as the single application boundary. <!-- authority: human-confirmed -->
 
 ## Success Metrics
 
-Primary metric - baseline: the new workspace has no shared portal web layer. Target: later portal tasks can use one documented shared layout, API-access, theme, and vi/en localization foundation. Deadline: before this task moves from testing to done. <!-- authority: human-confirmed -->
+Primary metric - baseline: the workspace has no shared portal web layer. Target: later portal tasks can use one shared layout, typed server-access, theme, and vi/en localization foundation. Deadline: before this task moves from testing to done. <!-- authority: human-confirmed -->
 
-Guardrail - baseline: shared pagination text was identified as a hardcoded-language issue. Target: new shared UI text resolves through the vi/en localization mechanism rather than a hardcoded Vietnamese string. Deadline: before this task moves from testing to done. <!-- authority: llm-explicit -->
+Guardrail - baseline: shared pagination text was a hardcoded-language issue. Target: new shared UI text resolves through the vi/en mechanism rather than a hardcoded Vietnamese string. Deadline: before this task moves from testing to done. <!-- authority: llm-explicit -->
 
 ## Scope
 
-The task creates shared web infrastructure only. It does not implement the business pages, domain API contracts, or portal-specific workflows owned by later tasks. <!-- authority: llm-explicit -->
+The task creates shared Next.js web infrastructure only. It does not implement business pages, domain data contracts, or portal-specific workflows. <!-- authority: llm-explicit -->
 
 ### In scope
 
-- Create portal page, layout, component, middleware, store, composable, server, and locale foundations described by the architecture. <!-- authority: llm-explicit -->
-- Establish shared portal shells, theme behavior, i18n, API-access abstractions, and data-table text handling. <!-- authority: human-confirmed -->
+- Create shared App Router layouts, route groups, components, localization, theme, and typed server-access foundations. <!-- authority: llm-explicit -->
+- Establish reusable portal shells, theme behavior, i18n, and data-table text handling. <!-- authority: human-confirmed -->
 - Add source-selected checks for locale resolution and shared component behavior. <!-- authority: human-confirmed -->
 
 ### Out of scope
@@ -74,10 +72,10 @@ The task creates shared web infrastructure only. It does not implement the busin
 
 ## Dependencies
 
-TASK-REBUILD-001 supplies the Nuxt workspace and TASK-REBUILD-002 supplies portal access controls. This task supplies the reusable web layer for later portal tasks. <!-- authority: llm-implicit -->
+TASK-REBUILD-001 supplies the Next.js workspace and TASK-REBUILD-002 supplies session and role checks. This task supplies the reusable web layer for later portal tasks. <!-- authority: llm-implicit -->
 
 ## AI Authorship Disclosure
 
-- Tools used: Codex translated the documented web architecture into this task. <!-- authority: human-confirmed -->
-- Scope: The task does not invent page behavior, API endpoints, visual assets, or localization copy not present in the source. <!-- authority: llm-explicit -->
-- Human review: The operator approved the greenfield authoring plan before this task was drafted. <!-- authority: human-confirmed -->
+- Tools used: Codex translated the documented shared-web intent into the approved Next.js direction. <!-- authority: human-confirmed -->
+- Scope: The task does not invent page behavior, API contracts, visual assets, or localization copy not present in the source. <!-- authority: llm-explicit -->
+- Human review: The operator approved the greenfield authoring plan and later selected full-stack Next.js. <!-- authority: human-confirmed -->
