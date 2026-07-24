@@ -1,0 +1,11 @@
+# Local application material. Never commit credentials or generated dependencies.
+local/
+web/.env
+web/.env.*
+!web/.env.example
+web/node_modules/
+web/.next/
+web/out/
+web/coverage/
+web/data/
+web/*.sqlite
