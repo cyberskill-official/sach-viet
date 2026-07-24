@@ -1,0 +1,34 @@
+{
+  "artefact": "batch-selection@1",
+  "eligible": [
+    "TASK-QUALITY-003",
+    "TASK-ROYALTY-001",
+    "TASK-AUTH-001",
+    "TASK-B2B-001",
+    "TASK-B2B-003",
+    "TASK-CUTOVER-001",
+    "TASK-EMAIL-001",
+    "TASK-EMPLOYEE-002",
+    "TASK-INSTITUTION-001",
+    "TASK-INSTITUTION-002",
+    "TASK-RETAIL-001",
+    "TASK-VENDOR-001",
+    "TASK-VENDOR-002",
+    "TASK-ADMIN-001",
+    "TASK-I18N-001",
+    "TASK-INTEGRATIONS-001",
+    "TASK-NOTIFICATIONS-002",
+    "TASK-SEARCH-001",
+    "TASK-SUPPLIER-001",
+    "TASK-MIGRATION-001"
+  ],
+  "batch": ["TASK-QUALITY-003"],
+  "swarm_required": false,
+  "excluded": [
+    {
+      "id": "all other eligible tasks",
+      "blocked_by": null,
+      "conflict": "no cone declared (new_files / modified_files / service all absent) - undeclared is UNKNOWN, not empty; cannot join a batch"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+inspection: local Vietnamese search over catalog fixtures; diacritic queries return accented titles; empty q lists; suggestions return prefixes; MEILI_HOST seam falls back without network; verify script passes.

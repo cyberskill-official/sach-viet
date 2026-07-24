@@ -1,0 +1,14 @@
+{
+  "workflow_id": "chief-technology-officer/ship-tasks",
+  "workflow_version": "2.8.0",
+  "selected_at": "2026-07-24T00:00:00+07:00",
+  "batch": [
+    {
+      "id": "TASK-REBUILD-004",
+      "task_file": "docs/tasks/rebuild/TASK-REBUILD-004-build-catalog-and-marketplace-core/spec.md",
+      "status": "implementing",
+      "depends_on": ["TASK-REBUILD-001", "TASK-REBUILD-002", "TASK-REBUILD-003"]
+    }
+  ],
+  "excluded": "Legacy-task rows are excluded because the operator approved a greenfield Next.js rebuild."
+}

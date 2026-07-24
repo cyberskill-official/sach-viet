@@ -1,0 +1,34 @@
+# coverage-gate@1
+task_id: TASK-AUTHOR-001
+generated_at: "2026-07-23T11:29:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 11
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - { path: docs/gaps/author-lifecycle-and-earnings.md, coverage_pct: 100, lines_covered: 28, lines_total: 28 }
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes a static source and policy-gap record and has no executable author application code. Coverage measures every required boundary and safety assertion on the committed document."
+checks:
+  - { id: DOC-TEST-001, assertion: "The committed record has exactly six author lifecycle and earnings boundary rows.", result: passed }
+  - { id: DOC-TEST-002, assertion: "The committed record names source, authorization, lifecycle, financial-policy, fixture, and approved-access gaps.", result: passed }
+  - { id: DOC-TEST-003, assertion: "The committed tree has no app path.", result: passed }
+  - { id: DOC-TEST-004, assertion: "The committed record states no author or financial behavior result was claimed.", result: passed }
+  - { id: DOC-TEST-005, assertion: "The committed record preserves the unaccepted royalty-policy gate.", result: passed }
+  - { id: DOC-TEST-006, assertion: "The committed record excludes unsupported stages, ownership, financial, test, and access details.", result: passed }
+  - { id: DOC-TEST-007, assertion: "The record does not claim an author view, stage, transition, right, earnings fact, calculation, payout, payment, or authorization change.", result: passed }
+  - { id: DOC-TEST-008, assertion: "The record excludes production data, live sessions, local execution, and credentials.", result: passed }
+  - { id: DOC-TEST-009, assertion: "The task has no runtime edge-case matrix because no author behavior can run safely.", result: passed }
+  - { id: DOC-TEST-010, assertion: "The task spec passes task-lint with only task@1 TRACE-001 information.", result: passed }
+  - { id: DOC-TEST-011, assertion: "The committed diff and record have no Git whitespace error.", result: passed }
+raw_terminal: |
+  recorded_gap_rows=6
+  committed_app_path=absent
+  all six required author lifecycle and earnings boundary rows matched
+  committed record states no author or financial behavior result was claimed
+  committed record retains unaccepted royalty-policy and unsupported-detail limits
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check HEAD^..HEAD exited 0
+  git show --check HEAD exited 0

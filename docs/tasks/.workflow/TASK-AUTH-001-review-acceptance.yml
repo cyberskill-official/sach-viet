@@ -1,0 +1,11 @@
+# review-acceptance@1
+task_id: TASK-AUTH-001
+recorded_at: "2026-07-23T11:17:00Z"
+verdict: approved
+approval_source: user-chat
+approval_mode: temporary-hitl-bypass-authorized
+reviewed_commit: f899cd3
+reviewed_artefacts:
+  - docs/gaps/auth-role-guard-alignment.md
+  - docs/tasks/.workflow/TASK-AUTH-001-document-review.md
+effect: "Authorize the reviewing to ready_to_test transition. This does not approve an authorization change."

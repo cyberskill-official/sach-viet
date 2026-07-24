@@ -1,0 +1,1 @@
+Inspection evidence: npm test (95 pass), verify-email-zalo-integrations-core.mjs passed, run-gates.sh GREEN (build/lint/test/coverage).

@@ -1,0 +1,56 @@
+# coverage-gate@1
+task_id: TASK-NOTIFICATIONS-001
+generated_at: "2026-07-23T10:23:00Z"
+language: mixed
+tool: shell-static-document-checks
+total_tests_run: 10
+tests_failed: 0
+overall_coverage_pct: 100
+files_touched:
+  - path: docs/gaps/notification-bell-verification.md
+    coverage_pct: 100
+    lines_covered: 28
+    lines_total: 28
+files_below_90pct: []
+ecm_rows_uncovered: []
+scope_exception: "The task changes a static source and access-gap record and has no executable application code. Coverage measures every required notification-verification boundary and safety assertion on the committed document."
+checks:
+  - id: DOC-TEST-001
+    assertion: "The committed record has exactly five required notification-verification boundary rows."
+    result: passed
+  - id: DOC-TEST-002
+    assertion: "The committed record names the five-portal verification-set gap."
+    result: passed
+  - id: DOC-TEST-003
+    assertion: "The committed record names the badge state and count-source gap."
+    result: passed
+  - id: DOC-TEST-004
+    assertion: "The committed record names the deeplink destination-mapping gap."
+    result: passed
+  - id: DOC-TEST-005
+    assertion: "The committed record names the approved owner-test-access gap."
+    result: passed
+  - id: DOC-TEST-006
+    assertion: "The committed record names the preview behavior and variance-record gap."
+    result: passed
+  - id: DOC-TEST-007
+    assertion: "The committed tree has no app path, matching the source and access-gap outcome."
+    result: passed
+  - id: DOC-TEST-008
+    assertion: "The committed record states that no notification behavior changed and no test result was claimed."
+    result: passed
+  - id: DOC-TEST-009
+    assertion: "The committed record excludes unsupported portal, route, badge, deeplink, account, credential, fixture, delivery, preference, and preview detail."
+    result: passed
+  - id: DOC-TEST-010
+    assertion: "The task spec passes task-lint with only task@1 TRACE-001 information, and the committed diff and record have no Git whitespace error."
+    result: passed
+raw_terminal: |
+  recorded_gap_rows=5
+  committed_app_path=absent
+  all five required notification-verification rows matched in docs/gaps/notification-bell-verification.md
+  committed record states no notification behavior changed and no test result was claimed
+  committed record retains the source, access, credential, and unsupported-detail limits
+  task-lint emitted only TRACE-001 information for the task@1 profile and exited 0
+  git diff --check HEAD^..HEAD exited 0
+  git show --check HEAD exited 0

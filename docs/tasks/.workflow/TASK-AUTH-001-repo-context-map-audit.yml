@@ -1,0 +1,17 @@
+# repo-context-map-audit@1
+task_id: TASK-AUTH-001
+audited_at: "2026-07-23T11:13:41Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: RCM-001
+    result: pass
+    evidence: "The task module, repository root, and selected batch are stated."
+  - rule: RCM-002
+    result: pass
+    evidence: "The map distinguishes documented role intent from unavailable guard source and test paths."
+  - rule: RCM-003
+    result: pass
+    evidence: "The scope exception limits the change to a source and security-assessment gap record."

@@ -1,0 +1,3 @@
+export function DataTable({ labels, rows }: { labels: { empty: string; previous: string; next: string }; rows: Array<{ id: string; label: string }> }) {
+  return <section className="mt-6"><div className="overflow-hidden rounded-lg border border-border">{rows.length ? <ul>{rows.map((row) => <li className="border-b border-border px-4 py-3 last:border-0" key={row.id}>{row.label}</li>)}</ul> : <p className="px-4 py-8 text-sm text-muted">{labels.empty}</p>}</div><div className="mt-3 flex justify-between text-sm text-muted"><button type="button">{labels.previous}</button><button type="button">{labels.next}</button></div></section>;
+}

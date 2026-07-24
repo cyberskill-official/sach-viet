@@ -1,0 +1,45 @@
+{
+  "task_id": "TASK-REBUILD-023",
+  "platform": "greenfield_next_app_web",
+  "claim_mode": "greenfield_capability_coverage",
+  "live_wp_parity_claimed": false,
+  "executed": false,
+  "production_authorized": false,
+  "gates": [
+    {
+      "id": "parity_evidence_packet_complete",
+      "state": "met"
+    },
+    {
+      "id": "quality_preview_bar_green",
+      "state": "met"
+    },
+    {
+      "id": "backup_verified",
+      "state": "unmet"
+    },
+    {
+      "id": "named_rollback_plan",
+      "state": "unmet"
+    },
+    {
+      "id": "owner_go_decision",
+      "state": "unmet"
+    },
+    {
+      "id": "separate_deployment_instruction",
+      "state": "unmet"
+    }
+  ],
+  "unmet_gates": [
+    "backup_verified",
+    "named_rollback_plan",
+    "owner_go_decision",
+    "separate_deployment_instruction"
+  ],
+  "notes": [
+    "This plan is evidence for owner review only.",
+    "It does not authorize DNS, deploy, traffic switch, or WordPress retirement.",
+    "TASK-CUTOVER-001 and TASK-CUTOVER-002 remain on_hold."
+  ]
+}

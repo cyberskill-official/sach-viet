@@ -14,3 +14,8 @@
 .agents/skills/task-author
 .agents/skills/task-audit
 # <<< cyberos <<<
+
+# Generated / local noise
+dist/
+.DS_Store
+**/.DS_Store

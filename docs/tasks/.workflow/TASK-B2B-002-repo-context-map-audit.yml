@@ -1,0 +1,12 @@
+# repo-context-map-audit@1
+task_id: TASK-B2B-002
+audited_at: "2026-07-23T09:00:49Z"
+score: exempt
+verdict: skipped-conditional
+issues_open: 0
+issues_resolved: 0
+reason: "The task records source gaps instead of application behavior because the expected B2B module is absent. The required application patterns cannot be observed without inventing evidence."
+evidence:
+  - "docs/tasks/b2b/TASK-B2B-002-convert-quotes-to-orders/spec.md:60-73"
+  - "docs/README.md:21-23"
+next_workflow_action: "Continue as a source-gap record and present it at the human review gate."

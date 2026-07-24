@@ -1,0 +1,36 @@
+=== publisher/author financial APIs (expect absent) ===
+-- api/publisher --
+ls: app/web/src/app/api/publisher: No such file or directory
+-- api/author --
+ls: app/web/src/app/api/author: No such file or directory
+-- royalty/earnings lib cores --
+
+=== reserved placeholders (expect present) ===
+app/web/src/lib/web-foundations.mjs:10:  publisher: { label: "Publisher", accent: "purple" }, author: { label: "Author", accent: "orange" }, supplier: { label: "Supplier", accent: "amber" },
+app/web/src/lib/access.mjs:4:  "publisher",
+app/web/src/lib/access.mjs:5:  "author",
+app/web/src/lib/access.mjs:18:  publisher: ["publisher", "admin"],
+app/web/src/lib/access.mjs:19:  author: ["author", "admin"],
+app/web/src/proxy.ts:11:  matcher: ["/admin/:path*", "/vendor/:path*", "/publisher/:path*", "/author/:path*", "/institution/:path*", "/employee/:path*", "/retail/:path*", "/b2b/:path*", "/supplier/:path*"],
+
+=== decision artefacts ===
+docs/tasks/rebuild/TASK-REBUILD-016-define-royalty-and-earnings-policy/ship/royalty-input-inventory.md
+docs/tasks/rebuild/TASK-REBUILD-016-define-royalty-and-earnings-policy/ship/royalty-policy-proposal.md
+
+=== TASK-ROYALTY-001 status (expect done) ===
+9:status: done
+=== docs/royalty present (expect unchanged presence) ===
+royalty-input-inventory.md
+royalty-policy-proposal-v0.1.md
+
+=== TASK-PUBLISHER-001 status (expect on_hold) ===
+9:status: on_hold
+
+=== notification/SSE intact markers ===
+live-notifications-core PRESENT
+stream-route PRESENT
+
+=== vendor payout + B2B cores intact ===
+vendor-commerce-core PRESENT
+b2b-quote-core PRESENT
+b2b-order-core PRESENT

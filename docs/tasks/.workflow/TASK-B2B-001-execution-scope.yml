@@ -1,0 +1,19 @@
+# source-gap-execution@1
+task_id: TASK-B2B-001
+generated_at: "2026-07-23T11:31:02Z"
+implementation_output: [docs/gaps/b2b-quote-card-navigation.md]
+conditional_steps:
+  - { step: 3, skill: architecture-decision-record-author, reason: "No application architecture or outside-domain file will be modified." }
+  - { step: 4, skill: architecture-decision-record-audit, reason: "No ADR was required because step 3 was not triggered." }
+  - { step: 5, skill: edge-case-matrix-author, reason: "No navigation behavior can be exercised without source, safe fixtures, or approved access." }
+  - { step: 6, skill: edge-case-matrix-audit, reason: "No runtime edge-case matrix applies to a source and access-gap record." }
+  - { step: 7, skill: mock-contract-test-author, reason: "No source-confirmed card or navigation contract is available to model." }
+  - { step: 8, skill: mock-contract-test-audit, reason: "No mock contract was required." }
+  - { step: 9, skill: implementation-plan-author, reason: "No source-selected card, route, identifier, fixture, or test entry point can be planned." }
+  - { step: 10, skill: implementation-plan-audit, reason: "No implementation plan was required because step 9 was not applicable." }
+  - { step: 11, skill: observability-injection-author, reason: "The task adds no runtime path, external IO, or application state transition." }
+  - { step: 12, skill: observability-injection-audit, reason: "No observability plan was required because step 11 was not applicable." }
+review_basis:
+  - "The record names each boundary that blocks safe card navigation."
+  - "Every gap is grounded in available B2B documents or unavailable source and access."
+  - "The record does not invent a route, destination, identifier, payload, role policy, card action, or result."

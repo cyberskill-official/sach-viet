@@ -1,0 +1,11 @@
+services:
+  web:
+    build:
+      context: ./web
+    environment:
+      DATABASE_PATH: /data/sachviet.sqlite
+    volumes:
+      - sachviet-data:/data
+
+volumes:
+  sachviet-data:

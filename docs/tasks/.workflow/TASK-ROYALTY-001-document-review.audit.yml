@@ -1,0 +1,21 @@
+# code-review-audit@1
+task_id: TASK-ROYALTY-001
+audited_at: "2026-07-23T11:06:00Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: XREF-FINDINGS-COUNT
+    result: pass
+    evidence: "The review lists no findings and the sibling JSON array is empty."
+  - rule: ROYALTY-004
+    result: pass
+    evidence: "The proposal records policy status, source context, unresolved financial rules, and the activation gate."
+  - rule: ROYALTY-005
+    result: pass
+    evidence: "The inventory records documented data inputs and absent relationships without authorizing financial use."
+  - rule: ROYALTY-006
+    result: pass
+    evidence: "No rate, split, calculation, financial persistence, payout, payment instruction, or dashboard value is claimed."
+scope_exception: "Runtime code-review rules are not applicable to this read-only financial policy documentation task."

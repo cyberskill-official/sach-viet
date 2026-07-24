@@ -1,0 +1,14 @@
+# repo-context-map-audit@1
+task_id: TASK-DISCOVERY-001
+audited_at: "2026-07-23T08:40:29Z"
+score: exempt
+verdict: skipped-conditional
+issues_open: 0
+issues_resolved: 0
+reason: "The task is limited to a documentation inventory, explicitly excludes application changes and local execution, and the expected application tree is absent. RCM-001 baseline application patterns cannot be observed without inventing evidence."
+evidence:
+  - "docs/tasks/discovery/TASK-DISCOVERY-001-reconcile-handoff-sources/spec.md:70-79"
+  - "docs/tasks/discovery/TASK-DISCOVERY-001-reconcile-handoff-sources/spec.md:83-85"
+  - "docs/README.md:21-23"
+  - "docs/02-architecture.md:28-66"
+next_workflow_action: "Continue as a documentation-only task and present the reconciliation at the required human review gate."

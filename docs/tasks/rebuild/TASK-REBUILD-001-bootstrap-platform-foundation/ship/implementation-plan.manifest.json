@@ -1,0 +1,54 @@
+{
+  "manifest_version": "manifest@1",
+  "skill_id": "implementation-plan-author",
+  "skill_version": "1.0.0",
+  "trace_id": "nextjs-foundation-2026-07-24",
+  "source_hash": "971d82b53099cacb565eec176833a256fb7acd52de8b04b95012c13ee6e650ff",
+  "source_files": [
+    {
+      "path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/spec.md",
+      "media_type": "text/markdown",
+      "hash": "971d82b53099cacb565eec176833a256fb7acd52de8b04b95012c13ee6e650ff"
+    },
+    {
+      "path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/ship/context-map.md",
+      "media_type": "text/markdown",
+      "hash": "a94e8388bf61425fd58933b5610dfbaa77e82ed30c47f6df7a92bc9f464afa91"
+    },
+    {
+      "path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/ship/edge-case-matrix.md",
+      "media_type": "text/markdown",
+      "hash": "1416dd94b620c612d3bec1e516607cf0d200f7a775be62f47948130be5d4abf8"
+    }
+  ],
+  "plan": {
+    "status": "OPERATOR_CONFIRMED",
+    "operator_confirmation": "full-stack Next.js selected on 2026-07-24",
+    "previous_approval_hash": "68fdabc278366b6e7131d87e207bad9d975b184ff108d90d12d2da6d2dd47908"
+  },
+  "artefacts": [
+    {
+      "id": "IMPL-PLAN-001",
+      "slug": "nextjs-platform-foundation",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/ship/implementation-plan.md",
+      "artefact_hash": "594d9b551f8cf6440544693ecdebdb8490dd189e403e579198af5472e04cdf00",
+      "audit_hash": "cdf6009ffee338f28e7d933712310b8e79bc10aceecb66fe83895e09c5ef11b2",
+      "source_refs": [
+        "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/spec.md",
+        "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/ship/edge-case-matrix.md"
+      ],
+      "depends_on": [],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": []
+    }
+  ],
+  "hitl_pending": {
+    "any_blocking": false,
+    "issue_count": 0
+  },
+  "amendments": [
+    "The operator-selected Next.js architecture replaces the Nuxt and Laravel plan assumptions."
+  ],
+  "last_audit_at": "2026-07-24T00:00:00Z"
+}

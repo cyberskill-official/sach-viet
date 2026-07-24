@@ -1,0 +1,21 @@
+# code-review-audit@1
+task_id: TASK-QUALITY-002
+audited_at: "2026-07-23T10:44:00Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: XREF-FINDINGS-COUNT
+    result: pass
+    evidence: "The review lists no findings and the sibling JSON array is empty."
+  - rule: QUALITY-004
+    result: pass
+    evidence: "The record names source, settlement, test, administrator-action, fixture, and approved-access boundaries."
+  - rule: QUALITY-005
+    result: pass
+    evidence: "No application source, regression result, settlement action, payment action, or behavior change is claimed."
+  - rule: QUALITY-006
+    result: pass
+    evidence: "The scope outcome excludes credentials, live settlement, and unsupported payout, test, fixture, and access details."
+scope_exception: "Runtime code-review rules are not applicable to this source and access-gap documentation task."

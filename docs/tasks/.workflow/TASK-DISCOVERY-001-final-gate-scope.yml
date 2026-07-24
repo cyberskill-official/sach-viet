@@ -1,0 +1,15 @@
+# final-gate-scope@1
+task_id: TASK-DISCOVERY-001
+generated_at: "2026-07-23T08:54:00Z"
+debugging_cycle:
+  status: skipped-conditional
+  reason: "The document coverage report has zero failed checks."
+awh_gate:
+  status: skipped-conditional
+  reason: "The task has no application module, no module goldenset, and no configured AWH command."
+caf_gate:
+  status: skipped-conditional
+  reason: "The task has no application module or audit profile, and CAF is disabled in .cyberos/gates.env."
+machine_gate:
+  status: pass
+  evidence: "bash .cyberos/cuo/gates/run-gates.sh completed GREEN at the configured floor; build, lint, test, and coverage commands are absent."

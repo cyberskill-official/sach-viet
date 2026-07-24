@@ -1,0 +1,21 @@
+# code-review-audit@1
+task_id: TASK-AUTH-001
+audited_at: "2026-07-23T11:16:00Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: XREF-FINDINGS-COUNT
+    result: pass
+    evidence: "The review lists no findings and the sibling JSON array is empty."
+  - rule: AUTH-004
+    result: pass
+    evidence: "The record names source, frontend, API, alias-security, test-fixture, and approved-access boundaries."
+  - rule: AUTH-005
+    result: pass
+    evidence: "No guard change, super_admin parity, authentication change, security approval, or regression result is claimed."
+  - rule: AUTH-006
+    result: pass
+    evidence: "The scope outcome excludes credentials, sessions, and unsupported authorization details."
+scope_exception: "Runtime code-review rules are not applicable to this source and security-assessment documentation task."

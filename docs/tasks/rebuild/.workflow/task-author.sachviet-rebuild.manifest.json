@@ -1,0 +1,521 @@
+{
+  "manifest_version": "manifest@1",
+  "skill_id": "task-author",
+  "skill_version": "1.0.0",
+  "trace_id": "e4119b86-0af1-464a-9f81-71ccc9fd3029",
+  "source_hash": "fe8f2b465c0593211857dea6ba6309089e415f06830d375f3e569e2e12be825e",
+  "source_files": [
+    {
+      "path": "docs/README.md",
+      "media_type": "text/markdown",
+      "hash": "ee281485ba6c436100e8645d453dd79e8435d695fb02af71f2c4b621a19e3f76",
+      "size_bytes": 2019,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/01-vision.md",
+      "media_type": "text/markdown",
+      "hash": "85bd3a7365b7c6ed3eb5dc449e867b08316b23fb2b055db69a0d5ecb8f0cac23",
+      "size_bytes": 3347,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/02-architecture.md",
+      "media_type": "text/markdown",
+      "hash": "5f8e397921ba3cd0661924ae6e3b23afb868506844a36ef4689f79e3661ae943",
+      "size_bytes": 5817,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/03-portals.md",
+      "media_type": "text/markdown",
+      "hash": "5be2732cfbbdd1093172b9070afd37a2617a6f569e1fd49d28bc7e3404880485",
+      "size_bytes": 4654,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/04-roles-permissions.md",
+      "media_type": "text/markdown",
+      "hash": "7a14198c45c344d94c4753e3d370e2fe90a5623d455daa5eddce1c84cfa7431d",
+      "size_bytes": 4429,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/05-data-model.md",
+      "media_type": "text/markdown",
+      "hash": "6c59dd10d4d5e9ba1fe5ae8313f51428b1f6bd8d7b6176b49dc223e5192c8b1c",
+      "size_bytes": 2914,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/06-tech-stack.md",
+      "media_type": "text/markdown",
+      "hash": "8c41ac63bd47446666b3ea682a2ec4a704bc7c0968393a0ddab5c088026f49c4",
+      "size_bytes": 4134,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    },
+    {
+      "path": "docs/07-status-roadmap.md",
+      "media_type": "text/markdown",
+      "hash": "2104f7ddad7ac430bfa2629d9a2708477e8f3d9e1f4520bbde5545c894ff9fb3",
+      "size_bytes": 3796,
+      "read_at": "2026-07-23T16:22:43.145Z"
+    }
+  ],
+  "plan": {
+    "status": "APPROVED",
+    "approval_hash": "68fdabc278366b6e7131d87e207bad9d975b184ff108d90d12d2da6d2dd47908",
+    "created_at": "2026-07-23T16:22:43.145Z",
+    "approved_at": "2026-07-23T16:24:52.424Z",
+    "approved_by": "operator"
+  },
+  "artefacts": [
+    {
+      "id": "TASK-REBUILD-001",
+      "slug": "bootstrap-platform-foundation",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-001-bootstrap-platform-foundation/spec.md",
+      "source_refs": [
+        "docs/README.md:1-31",
+        "docs/02-architecture.md:28-94",
+        "docs/06-tech-stack.md:3-22"
+      ],
+      "depends_on": [],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "a275480d40b4e26036717a155fa46b2ba30c05a649217a061ccd20df7a2a2c71",
+      "audit_hash": "97033eba29f3c27010a6682d003fa9afdb90c0cea886813abf92e71fdc87fcfa",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-002",
+      "slug": "build-identity-and-access-core",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-002-build-identity-and-access-core/spec.md",
+      "source_refs": [
+        "docs/02-architecture.md:20-26",
+        "docs/04-roles-permissions.md:3-82",
+        "docs/05-data-model.md:17-18"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "d6803ca8055b9fbb77453dae2bbe23f75f6744d6748fbb9eb7b0857d30ed448d",
+      "audit_hash": "0bb7784950266309d560c06d52eb889d9ae5e2d5656d75915022688d7195888a",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-003",
+      "slug": "build-shared-web-foundations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-003-build-shared-web-foundations/spec.md",
+      "source_refs": [
+        "docs/02-architecture.md:28-70",
+        "docs/03-portals.md:62-68",
+        "docs/06-tech-stack.md:3-14"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "fd52427608db5cdd1b25f3bdb97e07b48a5b95a554fd60cfb55615c1d0ce58fd",
+      "audit_hash": "99a2d869cea94e74a39d0e0e3a6bf6c965f190de22e27837ac1ba92dae50e1ff",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-004",
+      "slug": "build-catalog-and-marketplace-core",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-004-build-catalog-and-marketplace-core/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:13-15",
+        "docs/03-portals.md:9-26",
+        "docs/05-data-model.md:5-29"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PASS",
+      "iterations": 2,
+      "artefact_hash": "f3349b4296f52ec5b4e42e5fae6560b246de8517acdb0912302cdcdafb1689a2",
+      "audit_hash": "34c54f8e39add980692161ad6a20d2f24707ba6175bae5764c351fbe072a1106",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-005",
+      "slug": "build-storefront-cart-and-checkout",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-005-build-storefront-cart-and-checkout/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:13-15",
+        "docs/03-portals.md:9-26",
+        "docs/05-data-model.md:17-29"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004"
+      ],
+      "status": "PASS",
+      "iterations": 2,
+      "artefact_hash": "8a263ebe3dd7704ef20080e3078718868572160b4280de35b2b6f325aa3180f7",
+      "audit_hash": "4353fe7838590db2669b1f57fc8befe4fde64dfa799911033df932008350d1a1",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-006",
+      "slug": "build-customer-support-features",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-006-build-customer-support-features/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-26",
+        "docs/04-roles-permissions.md:61-79",
+        "docs/05-data-model.md:55-62"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-004"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "52bc25181cbed52900851f68ee97d19f629ca8689bdd6a34172aa966545e9fbb",
+      "audit_hash": "f723e5cfb547b690c11b334fb6631ed89a53a8b54924927249d20c9fcab56316",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-007",
+      "slug": "build-admin-commerce-operations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-007-build-admin-commerce-operations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:32-34",
+        "docs/05-data-model.md:30-36",
+        "docs/07-status-roadmap.md:5-18"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "artefact_hash": "71d6388beb0888b44dbc45c19d935966c2379edb2e54e1aa3ebfba595d96533a",
+      "audit_hash": "e43caf87d2e58a5d7a25e579c93bd885f173442d7e57fae328a47adf59346003",
+      "blocking_issues": []
+    },
+    {
+      "id": "TASK-REBUILD-008",
+      "slug": "build-vendor-portal-and-payouts",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-008-build-vendor-portal-and-payouts/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:28-30",
+        "docs/05-data-model.md:30-36",
+        "docs/07-status-roadmap.md:20-25"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-007"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "b2ce35f3551c12757205ac1676cc7316c4cca1492696563468ca6bdb8d6f4c22",
+      "audit_hash": "2f8acdebd4d3e706a2a599da97e36d6544ddc8609e3e5b0b4d8679059946156c"
+    },
+    {
+      "id": "TASK-REBUILD-009",
+      "slug": "build-employee-and-retail-operations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-009-build-employee-and-retail-operations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:36-42",
+        "docs/04-roles-permissions.md:7-64",
+        "docs/07-status-roadmap.md:20-28"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "98ebdae4fce2d19308c4a125982f2355ec123133b607a010eb93724a47f65818",
+      "audit_hash": "49fa835b768296460cf52e1fe0c9d5de7dfa1f13c488ef56feda11c7832b9563"
+    },
+    {
+      "id": "TASK-REBUILD-010",
+      "slug": "build-notification-and-preferences",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-010-build-notification-and-preferences/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:62-68",
+        "docs/05-data-model.md:55-62",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "d0fa7060630dfd95bc06fcbb3a01b5bcede3b0b807469f0a07619362c6b0f4dc",
+      "audit_hash": "c14ba73465d6248d3775ea1809a1db42e14d2bfa52288c1de9f3764488faada2"
+    },
+    {
+      "id": "TASK-REBUILD-011",
+      "slug": "define-and-build-live-notifications",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-011-define-and-build-live-notifications/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:62-68",
+        "docs/06-tech-stack.md:29-35,43-50",
+        "docs/07-status-roadmap.md:29-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-010"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "6ed347dd0d6fd27da1c442e9553f40b356fe150fd36d90cb04a65bd0ace815bc",
+      "audit_hash": "df61403195b4dc56908be4b6913f70bd547cdee7ebb0ee99754dfe38a4fd001a"
+    },
+    {
+      "id": "TASK-REBUILD-012",
+      "slug": "define-supplier-portal-scope",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-012-define-supplier-portal-scope/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:56-58",
+        "docs/04-roles-permissions.md:7-29,47-63",
+        "docs/07-status-roadmap.md:29-37"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "5fae65700357f02e50c616cd01e4baa8cc3b6e5e7ca56b910421f8301825d70e",
+      "audit_hash": "c345e53f5e61d4cb49545232ab9bfd46afd3d6b884c386abb6ac2cadcc6d4b5e"
+    },
+    {
+      "id": "TASK-REBUILD-013",
+      "slug": "build-b2b-quote-pipeline",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-013-build-b2b-quote-pipeline/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:44-46",
+        "docs/05-data-model.md:38-45"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003",
+        "TASK-REBUILD-004"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "89ee454906bd6bb91927c28f4ffb5d3966fbf1ded542bf3692b5bc770876d3c7",
+      "audit_hash": "9a23b971d4477110ceddc4cc6d30d1982b1d701b015236e31a1513ec29652e9e"
+    },
+    {
+      "id": "TASK-REBUILD-014",
+      "slug": "build-b2b-order-contract-po-flow",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-014-build-b2b-order-contract-po-flow/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:44-46",
+        "docs/07-status-roadmap.md:29-37"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-013"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "ab67c7323bfce1805c9645466006266cb343cfcc7847b76205c91ea02f7c2150",
+      "audit_hash": "8bae012c64a166ba7cc07f292f3d198342c0ffb0a165b137f684513efd691ef6"
+    },
+    {
+      "id": "TASK-REBUILD-015",
+      "slug": "build-institution-buyer-portal",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-015-build-institution-buyer-portal/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:16-18",
+        "docs/03-portals.md:48-50",
+        "docs/05-data-model.md:38-45"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-013",
+        "TASK-REBUILD-014"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "c2214f7782cfeaac394f763a787fbadc8f88d12ccf86a70bcd115f4fa5acd1c3",
+      "audit_hash": "464fb42f47db0c12ffb5982ad85d8b152d6dad28ae00d08174f51fc770268586"
+    },
+    {
+      "id": "TASK-REBUILD-016",
+      "slug": "define-royalty-and-earnings-policy",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-016-define-royalty-and-earnings-policy/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:19-21",
+        "docs/03-portals.md:52-58",
+        "docs/06-tech-stack.md:43-50",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "4524b7729cec115af46ad9658b986acd0f9c9956045a02fde6c44943779ff959",
+      "audit_hash": "c044f54895da7484e133bb86ab72cb44a593ce70f085d0bb41bab9e77ad1ea3c"
+    },
+    {
+      "id": "TASK-REBUILD-017",
+      "slug": "build-publisher-portal-and-royalties",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-017-build-publisher-portal-and-royalties/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:52-54",
+        "docs/05-data-model.md:47-53",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004",
+        "TASK-REBUILD-016"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "d8cf04f4aa2d4460c32760033a836a31d2cb645b59c57300e968398e05a4f11f",
+      "audit_hash": "91f2549526057d7ebd943e8632208c39b86e7d9646418bd8de8a77a8b9278367"
+    },
+    {
+      "id": "TASK-REBUILD-018",
+      "slug": "build-author-portal-and-earnings",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-018-build-author-portal-and-earnings/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:19-21",
+        "docs/03-portals.md:56-58",
+        "docs/05-data-model.md:47-53",
+        "docs/07-status-roadmap.md:20-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-016"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "d7ae0311c5e00686e6c21762e01dadeaa8f5798b79d72947538afa249dbc2306",
+      "audit_hash": "0340b2947f740e1938bba240cb0821e493a8244203fb8ceefa14a4fb5e129202"
+    },
+    {
+      "id": "TASK-REBUILD-019",
+      "slug": "build-email-and-zalo-integrations",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-019-build-email-and-zalo-integrations/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-34",
+        "docs/05-data-model.md:55-62",
+        "docs/06-tech-stack.md:52-57",
+        "docs/07-status-roadmap.md:29-36"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-010"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "17dc2c838e38e56d3bd98c2504500bf746f34e43f9ec05deb1b29532021cb0f5",
+      "audit_hash": "6d93cb592880cf1cdf69c87a8b9480b8dccc2ba5125675074c46ccc36f0a38fa"
+    },
+    {
+      "id": "TASK-REBUILD-020",
+      "slug": "build-vietnamese-search",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-020-build-vietnamese-search/spec.md",
+      "source_refs": [
+        "docs/03-portals.md:9-26",
+        "docs/06-tech-stack.md:29-35,43-50",
+        "docs/07-status-roadmap.md:29-44"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-004"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "d890da3e74821bedcde6866271223602fa60de89e90fe2a5a6dd84d595de1dc5",
+      "audit_hash": "c6dd146ac9caa5226c90d95f66423d04532927d1e41a6c87aff1332d2aa9494e"
+    },
+    {
+      "id": "TASK-REBUILD-021",
+      "slug": "build-wordpress-import-compatibility",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-021-build-wordpress-import-compatibility/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:24-29",
+        "docs/02-architecture.md:71-80",
+        "docs/05-data-model.md:64-69",
+        "docs/07-status-roadmap.md:39-55"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-005"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "727a12f2f759fb7ef51b3a7f40d65d332a8286545b98131fbc171afbfe055e6b",
+      "audit_hash": "dc09ab6b7c71ce9931ab0122c8f459bac68045ba824bc12283580b71fa2adce3"
+    },
+    {
+      "id": "TASK-REBUILD-022",
+      "slug": "establish-quality-and-preview-release",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-022-establish-quality-and-preview-release/spec.md",
+      "source_refs": [
+        "docs/README.md:19-31",
+        "docs/02-architecture.md:81-94",
+        "docs/06-tech-stack.md:3-22,43-57",
+        "docs/07-status-roadmap.md:53-58"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-001",
+        "TASK-REBUILD-002",
+        "TASK-REBUILD-003"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "1ce53d5f0e3e6d381818c76f790ae6e3b7f10921e1f23a16de3c3e8831e56b0a",
+      "audit_hash": "9f31fc0f1d067f5636862dc73c93ecaf8fe08c9a3c395ae963f4b35c2c48f74e"
+    },
+    {
+      "id": "TASK-REBUILD-023",
+      "slug": "prove-b2c-parity-and-plan-cutover",
+      "file_path": "docs/tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/spec.md",
+      "source_refs": [
+        "docs/01-vision.md:24-40",
+        "docs/06-tech-stack.md:38-41",
+        "docs/07-status-roadmap.md:29-55"
+      ],
+      "depends_on": [
+        "TASK-REBUILD-005",
+        "TASK-REBUILD-007",
+        "TASK-REBUILD-008",
+        "TASK-REBUILD-021",
+        "TASK-REBUILD-022"
+      ],
+      "status": "PASS",
+      "iterations": 1,
+      "blocking_issues": [],
+      "artefact_hash": "c6cde8f936ca6aae575dfa38ef4c0f87e0a4b327f9d7e8b38116348126efd8de",
+      "audit_hash": "c0bbd2ad126671bc8e3015521a85ac6d6a01738285e85719ca5178e55b577e54"
+    }
+  ],
+  "hitl_pending": {
+    "any_blocking": false,
+    "issue_count": 0
+  },
+  "last_audit_at": "2026-07-24T13:48:43.263Z"
+}

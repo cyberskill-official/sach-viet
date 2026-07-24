@@ -1,0 +1,12 @@
+# repo-context-map-audit@1
+task_id: TASK-EMPLOYEE-001
+audited_at: "2026-07-23T10:00:54Z"
+score: exempt
+verdict: skipped-conditional
+issues_open: 0
+issues_resolved: 0
+reason: "The task records source gaps instead of application behavior because the expected employee module is absent. The required application patterns cannot be observed without inventing evidence."
+evidence:
+  - "docs/tasks/employee/TASK-EMPLOYEE-001-wire-home-config-editor/spec.md:61-76"
+  - "docs/README.md:21-23"
+next_workflow_action: "Continue as a source-gap record under the operator's temporary HITL-bypass instruction."

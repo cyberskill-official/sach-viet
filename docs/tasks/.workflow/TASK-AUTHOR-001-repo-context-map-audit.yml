@@ -1,0 +1,11 @@
+# repo-context-map-audit@1
+task_id: TASK-AUTHOR-001
+audited_at: "2026-07-23T11:21:32Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - { rule: RCM-001, result: pass, evidence: "The task module, repository root, and selected batch are stated." }
+  - { rule: RCM-002, result: pass, evidence: "The map separates documented publishing-log facts from unavailable source, authorization, and financial-policy inputs." }
+  - { rule: RCM-003, result: pass, evidence: "The scope exception limits the change to a source and policy-gap record." }

@@ -1,0 +1,29 @@
+# backlog-state-update@2
+task_id: TASK-EMPLOYEE-001
+generated_at: "2026-07-23T10:05:00Z"
+backlog_path: docs/tasks/BACKLOG.md
+prior_status: reviewing
+new_status: ready_to_test
+transition_kind: forward
+routed_back_count_delta: 0
+entered_via: null
+line_number: 23
+old_line: "- [reviewing] TASK-EMPLOYEE-001-wire-home-config-editor - Connect the employee home-config editor to its backend"
+new_line: "- [ready_to_test] TASK-EMPLOYEE-001-wire-home-config-editor - Connect the employee home-config editor to its backend"
+evidence_artefact_ids:
+  context_map: memory-audit-seq-27
+  adr: null
+  edge_case_matrix: null
+  mock_contract: null
+  impl_plan: null
+  obs_injection: null
+  coverage_report: null
+  debug_trace: null
+  task_audit: null
+  coverage_gate_audit: null
+rework_reason: null
+mutation_kind: status-cell-only
+memory_emit:
+  row_kind: workflow_phase_complete
+  task_id: TASK-EMPLOYEE-001
+  outcome_summary: "The temporary operator instruction approved the employee home-config source-gap review, authorizing document verification."

@@ -1,0 +1,7 @@
+# final-acceptance@1
+task_id: TASK-DISCOVERY-001
+recorded_at: "2026-07-23T08:57:21Z"
+verdict: approved
+approval_source: user-chat
+acceptance_packet: docs/tasks/.workflow/TASK-DISCOVERY-001-final-acceptance.md
+effect: "Authorize the testing to done transition."

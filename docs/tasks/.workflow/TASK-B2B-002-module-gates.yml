@@ -1,0 +1,16 @@
+# module-gates@1
+task_id: TASK-B2B-002
+checked_at: "2026-07-23T09:19:00Z"
+awh_gate:
+  outcome: skipped-conditional
+  command_available: true
+  goldenset_path: modules/b2b/.awh/goldenset.yaml
+  baseline_path: modules/b2b/.awh/eval-baseline.json
+  reason: "Neither required B2B AWH input exists because the checkout has no B2B application module."
+caf_gate:
+  outcome: skipped-conditional
+  gate_script_path: scripts/caf_gate.sh
+  audit_profile_path: modules/b2b/audit-profile.yaml
+  baseline_path: modules/b2b/.caf/
+  reason: "Neither CAF gate script nor B2B audit baseline exists in this documentation-only checkout."
+scope_conclusion: "No independent runtime module gate can run without an application module. The static document coverage gate remains the verification evidence for this source-gap task."

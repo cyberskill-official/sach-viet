@@ -1,0 +1,273 @@
+import { randomBytes } from "node:crypto";
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { normalizeRole } from "./access.mjs";
+import {
+  assertRoyaltyActivationGate,
+  getRoyaltyActivationGate,
+} from "./publisher-portal-core.mjs";
+
+const identifier = () => randomBytes(16).toString("hex");
+const required = (value, label) => {
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`${label} is required.`);
+  return value.trim();
+};
+
+function authorActor(user) {
+  if (!user?.id) throw new Error("Authentication is required.");
+  const role = normalizeRole(user.role);
+  if (role !== "author" && role !== "admin") throw new Error("Author access is required.");
+  return role;
+}
+
+function resolveAuthorId(actor, requestedAuthorId) {
+  const role = authorActor(actor);
+  if (role === "admin") {
+    return requestedAuthorId ? required(requestedAuthorId, "Author ID") : actor.id;
+  }
+  if (requestedAuthorId && requestedAuthorId !== actor.id) {
+    throw new Error("You cannot access another author's records.");
+  }
+  return actor.id;
+}
+
+function assertOpaqueStorageKey(storageKey) {
+  const key = required(storageKey, "Storage key");
+  if (key.startsWith("http://") || key.startsWith("https://")) {
+    throw new Error("Storage key must not be a public URL.");
+  }
+  return key;
+}
+
+function publicRequest(row) {
+  return {
+    id: row.id,
+    authorId: row.authorId,
+    title: row.title,
+    notes: row.notes,
+    status: row.status,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function publicLog(row) {
+  return {
+    id: row.id,
+    manuscriptRequestId: row.manuscriptRequestId,
+    status: row.status,
+    actorId: row.actorId,
+    createdAt: row.createdAt,
+  };
+}
+
+function appendStatusLog(store, { manuscriptRequestId, status, actorId, createdAt }) {
+  const id = identifier();
+  store.db
+    .prepare(
+      `INSERT INTO author_manuscript_request_logs
+        (id, manuscript_request_id, status, actor_id, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .run(id, manuscriptRequestId, status, actorId, createdAt);
+  return { id, manuscriptRequestId, status, actorId, createdAt };
+}
+
+export function createAuthorPortalStore({
+  dbPath,
+  clock = () => Date.now(),
+  log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-018", ...fields })),
+} = {}) {
+  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
+  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
+  const db = new DatabaseSync(path);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS author_manuscript_requests (
+      id TEXT PRIMARY KEY,
+      author_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      notes TEXT NOT NULL DEFAULT '',
+      storage_key TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('submitted', 'withdrawn')),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS author_manuscript_requests_author_updated_idx
+      ON author_manuscript_requests(author_id, updated_at DESC, id DESC);
+
+    CREATE TABLE IF NOT EXISTS author_manuscript_request_logs (
+      id TEXT PRIMARY KEY,
+      manuscript_request_id TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('submitted', 'withdrawn')),
+      actor_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL
+    ) STRICT;
+    CREATE INDEX IF NOT EXISTS author_manuscript_request_logs_request_created_idx
+      ON author_manuscript_request_logs(manuscript_request_id, created_at ASC, id ASC);
+
+    CREATE TABLE IF NOT EXISTS royalty_decision_acceptances (
+      decision_area TEXT PRIMARY KEY,
+      accepted_at INTEGER NOT NULL,
+      authority_source TEXT NOT NULL
+    ) STRICT;
+  `);
+  return { db, clock, log, close: () => db.close() };
+}
+
+export function createAuthorManuscriptRequest(store, actor, input = {}) {
+  const authorId = resolveAuthorId(actor, input.authorId);
+  const title = required(input.title, "Title");
+  const notes = typeof input.notes === "string" ? input.notes.trim() : "";
+  const storageKey = assertOpaqueStorageKey(input.storageKey);
+  const now = store.clock();
+  const row = {
+    id: identifier(),
+    authorId,
+    title,
+    notes,
+    storageKey,
+    status: "submitted",
+    createdAt: now,
+    updatedAt: now,
+  };
+  store.db
+    .prepare(
+      `INSERT INTO author_manuscript_requests
+        (id, author_id, title, notes, storage_key, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(row.id, row.authorId, row.title, row.notes, row.storageKey, row.status, row.createdAt, row.updatedAt);
+  appendStatusLog(store, {
+    manuscriptRequestId: row.id,
+    status: "submitted",
+    actorId: actor.id,
+    createdAt: now,
+  });
+  store.log("author_manuscript_request_created", {
+    manuscriptRequestId: row.id,
+    authorId: row.authorId,
+    status: row.status,
+  });
+  return publicRequest(row);
+}
+
+export function listAuthorManuscriptRequests(store, actor, input = {}) {
+  const authorId = resolveAuthorId(actor, input.authorId);
+  return store.db
+    .prepare(
+      `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
+       FROM author_manuscript_requests
+       WHERE author_id = ?
+       ORDER BY updated_at DESC, id DESC`,
+    )
+    .all(authorId)
+    .map(publicRequest);
+}
+
+export function getAuthorManuscriptRequest(store, actor, input = {}) {
+  const authorId = resolveAuthorId(actor, input.authorId);
+  const requestId = required(input.requestId, "Request ID");
+  const existing = store.db
+    .prepare(
+      `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
+       FROM author_manuscript_requests WHERE id = ?`,
+    )
+    .get(requestId);
+  if (!existing) throw new Error("Manuscript request does not exist.");
+  if (existing.authorId !== authorId) throw new Error("You cannot access another author's records.");
+  const logs = store.db
+    .prepare(
+      `SELECT id, manuscript_request_id AS manuscriptRequestId, status, actor_id AS actorId, created_at AS createdAt
+       FROM author_manuscript_request_logs
+       WHERE manuscript_request_id = ?
+       ORDER BY created_at ASC, id ASC`,
+    )
+    .all(requestId)
+    .map(publicLog);
+  return { ...publicRequest(existing), logs };
+}
+
+export function withdrawAuthorManuscriptRequest(store, actor, input = {}) {
+  const authorId = resolveAuthorId(actor, input.authorId);
+  const requestId = required(input.requestId, "Request ID");
+  const existing = store.db
+    .prepare(
+      `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
+       FROM author_manuscript_requests WHERE id = ?`,
+    )
+    .get(requestId);
+  if (!existing) throw new Error("Manuscript request does not exist.");
+  if (existing.authorId !== authorId) throw new Error("You cannot access another author's records.");
+  if (existing.status === "withdrawn") throw new Error("Manuscript request is already withdrawn.");
+  const updatedAt = store.clock();
+  store.db
+    .prepare(`UPDATE author_manuscript_requests SET status = 'withdrawn', updated_at = ? WHERE id = ?`)
+    .run(updatedAt, requestId);
+  appendStatusLog(store, {
+    manuscriptRequestId: requestId,
+    status: "withdrawn",
+    actorId: actor.id,
+    createdAt: updatedAt,
+  });
+  store.log("author_manuscript_request_withdrawn", {
+    manuscriptRequestId: requestId,
+    authorId,
+    status: "withdrawn",
+  });
+  return publicRequest({ ...existing, status: "withdrawn", updatedAt });
+}
+
+export function getAuthorDashboard(store, actor, input = {}) {
+  const authorId = resolveAuthorId(actor, input.authorId);
+  const gate = getRoyaltyActivationGate(store);
+  const submittedCount = store.db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM author_manuscript_requests WHERE author_id = ? AND status = 'submitted'`,
+    )
+    .get(authorId).count;
+  const withdrawnCount = store.db
+    .prepare(
+      `SELECT COUNT(*) AS count FROM author_manuscript_requests WHERE author_id = ? AND status = 'withdrawn'`,
+    )
+    .get(authorId).count;
+  store.log("author_dashboard_read", {
+    authorId,
+    activationGateStatus: gate.status,
+    financialActivationAllowed: gate.financialActivationAllowed,
+  });
+  return {
+    authorId,
+    nonFinancial: {
+      submittedManuscriptRequestCount: submittedCount,
+      withdrawnManuscriptRequestCount: withdrawnCount,
+    },
+    earnings: { policyPending: true },
+    stages: { policyPending: true },
+    activationGate: {
+      status: gate.status,
+      financialActivationAllowed: gate.financialActivationAllowed,
+      unresolvedDecisionAreas: gate.unresolvedDecisionAreas,
+    },
+  };
+}
+
+export function computeAuthorEarnings(store, actor, input = {}) {
+  resolveAuthorId(actor, input.authorId);
+  assertRoyaltyActivationGate(store, "Author earnings computation");
+  throw new Error("Author earnings computation is not implemented without accepted decision-register calculation methods.");
+}
+
+export function allocateAuthorSales(store, actor, input = {}) {
+  resolveAuthorId(actor, input.authorId);
+  assertRoyaltyActivationGate(store, "Author sales allocation");
+  throw new Error("Author sales allocation is not implemented without accepted decision-register allocation rules.");
+}
+
+export function createAuthorPayoutInstruction(store, actor, input = {}) {
+  resolveAuthorId(actor, input.authorId);
+  assertRoyaltyActivationGate(store, "Author payout");
+  throw new Error("Author payout instructions are not implemented without accepted payment authority.");
+}
+
+export { getRoyaltyActivationGate, assertRoyaltyActivationGate };

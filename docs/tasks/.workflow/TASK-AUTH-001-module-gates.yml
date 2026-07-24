@@ -1,0 +1,13 @@
+# module-gates@1
+task_id: TASK-AUTH-001
+recorded_at: "2026-07-23T11:20:00Z"
+awh:
+  outcome: skipped-conditional
+  required_inputs: [modules/auth/.awh/goldenset.yaml, modules/auth/.awh/eval-baseline.json]
+  absent_inputs: [modules/auth/.awh/goldenset.yaml, modules/auth/.awh/eval-baseline.json]
+  rationale: "No auth AWH goldenset or sealed baseline exists in this checkout."
+caf:
+  outcome: skipped-conditional
+  required_inputs: [modules/auth/audit-profile.yaml, modules/auth/.caf, scripts/caf_gate.sh]
+  absent_inputs: [modules/auth/audit-profile.yaml, modules/auth/.caf, scripts/caf_gate.sh]
+  rationale: "No auth CAF profile, sealed baseline, or gate script exists in this checkout."

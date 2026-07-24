@@ -1,0 +1,23 @@
+# coverage-gate-audit@1
+task_id: TASK-NOTIFICATIONS-001
+audited_at: "2026-07-23T10:23:00Z"
+score: 10
+verdict: pass
+issues_open: 0
+issues_resolved: 0
+checks:
+  - rule: CG-001
+    result: pass
+    evidence: "tests_failed is 0."
+  - rule: CG-002
+    result: pass
+    evidence: "files_below_90pct is empty."
+  - rule: CG-003
+    result: pass
+    evidence: "ecm_rows_uncovered is empty because this source and access-gap task has no runtime edge-case matrix."
+  - rule: CG-004
+    result: pass
+    evidence: "The raw terminal record lists the ten executed checks and their results."
+  - rule: CG-005
+    result: pass
+    evidence: "The committed document acceptance-check coverage is 100 percent."

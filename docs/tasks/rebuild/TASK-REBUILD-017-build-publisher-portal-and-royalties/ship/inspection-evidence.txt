@@ -1,0 +1,5 @@
+gates: GREEN (build/lint/test/coverage)
+tests: 83 pass including publisher-portal-core and publisher-portal-route
+verify: publisher_portal_core_verified passed
+activation gate: financialActivationAllowed=false; royalties/sales/contracts policyPending=true
+no invented rates/splits; TASK-PUBLISHER-001 remains on_hold; vendor/institution cores untouched

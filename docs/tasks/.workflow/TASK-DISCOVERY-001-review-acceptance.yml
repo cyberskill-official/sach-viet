@@ -1,0 +1,10 @@
+# review-acceptance@1
+task_id: TASK-DISCOVERY-001
+recorded_at: "2026-07-23T08:50:34Z"
+verdict: approved
+approval_source: user-chat
+reviewed_commit: d634c94
+reviewed_artefacts:
+  - docs/handoff-reconciliation.md
+  - docs/tasks/.workflow/TASK-DISCOVERY-001-document-review.md
+effect: "Authorize the reviewing to ready_to_test transition."

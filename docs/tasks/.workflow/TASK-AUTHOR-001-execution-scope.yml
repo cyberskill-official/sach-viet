@@ -1,0 +1,19 @@
+# source-gap-execution@1
+task_id: TASK-AUTHOR-001
+generated_at: "2026-07-23T11:21:32Z"
+implementation_output: [docs/gaps/author-lifecycle-and-earnings.md]
+conditional_steps:
+  - { step: 3, skill: architecture-decision-record-author, reason: "No application architecture or outside-domain file will be modified." }
+  - { step: 4, skill: architecture-decision-record-audit, reason: "No ADR was required because step 3 was not triggered." }
+  - { step: 5, skill: edge-case-matrix-author, reason: "No author behavior can be exercised without source, safe fixtures, or approved non-production access." }
+  - { step: 6, skill: edge-case-matrix-audit, reason: "No runtime edge-case matrix applies to a source and policy-gap record." }
+  - { step: 7, skill: mock-contract-test-author, reason: "No source-confirmed author-history or earned-fact contract is available to model." }
+  - { step: 8, skill: mock-contract-test-audit, reason: "No mock contract was required." }
+  - { step: 9, skill: implementation-plan-author, reason: "No source-selected author path, history relation, financial contract, fixture, or test entry point can be planned." }
+  - { step: 10, skill: implementation-plan-audit, reason: "No implementation plan was required because step 9 was not applicable." }
+  - { step: 11, skill: observability-injection-author, reason: "The task adds no runtime path, external IO, or application state transition." }
+  - { step: 12, skill: observability-injection-audit, reason: "No observability plan was required because step 11 was not applicable." }
+review_basis:
+  - "The record names each boundary that prevents safe author-history and earned-fact work."
+  - "Every gap is grounded in available documents, unavailable source, or the unaccepted financial policy."
+  - "The record does not invent stages, author access, earnings, payment, or a test result."

@@ -1,0 +1,16 @@
+# module-gates@1
+task_id: TASK-EMPLOYEE-001
+checked_at: "2026-07-23T10:08:00Z"
+awh_gate:
+  outcome: skipped-conditional
+  command_available: true
+  goldenset_path: modules/employee/.awh/goldenset.yaml
+  baseline_path: modules/employee/.awh/eval-baseline.json
+  reason: "Neither required employee AWH input exists because the checkout has no employee application module."
+caf_gate:
+  outcome: skipped-conditional
+  gate_script_path: scripts/caf_gate.sh
+  audit_profile_path: modules/employee/audit-profile.yaml
+  baseline_path: modules/employee/.caf/
+  reason: "Neither CAF gate script nor employee audit baseline exists in this documentation-only checkout."
+scope_conclusion: "No independent runtime module gate can run without an application module. The static document coverage gate remains the verification evidence for this source-gap task."

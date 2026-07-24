@@ -1,0 +1,5 @@
+# module-gates@1
+task_id: TASK-AUTHOR-001
+recorded_at: "2026-07-23T11:29:00Z"
+awh: { outcome: skipped-conditional, required_inputs: [modules/author/.awh/goldenset.yaml, modules/author/.awh/eval-baseline.json], absent_inputs: [modules/author/.awh/goldenset.yaml, modules/author/.awh/eval-baseline.json], rationale: "No author AWH goldenset or sealed baseline exists in this checkout." }
+caf: { outcome: skipped-conditional, required_inputs: [modules/author/audit-profile.yaml, modules/author/.caf, scripts/caf_gate.sh], absent_inputs: [modules/author/audit-profile.yaml, modules/author/.caf, scripts/caf_gate.sh], rationale: "No author CAF profile, sealed baseline, or gate script exists in this checkout." }
