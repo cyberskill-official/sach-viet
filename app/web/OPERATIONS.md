@@ -23,13 +23,57 @@ Use `npm run test:coverage` when collecting Node test coverage for the foundatio
 
 ## Container packaging
 
-Build the production image without starting an application process:
+Build the production image without starting an application process (from `app/web`):
 
 ```bash
 docker build --tag sachviet-web-foundation:local .
 ```
 
 `captain-definition` selects this Dockerfile for a CapRover preview package. Do not deploy it without an explicit operator instruction.
+
+### Local Docker (production-like)
+
+Use Compose under `app/` to run the same production image locally with a persisted SQLite volume. This is **not** a CapRover deploy and is **not** a hot-reload / `next dev` stack.
+
+**Prerequisites:** Docker Desktop or Engine with Compose.
+
+1. Copy the env template and fill secrets (do not commit the real file):
+
+```bash
+cp app/.env.docker.example app/.env.docker
+```
+
+2. Set `AUTH_SESSION_SECRET` (at least 32 characters), for example:
+
+```bash
+openssl rand -hex 32
+```
+
+3. Set `BOOTSTRAP_ADMIN_EMAIL`, then generate `BOOTSTRAP_ADMIN_PASSWORD_HASH` from `app/web` (prints one hash line; paste into `app/.env.docker` — never commit hash values or document sample hashes here). Prefer stdin so the password is not stored in shell history:
+
+```bash
+cd app/web
+printf '%s' 'your-password' | npm run hash-password
+```
+
+4. From `app/` (explicit `cd` if you stayed in `app/web` after step 3), build and start:
+
+```bash
+cd ../
+docker compose up --build
+```
+
+5. Open `http://localhost:3000`. First login at `/login` with the bootstrap email and password creates the first admin when the user store is empty.
+
+6. Tear down (from `app/`):
+
+```bash
+docker compose down
+```
+
+Add `-v` only if you intend to reset the SQLite volume (`sachviet-data`).
+
+When SMTP, Zalo, Stripe webhook, or Meili env vars are unset, those integrations use recording stubs / local defaults. Compose always sets `DATABASE_PATH` to `/data/sachviet.sqlite` on the named volume.
 
 ## Preview release preparation
 
@@ -59,4 +103,4 @@ The application stores its SQLite database at `DATABASE_PATH`, which defaults to
 
 Do not commit `.env` files, credentials, session cookies, password hashes, or database files. On the first authorized deployment, configure `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD_HASH` through the platform secret settings. The application creates the first administrator only when all three are present and the user store is empty.
 
-Generate the password hash through the authorized operations path. Do not place a plain-text password in configuration or source control.
+Generate the password hash with `npm run hash-password` from `app/web` (authorized operations path). Do not place a plain-text password in configuration or source control. Do not document or commit hash values.
