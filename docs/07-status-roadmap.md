@@ -1,59 +1,61 @@
 # 07 — Current Status, Roadmap, Known Issues
 
-Snapshot: 2026-07-11. Living source of truth: `app/TODO.md` (check it first — it moves).
+Snapshot: 2026-07-24. Living sources of truth: `docs/tasks/BACKLOG.md` (task status) and `docs/status/` (status site). The greenfield app lives under `app/web`.
 
-## What is DONE and verified in production preview
+## What is done (greenfield rebuild)
 
-- **B2C storefront end-to-end**: browse → product → cart (add-ons) → Stripe/PayPal hosted checkout → order history w/ timeline
-- **Performance pass (Jun 2026)**: server-side pagination/sort — shop payload 11.3MB → 274KB (41×), cold load 18.8s → 0.85s (22×), 8 new DB indexes
-- **Multi-vendor Phase A**: ProductVendor, PrimaryVendorService, admin vendor-product assignment
-- **WP data import**: 1,633 orders / 4,061 order items matched and imported; WP users auth via PHPass compat
-- **Auth hardening**: httpOnly cookie proxy, per-email login throttle, HMAC internal API
-- **Support tickets** (policy-gated), **goods requests** (+ Zalo job), **reviews** (verified badge + spam guard), **wishlist share links**, **search analytics + suggestions**
-- **Admin portal**: real dashboard, vendor approval, order status management, payouts, banners/ads/promotions
-- **B2B/retail/employee dashboards**: wired to real `/dashboard` extended payload (pipeline, approval queue)
-- **Notification system backend** + per-portal preference pages
-- **i18n vi/en**, 3-theme system, 8 portal layouts
+`TASK-REBUILD-001` … `TASK-REBUILD-023` are **done**. The Next.js package at `app/web` ships machine-gated foundation work across:
 
-## In flight / partially done
+- Platform bootstrap, identity/session, shared web foundations
+- Catalog/marketplace, storefront cart/checkout, customer support
+- Admin commerce, vendor portal/payouts, employee/retail operations
+- Notifications + preferences, live in-app notifications (SSE)
+- Supplier portal **scope** (product portal still deferred — see on_hold)
+- B2B quote pipeline + order/contract/PO flow; institution buyer portal
+- Royalty/earnings **policy artefacts** (activation deferred — see below)
+- Publisher and author portals (non-financial flows; financial compute gated)
+- Email + Zalo integrations (recording stubs when SMTP/Zalo unset)
+- Vietnamese-aware catalog search (local default; Meilisearch optional)
+- WordPress import compatibility (fixture-driven; not live cutover)
+- Quality/preview release bar + B2C greenfield evidence matrix and cutover **plan**
 
-| Item | State | Missing |
-|---|---|---|
-| Notification bell | backend done | E2E verify badge+deeplink across 5 portals (needs owner login) |
-| Employee home-config editor | UI exists | not wired to backend |
-| Vendor dashboard analytics | page exists | data mocked; report download stub |
-| Publisher/author dashboards | pages exist | fully mocked — blocked on royalty/earnings product decision |
-| Institution dashboard | page exists | budget/PO tracking not designed yet |
-| Returns workflow (retail) | page exists | no backend |
+This is **not** a claim of live WordPress production parity or an authorized production cutover.
 
-## Not started (the meat of the next phase)
+## Explicitly deferred / not unlocked
 
-1. **Quote → order conversion** (B2B pipeline end)
-2. **Royalty/earnings model** (unblocks publisher + author portals)
-3. **Real-time notifications** (Reverb/Pusher decision)
-4. **Meilisearch** fuzzy search
-5. **Email flows** (templates exist; SMTP creds = owner blocker)
-6. **Supplier portal** (role + middleware placeholder only)
-7. **WP cutover plan** for `sachviet.us` → Nuxt (after parity)
+| Topic | State |
+|---|---|
+| Royalty financial activation | Deferred (owner note on REBUILD-016). No invented rates/splits; publisher financial dashboard work stays gated. |
+| Production cutover / DNS / WP retirement | Planning-only (owner note on REBUILD-023). `TASK-CUTOVER-001` / `TASK-CUTOVER-002` stay `on_hold`. |
+| Remaining product `on_hold` work | Left on hold — no further closures in this hygiene pass. See BACKLOG and supersession note. |
 
-## Known issues / tech debt (inherited list — verify before fixing)
+Pointers:
 
-1. `DataTable.vue` pagination text hardcoded Vietnamese (not i18n)
-2. `supplier.ts` middleware uses legacy redirect pattern
-3. `portal/login.vue` legacy but still referenced from `error.vue`
-4. Duplicate dashboard stats endpoints (consolidate someday)
-5. Maintenance debug endpoints (`/admin/maintenance/*` via HMAC) still exposed — remove after vendor dashboard verified
-6. 324 WP order items unmatched (Vietnamese slug edge cases) — low priority
-7. B2B pipeline kanban cards have no click-through routes
+- Royalty deferral: `docs/tasks/rebuild/TASK-REBUILD-016-define-royalty-and-earnings-policy/ship/owner-deferral-2026-07-24.md`
+- Cutover planning-only: `docs/tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/ship/owner-planning-only-2026-07-24.md`
+- On-hold supersession (closed duplicates vs left on hold): `docs/tasks/rebuild/.workflow/on-hold-supersession-2026-07-24.md`
 
-## Context: the parallel WordPress migration (July 2026, owner-driven)
+## Still on hold (representative)
 
-Not this team's task, but affects you: the legacy WP store (live revenue) is moving from Liquid Web to CapRover apps `sachviet-current`/`sachviet-current-db` (deadline Jul 23). Until Nuxt parity, WP stays the live store and `WpImport` keeps syncing its data in. Full details: `migration/README.md`.
+Do not treat these as next automatic work without operator release:
 
-## Suggested first-two-weeks plan for the incoming team
+- Integrations settings screens, retail actions/returns, vendor fulfillment/analytics/export
+- Supplier product portal, publisher financial dashboard, security maintenance-endpoint retirement
+- Cutover/migration execution, assorted legacy improvements (admin stats consolidate, i18n DataTable, etc.)
 
-1. **Week 1 — orientation**: read this package + `project_full_map.md`; get CapRover + GitHub access; deploy a trivial change to preview; log in as every role (TEST_ACCOUNTS); trace one order through checkout on preview.
-2. **Week 2 — first real work** (proposals, discuss priority with owner):
-- Wire employee home-config editor (small, self-contained, touches both halves)
-- Notification bell E2E + fix what falls out
-- Written proposal for royalty model (unblocks two portals)
+Full list: `docs/tasks/BACKLOG.md`.
+
+## Known constraints (greenfield)
+
+1. No unauthorized push/deploy/merge — CyberOS HITL and operator instruction required.
+2. Email/Zalo stay recording stubs until real SMTP/Zalo secrets are configured for an authorized environment.
+3. Meilisearch is optional; local Vietnamese search is the default path.
+4. Cutover plan recording is not production authorization.
+5. Generated `dist/` and macOS `.DS_Store` are ignored; canonical status artefacts live under `docs/status/`.
+
+## Suggested next steps (operator-gated)
+
+1. Review and merge the rebuild branch only when an operator asks.
+2. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
+3. Release selected `on_hold` product tasks only with explicit operator instruction.
+4. Any CapRover preview or production deploy remains a separate authorized step.
