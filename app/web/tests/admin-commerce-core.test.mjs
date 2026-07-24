@@ -17,6 +17,31 @@ function fixture(run) {
   try { return run({ auth, commerce, admin, addUser }); } finally { admin.close(); commerce.close(); auth.close(); rmSync(directory, { recursive: true, force: true }); }
 }
 
+test("admin dashboard works on a fresh store without prior commerce init", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sachviet-admin-commerce-empty-"));
+  const dbPath = join(directory, "commerce.sqlite");
+  const auth = createAuthStore({ dbPath, log: () => {} });
+  const admin = createAdminCommerceStore({ dbPath, log: () => {}, clock: () => 1000 });
+  try {
+    auth.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)").run(
+      "admin",
+      "admin@example.test",
+      hashPassword("correct horse battery staple"),
+      "admin",
+      1000,
+    );
+    const dashboard = getAdminCommerceDashboard(admin, { id: "admin", role: "admin" });
+    assert.equal(dashboard.orderCount, 0);
+    assert.equal(dashboard.paidOrderCount, 0);
+    assert.equal(dashboard.paidRevenueUsd, "0.0000");
+    assert.deepEqual(dashboard.recentOrders, []);
+  } finally {
+    admin.close();
+    auth.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("admin dashboard summarizes paid orders without customer details", () => fixture(({ commerce, admin, addUser }) => {
   addUser("admin", "admin");
   addUser("customer", "customer");

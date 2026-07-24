@@ -24,6 +24,17 @@ export function createAdminCommerceStore({ dbPath, clock = () => Date.now(), log
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS orders (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('pending_payment', 'paid', 'payment_failed')),
+      currency TEXT NOT NULL CHECK (currency = 'USD'),
+      subtotal_usd TEXT NOT NULL,
+      checkout_url TEXT,
+      stripe_session_id TEXT UNIQUE,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    ) STRICT;
   `);
   return { db, clock, log, close: () => db.close() };
 }
