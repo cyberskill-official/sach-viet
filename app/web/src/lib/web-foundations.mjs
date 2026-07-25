@@ -1,7 +1,7 @@
 import { canAccessPortal } from "./access.mjs";
 
 export const locales = ["vi", "en"];
-export const themes = ["light", "dark", "glass"];
+export const themes = ["light", "dark"];
 export const portalConfig = Object.freeze({
   ecom: { label: "Storefront", accent: "emerald", public: true },
   vendor: { label: "Vendor", accent: "emerald" }, admin: { label: "Administration", accent: "blue" },
@@ -11,7 +11,7 @@ export const portalConfig = Object.freeze({
 });
 
 const messages = {
-  vi: { navigation: "Dieu huong", overview: "Tong quan", empty: "Chua co du lieu", previous: "Truoc", next: "Tiep", language: "Ngon ngu", theme: "Giao dien" },
+  vi: { navigation: "Điều hướng", overview: "Tổng quan", empty: "Chưa có dữ liệu", previous: "Trước", next: "Tiếp", language: "Ngôn ngữ", theme: "Giao diện" },
   en: { navigation: "Navigation", overview: "Overview", empty: "No data available", previous: "Previous", next: "Next", language: "Language", theme: "Theme" },
 };
 

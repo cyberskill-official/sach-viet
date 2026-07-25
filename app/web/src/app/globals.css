@@ -1,15 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #18212f;
-  --panel: #ffffff;
-  --border: #dbe3ef;
-  --muted: #667085;
+  --background: var(--cs-color-surface-page);
+  --foreground: var(--cs-color-text-primary);
+  --panel: var(--cs-color-surface-panel);
+  --border: var(--cs-color-border-default);
+  --muted: var(--cs-color-text-secondary);
 }
-
-:root[data-theme="dark"] { --background: #09090b; --foreground: #f4f4f5; --panel: #18181b; --border: #3f3f46; --muted: #a1a1aa; }
-:root[data-theme="glass"] { --background: #dbeafe; --foreground: #0f172a; --panel: rgb(255 255 255 / 0.58); --border: rgb(255 255 255 / 0.72); --muted: #475569; }
 
 @theme inline {
   --color-background: var(--background);
@@ -17,14 +14,39 @@
   --color-panel: var(--panel);
   --color-border: var(--border);
   --color-muted: var(--muted);
-  --font-sans: Arial, Helvetica, sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --color-accent: var(--cs-accent);
+  --color-accent-strong: var(--cs-accent-strong);
+  --color-accent-tint: var(--cs-accent-tint);
+  --font-sans: var(--cs-font-family-ui);
+  --font-mono: var(--cs-font-family-mono);
 }
-
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; } }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--cs-font-family-ui);
+  min-height: 100%;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition-duration: var(--cs-motion-duration-fast);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-duration: 0s;
+  }
+}
+
+::selection {
+  background: var(--cs-accent-tint);
+  color: var(--cs-accent-strong);
 }
