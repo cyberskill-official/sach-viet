@@ -1,8 +1,8 @@
 ---
 audit_template_version: "audit_rubric@2.0"
 audited_file: "docs/tasks/portalui/TASK-PORTALUI-001-adopt-cyberskill-design-thuy/spec.md"
-audited_file_sha256: "fd3d8514294da9d157787420102e8b9c8bcd58a48cdfcab284b0b4212b6abd38"
-audited_body_sha256: "fd3d8514294da9d157787420102e8b9c8bcd58a48cdfcab284b0b4212b6abd38"
+audited_file_sha256: "eb4ef8713828f59c10cd6051ff5e72a93787daf6a506cf638df33bcaab11c332"
+audited_body_sha256: "bad23e782b64b7d1425e18d00eaabca8fed9f081179d6df1e84c51b60e1c2bfc"
 rubric_version: "audit_rubric@2.0"
 skill_id: "task-audit"
 skill_version: "1.0.0"

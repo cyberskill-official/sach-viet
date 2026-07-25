@@ -36,6 +36,16 @@ textarea {
   transition-duration: var(--cs-motion-duration-fast);
 }
 
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition-duration: 0s;
+  }
+}
+
 ::selection {
   background: var(--cs-accent-tint);
   color: var(--cs-accent-strong);

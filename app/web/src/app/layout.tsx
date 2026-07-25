@@ -8,6 +8,8 @@ export const metadata: Metadata = {
   description: "Không gian sách Việt dành cho độc giả và đối tác",
 };
 
+const themeInitScript = `(function(){try{var t=localStorage.getItem("sv_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -15,6 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi" data-theme="light" data-cs-element="thuy" className="h-full" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
