@@ -3,7 +3,9 @@
 **Primary production target:** Vercel (Next.js in `app/web`) + Supabase (Postgres).  
 **CapRover / SQLite** is transitional only — see [`app/web/OPERATIONS.md`](../app/web/OPERATIONS.md) (historical CapRover checklist kept, marked superseded).
 
-This document is operator wiring for **preview**. It does **not** authorize production deploy, DNS cutover, or WordPress retirement. CyberOS: never push/deploy/merge without an explicit operator instruction. Agents must not run `vercel deploy` or `supabase` cloud CLI against real projects from this path.
+This document is operator wiring for **preview**. It does **not** authorize production deploy, DNS cutover, or WordPress retirement. CyberOS: never push/deploy/merge without an explicit operator instruction. Agents must not run `vercel deploy` or `supabase` cloud CLI against real projects from this path unless Preview was explicitly authorized.
+
+**Preview authorization:** operator **Go** on 2026-07-26 — see [`docs/ops/wave5-preview-go.md`](ops/wave5-preview-go.md). Production remains forbidden until cutover gates `owner_go_decision` and `separate_deployment_instruction` are met.
 
 Canonical env name lists: [`app/web/.env.example`](../app/web/.env.example), [`app/web/.env.vercel.example`](../app/web/.env.vercel.example).
 

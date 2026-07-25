@@ -208,10 +208,12 @@ Recording checklist evidence clears the Wave 4 gate for non-Stripe scope. It doe
 
 Full operator steps (create project, pooler `DATABASE_URL`, migrations, Vercel Root Directory, env names, preview vs production rules): [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). Env name template: [`.env.vercel.example`](./.env.vercel.example). Minimal Vercel config: [`vercel.json`](./vercel.json).
 
+**Operator Preview go (2026-07-26):** recorded in [`docs/ops/wave5-preview-go.md`](../../docs/ops/wave5-preview-go.md). That go does **not** authorize Production.
+
 **Rules (unchanged from Wave 4 gate)**
 
-- Preview on Vercel only after Docker acceptance items **1–7** pass locally.
-- Production on Vercel is **forbidden** until the full Wave 4 checklist is green **and** an explicit operator instruction authorizes it.
+- Preview on Vercel only after Docker acceptance items **1–7** pass locally (item **6** Stripe may stay deferred).
+- Production on Vercel is **forbidden** until the full Wave 4 checklist is green **and** an explicit operator instruction authorizes it (`owner_go_decision` / `separate_deployment_instruction`).
 - Do not run `vercel deploy` or Supabase cloud CLI against real projects from agent automation without that instruction.
 - Never run `seed:local` against a Supabase Preview/Production database.
 

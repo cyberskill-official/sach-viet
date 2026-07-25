@@ -58,8 +58,17 @@ jobs:
           PUSH_BASE_SHA: ${{ github.event.before }}
         run: |
           BASE_SHA="${PR_BASE_SHA:-$PUSH_BASE_SHA}"
+          # New-branch first push sets `before` to the zero SHA. Comparing against
+          # the root commit falsely requires HITL verdicts for all historical
+          # task transitions. Prefer merge-base with origin/main, then HEAD~1.
           if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+            if git rev-parse --verify origin/main >/dev/null 2>&1; then
+              BASE_SHA="$(git merge-base HEAD origin/main)"
+            elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+              BASE_SHA="$(git rev-parse HEAD~1)"
+            else
+              BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+            fi
           fi
           node app/web/scripts/require-hitl-verdict.mjs --base "$BASE_SHA"
           node app/web/scripts/check-cyberos-install.mjs --if-present
