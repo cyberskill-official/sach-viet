@@ -53,11 +53,17 @@ export function verifyPhpassPassword(password, storedHash) {
   return computed.length === storedHash.length && constantTimeEqual(computed, storedHash);
 }
 
+export function isPhpassHash(storedHash) {
+  return typeof storedHash === "string" && (storedHash.startsWith("$P$") || storedHash.startsWith("$H$"));
+}
+
 const COOKIE_NAME = "sv_session";
 const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_LOCK_MS = 15 * 60 * 1000;
 const MAX_LOGIN_FAILURES = 5;
+/** Progressive soft delay (ms) before a hard lock; keyed per email+client. */
+const LOGIN_PROGRESSIVE_DELAYS_MS = Object.freeze([0, 0, 500, 2_000, 5_000]);
 let cachedStore;
 
 function defaultNow() {
@@ -81,6 +87,12 @@ function requireSessionSecret(secret) {
   return secret;
 }
 
+function normalizeClientKey(value) {
+  if (typeof value !== "string") return "unknown";
+  const trimmed = value.trim().toLowerCase().slice(0, 64);
+  return trimmed || "unknown";
+}
+
 export function normalizeEmail(value) {
   const email = typeof value === "string" ? value.trim().toLowerCase() : "";
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
@@ -97,7 +109,7 @@ export function hashPassword(password) {
 
 export function verifyPassword(password, storedHash) {
   if (typeof password !== "string" || typeof storedHash !== "string") return false;
-  if (storedHash.startsWith("$P$") || storedHash.startsWith("$H$")) {
+  if (isPhpassHash(storedHash)) {
     return verifyPhpassPassword(password, storedHash);
   }
   const [algorithm, salt, expected] = storedHash.split("$");
@@ -112,6 +124,43 @@ export function ensureAuthLegacyColumns(store) {
     store.db.exec("ALTER TABLE users ADD COLUMN legacy_wp_user_id TEXT");
   }
   store.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_legacy_wp_user_id_uq ON users(legacy_wp_user_id) WHERE legacy_wp_user_id IS NOT NULL");
+}
+
+/**
+ * Upgrades email-only login_attempts (pre-harden) to a composite (email, client_key) key
+ * so a remote attacker cannot lock out a victim logging in from a different IP/device.
+ */
+export function ensureLoginAttemptsSchema(store) {
+  const columns = store.db.prepare("PRAGMA table_info(login_attempts)").all();
+  if (columns.length === 0) {
+    store.db.exec(`
+      CREATE TABLE login_attempts (
+        email TEXT NOT NULL,
+        client_key TEXT NOT NULL,
+        failures INTEGER NOT NULL,
+        window_started_at INTEGER NOT NULL,
+        locked_until INTEGER NOT NULL,
+        PRIMARY KEY (email, client_key)
+      ) STRICT;
+    `);
+    return;
+  }
+  if (columns.some((column) => column.name === "client_key")) return;
+
+  store.db.exec(`
+    CREATE TABLE login_attempts_v2 (
+      email TEXT NOT NULL,
+      client_key TEXT NOT NULL,
+      failures INTEGER NOT NULL,
+      window_started_at INTEGER NOT NULL,
+      locked_until INTEGER NOT NULL,
+      PRIMARY KEY (email, client_key)
+    ) STRICT;
+    INSERT INTO login_attempts_v2 (email, client_key, failures, window_started_at, locked_until)
+      SELECT email, 'unknown', failures, window_started_at, locked_until FROM login_attempts;
+    DROP TABLE login_attempts;
+    ALTER TABLE login_attempts_v2 RENAME TO login_attempts;
+  `);
 }
 
 export function createAuthStore({ dbPath, now = defaultNow, log = defaultLog } = {}) {
@@ -132,13 +181,17 @@ export function createAuthStore({ dbPath, now = defaultNow, log = defaultLog } =
       FOREIGN KEY (user_id) REFERENCES users(id)
     ) STRICT;
     CREATE TABLE IF NOT EXISTS login_attempts (
-      email TEXT PRIMARY KEY,
+      email TEXT NOT NULL,
+      client_key TEXT NOT NULL,
       failures INTEGER NOT NULL,
       window_started_at INTEGER NOT NULL,
-      locked_until INTEGER NOT NULL
+      locked_until INTEGER NOT NULL,
+      PRIMARY KEY (email, client_key)
     ) STRICT;
   `);
-  return { db, now, log, close: () => db.close() };
+  const store = { db, now, log, close: () => db.close() };
+  ensureLoginAttemptsSchema(store);
+  return store;
 }
 
 export function getAuthStore() {
@@ -169,26 +222,70 @@ export function bootstrapFirstAdmin(store, environment = process.env) {
   return { created: true, reason: "created" };
 }
 
-function lockState(store, email) {
-  const attempt = store.db.prepare("SELECT failures, window_started_at, locked_until FROM login_attempts WHERE email = ?").get(email);
+function lockState(store, email, clientKey) {
+  const attempt = store.db
+    .prepare("SELECT failures, window_started_at, locked_until FROM login_attempts WHERE email = ? AND client_key = ?")
+    .get(email, clientKey);
   if (!attempt || attempt.locked_until <= store.now()) return null;
   return attempt;
 }
 
-function recordFailure(store, email) {
-  const current = store.db.prepare("SELECT failures, window_started_at FROM login_attempts WHERE email = ?").get(email);
+function progressiveDelayMs(failures) {
+  const index = Math.min(Math.max(failures, 0), LOGIN_PROGRESSIVE_DELAYS_MS.length - 1);
+  return LOGIN_PROGRESSIVE_DELAYS_MS[index];
+}
+
+function recordFailure(store, email, clientKey) {
+  const current = store.db
+    .prepare("SELECT failures, window_started_at FROM login_attempts WHERE email = ? AND client_key = ?")
+    .get(email, clientKey);
   const at = store.now();
   const failures = !current || at - current.window_started_at > LOGIN_WINDOW_MS ? 1 : current.failures + 1;
   const windowStartedAt = !current || at - current.window_started_at > LOGIN_WINDOW_MS ? at : current.window_started_at;
   const lockedUntil = failures >= MAX_LOGIN_FAILURES ? at + LOGIN_LOCK_MS : 0;
-  store.db.prepare(`INSERT INTO login_attempts (email, failures, window_started_at, locked_until) VALUES (?, ?, ?, ?)
-    ON CONFLICT(email) DO UPDATE SET failures = excluded.failures, window_started_at = excluded.window_started_at, locked_until = excluded.locked_until`)
-    .run(email, failures, windowStartedAt, lockedUntil);
-  return lockedUntil > at;
+  store.db
+    .prepare(
+      `INSERT INTO login_attempts (email, client_key, failures, window_started_at, locked_until) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(email, client_key) DO UPDATE SET
+         failures = excluded.failures,
+         window_started_at = excluded.window_started_at,
+         locked_until = excluded.locked_until`,
+    )
+    .run(email, clientKey, failures, windowStartedAt, lockedUntil);
+  return {
+    locked: lockedUntil > at,
+    failures,
+    retryAfterMs: lockedUntil > at ? Math.max(0, lockedUntil - at) : progressiveDelayMs(failures),
+  };
 }
 
-function clearFailures(store, email) {
+function clearFailures(store, email, clientKey) {
+  if (clientKey) {
+    store.db.prepare("DELETE FROM login_attempts WHERE email = ? AND client_key = ?").run(email, clientKey);
+    return;
+  }
   store.db.prepare("DELETE FROM login_attempts WHERE email = ?").run(email);
+}
+
+/** Operator/admin unlock path: clears lockout rows for an email (all clients, or one). */
+export function clearLoginLock(store, email, { clientKey } = {}) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) throw new Error("A valid email is required to clear a login lock.");
+  if (clientKey !== undefined) {
+    clearFailures(store, normalizedEmail, normalizeClientKey(clientKey));
+  } else {
+    clearFailures(store, normalizedEmail);
+  }
+  store.log("auth_login_lock_cleared", { result: "accepted" });
+  return { cleared: true };
+}
+
+function upgradePhpassHashIfNeeded(store, user, password) {
+  if (!isPhpassHash(user.password_hash)) return false;
+  const upgraded = hashPassword(password);
+  store.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(upgraded, user.id);
+  store.log("auth_password_rehashed", { result: "upgraded", from: "phpass" });
+  return true;
 }
 
 export function createSessionCookie(store, user, sessionSecret) {
@@ -238,20 +335,29 @@ export function revokeSession(store, token, sessionSecret) {
   store.log("auth_logout_completed", { result: session ? "revoked" : "noop" });
 }
 
-export function login(store, { email, password, sessionSecret }) {
+export function login(store, { email, password, sessionSecret, clientKey }) {
   const normalizedEmail = normalizeEmail(email);
+  const normalizedClientKey = normalizeClientKey(clientKey);
   if (!normalizedEmail || typeof password !== "string") return { ok: false, reason: "invalid" };
-  if (lockState(store, normalizedEmail)) {
+  if (lockState(store, normalizedEmail, normalizedClientKey)) {
     store.log("auth_login_throttled", { result: "rejected" });
-    return { ok: false, reason: "throttled" };
+    return { ok: false, reason: "throttled", retryAfterMs: LOGIN_LOCK_MS };
   }
   const user = store.db.prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?").get(normalizedEmail);
   if (!user || !isKnownRole(user.role) || !verifyPassword(password, user.password_hash)) {
-    const locked = recordFailure(store, normalizedEmail);
-    store.log(locked ? "auth_login_throttled" : "auth_login_rejected", { reason: locked ? "threshold" : "credentials", result: "rejected" });
-    return { ok: false, reason: locked ? "throttled" : "invalid" };
+    const failure = recordFailure(store, normalizedEmail, normalizedClientKey);
+    store.log(failure.locked ? "auth_login_throttled" : "auth_login_rejected", {
+      reason: failure.locked ? "threshold" : "credentials",
+      result: "rejected",
+    });
+    return {
+      ok: false,
+      reason: failure.locked ? "throttled" : "invalid",
+      retryAfterMs: failure.retryAfterMs,
+    };
   }
-  clearFailures(store, normalizedEmail);
+  clearFailures(store, normalizedEmail, normalizedClientKey);
+  upgradePhpassHashIfNeeded(store, user, password);
   const session = createSessionCookie(store, user, sessionSecret);
   store.log("auth_login_succeeded", { role: user.role, result: "accepted" });
   return { ok: true, user: { id: user.id, email: user.email, role: user.role }, ...session };
@@ -261,4 +367,4 @@ export function safeRedirect(value) {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : "/";
 }
 
-export { COOKIE_NAME, LOGIN_LOCK_MS, MAX_LOGIN_FAILURES, SESSION_DURATION_MS };
+export { COOKIE_NAME, LOGIN_LOCK_MS, LOGIN_PROGRESSIVE_DELAYS_MS, MAX_LOGIN_FAILURES, SESSION_DURATION_MS };
