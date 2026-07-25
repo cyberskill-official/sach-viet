@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
@@ -85,9 +83,7 @@ export function createInstitutionBuyerStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-015", ...fields })),
 } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS institution_budgets (
       organization_id TEXT PRIMARY KEY,
@@ -157,7 +153,7 @@ export function submitInstitutionPurchaseOrder(store, actor, input) {
 
   const artifactId = id();
   const createdAt = store.clock();
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     store.db.prepare(`
       INSERT INTO b2b_artifacts (id, order_id, kind, reference_number, storage_key, created_by, created_at)

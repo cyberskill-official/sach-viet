@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 import { dispatchExternalNotificationChannels } from "./email-zalo-integrations-core.mjs";
 import { publishNotificationCreated } from "./live-notifications-core.mjs";
@@ -72,9 +70,7 @@ export function createNotificationStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-010", ...fields })),
 } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS notification_event_types (
       key TEXT PRIMARY KEY,

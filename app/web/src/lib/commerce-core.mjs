@@ -1,7 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 
 function identifier() { return randomBytes(16).toString("hex"); }
 function now() { return Date.now(); }
@@ -10,11 +8,8 @@ function moneyUnits(value) { const [whole, fraction = ""] = value.split("."); re
 function moneyString(value) { return `${value / 10000n}.${String(value % 10000n).padStart(4, "0")}`; }
 
 export function createCommerceStore({ dbPath, clock = now, log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-005", ...fields })) } = {}) {
-  const databasePath = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(databasePath))) mkdirSync(dirname(databasePath), { recursive: true });
-  const db = new DatabaseSync(databasePath);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
-    PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS orders (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -75,10 +70,17 @@ export function createPendingOrder(store, user, items) {
     return { ...item, offer };
   });
   const timestamp = store.clock();
-  store.db.prepare("INSERT INTO orders (id, user_id, status, currency, subtotal_usd, created_at, updated_at) VALUES (?, ?, 'pending_payment', ?, ?, ?, ?)")
-    .run(order.id, order.userId, order.currency, moneyString(order.subtotalUsd), timestamp, timestamp);
-  const insert = store.db.prepare("INSERT INTO order_items (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-  for (const item of snapshots) insert.run(identifier(), order.id, item.offer.product_id, item.offer.id, item.offer.title, item.offer.price_usd, item.quantity, item.plasticCover ? 1 : 0, item.giftWrap ? 1 : 0);
+  beginImmediateWithRetry(store.db);
+  try {
+    store.db.prepare("INSERT INTO orders (id, user_id, status, currency, subtotal_usd, created_at, updated_at) VALUES (?, ?, 'pending_payment', ?, ?, ?, ?)")
+      .run(order.id, order.userId, order.currency, moneyString(order.subtotalUsd), timestamp, timestamp);
+    const insert = store.db.prepare("INSERT INTO order_items (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    for (const item of snapshots) insert.run(identifier(), order.id, item.offer.product_id, item.offer.id, item.offer.title, item.offer.price_usd, item.quantity, item.plasticCover ? 1 : 0, item.giftWrap ? 1 : 0);
+    store.db.exec("COMMIT");
+  } catch (error) {
+    store.db.exec("ROLLBACK");
+    throw error;
+  }
   store.log("checkout_order_created", { result: "accepted", order_id: order.id, item_count: snapshots.length });
   return { id: order.id, currency: order.currency, subtotalUsd: moneyString(order.subtotalUsd), status: "pending_payment" };
 }

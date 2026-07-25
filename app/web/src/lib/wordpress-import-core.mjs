@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { normalizeRole } from "./access.mjs";
 import { ensureAuthLegacyColumns, normalizeEmail } from "./auth-core.mjs";
 import { ensureCommerceLegacyColumns } from "./commerce-core.mjs";
+import { beginImmediateWithRetry } from "./sqlite.mjs";
 
 function identifier() {
   return randomBytes(16).toString("hex");
@@ -151,32 +152,39 @@ function importOrder(authStore, commerceStore, order, mode, runId, counts, creat
   }
   if (mode === "apply") {
     const orderId = identifier();
-    commerceStore.db
-      .prepare(
-        `INSERT INTO orders
-          (id, user_id, status, currency, subtotal_usd, created_at, updated_at, legacy_wp_order_id)
-         VALUES (?, ?, 'paid', 'USD', ?, ?, ?, ?)`,
-      )
-      .run(orderId, userId, totalUsd, createdAt, createdAt, legacyId);
-    const insertItem = commerceStore.db.prepare(
-      `INSERT INTO order_items
-        (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap, legacy_wp_order_item_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
-    );
-    for (const item of order.items) {
-      const unitPrice = normalizeMoney(item.unitPriceUsd) || "0.0000";
-      const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
-      const itemLegacy = item.legacyWpOrderItemId ? String(item.legacyWpOrderItemId) : null;
-      insertItem.run(
-        identifier(),
-        orderId,
-        item.productId ? String(item.productId) : `legacy:product:${legacyId}`,
-        item.vendorOfferId ? String(item.vendorOfferId) : `legacy:offer:${legacyId}`,
-        typeof item.title === "string" && item.title.trim() ? item.title.trim() : "Imported item",
-        unitPrice,
-        quantity,
-        itemLegacy,
+    beginImmediateWithRetry(commerceStore.db);
+    try {
+      commerceStore.db
+        .prepare(
+          `INSERT INTO orders
+            (id, user_id, status, currency, subtotal_usd, created_at, updated_at, legacy_wp_order_id)
+           VALUES (?, ?, 'paid', 'USD', ?, ?, ?, ?)`,
+        )
+        .run(orderId, userId, totalUsd, createdAt, createdAt, legacyId);
+      const insertItem = commerceStore.db.prepare(
+        `INSERT INTO order_items
+          (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap, legacy_wp_order_item_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
       );
+      for (const item of order.items) {
+        const unitPrice = normalizeMoney(item.unitPriceUsd) || "0.0000";
+        const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+        const itemLegacy = item.legacyWpOrderItemId ? String(item.legacyWpOrderItemId) : null;
+        insertItem.run(
+          identifier(),
+          orderId,
+          item.productId ? String(item.productId) : `legacy:product:${legacyId}`,
+          item.vendorOfferId ? String(item.vendorOfferId) : `legacy:offer:${legacyId}`,
+          typeof item.title === "string" && item.title.trim() ? item.title.trim() : "Imported item",
+          unitPrice,
+          quantity,
+          itemLegacy,
+        );
+      }
+      commerceStore.db.exec("COMMIT");
+    } catch (error) {
+      commerceStore.db.exec("ROLLBACK");
+      throw error;
     }
   }
   counts.accepted += 1;

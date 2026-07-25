@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 import { canAccessOwnedRecord, normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -33,9 +31,7 @@ function resolveVendorId(actor, requestedVendorId) {
 }
 
 export function createVendorCommerceStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-008", ...fields })) } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS payouts (
       id TEXT PRIMARY KEY,
@@ -77,7 +73,7 @@ export function createVendorPayout(store, actor, input) {
   if (!Array.isArray(input?.orderItemIds) || input.orderItemIds.length === 0) throw new Error("At least one order item is required.");
   const orderItemIds = [...new Set(input.orderItemIds.map((id) => required(id, "Order item ID")))];
   const payout = { id: identifier(), vendorId, amountUsd, createdBy: actor.id, createdAt: store.clock() };
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     for (const orderItemId of orderItemIds) {
       const row = store.db.prepare(`
