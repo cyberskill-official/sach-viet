@@ -14,6 +14,7 @@ test("commerce routes use signed sessions and raw Stripe webhook verification", 
   assert.match(checkout, /createStripeCheckoutSession/);
   assert.match(webhook, /request\.text/);
   assert.match(webhook, /processStripeWebhook/);
+  assert.match(webhook, /dispatchOrderPaidConfirmation/);
   assert.match(orders, /listCustomerOrders/);
   assert.match(cart, /localStorage/);
   assert.match(cart, /plasticCover/);
