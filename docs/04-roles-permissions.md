@@ -1,5 +1,7 @@
 # 04 — Roles & Permissions
 
+> **Archived handoff context — not current implementation truth.** The Sanctum, Nuxt proxy, middleware, and route details below belong to the superseded Nuxt/Laravel handoff. The active authorization implementation is in the Next.js application under `app/web`. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance.
+
 ## Model
 
 **Single-role system**: one `role` string column on `users` (default `customer`). Check via `User::hasAnyRole([...])`. No permission matrix / no spatie-style abilities — role = capability bundle. Keep it this way unless a real need emerges (discuss first).

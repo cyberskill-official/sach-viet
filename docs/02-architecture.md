@@ -1,5 +1,7 @@
 # 02 — Architecture, Structure Tree, Environments
 
+> **Archived handoff context — not current implementation truth.** The Nuxt/Laravel architecture and environment details below describe a legacy plan, not this checkout. The active code is the Next.js application in `app/web`. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance. Do not use this file as a deployment runbook.
+
 ## System diagram
 
 ```

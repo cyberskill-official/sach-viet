@@ -1,5 +1,7 @@
 # 01 — What is SachViet & Where It's Going
 
+> **Archived handoff context — not current implementation truth.** This document contains legacy Nuxt/Laravel topology and unverified environment claims. The active code is the Next.js application in `app/web`. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance. Do not infer production readiness or deployment authorization from this file.
+
 ## One-liner
 
 **SachViet is a global publishing & distribution ecosystem for Vietnamese books**, serving the Vietnamese diaspora in the US as its primary market, plus US libraries and schools buying Vietnamese-language materials.
