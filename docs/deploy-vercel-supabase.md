@@ -13,10 +13,10 @@ Canonical env name lists: [`app/web/.env.example`](../app/web/.env.example), [`a
 
 | Deploy kind | Gate |
 |---|---|
-| **Vercel Preview** | Local [Docker acceptance checklist](docker-acceptance-gate.md) items **1–7** green |
-| **Vercel Production** | Full Wave 4 checklist **100% green** (including backup drill evidence) **and** explicit operator go |
+| **Vercel Preview** | Local [Docker acceptance checklist](docker-acceptance-gate.md) items **1–5** and **7** green (item **6** Stripe paid path may be deferred) |
+| **Vercel Production** | Wave 4 required rows green (item 6 may stay **deferred** until Stripe is registered) **and** explicit operator go (`owner_go_decision` / `separate_deployment_instruction`) |
 
-Do not start cloud preview until Compose smoke (items 1–7) has passed locally.
+Do not start cloud preview until Compose smoke for items 1–5 and 7 has passed locally. Stripe registration is **not** required for Preview or for a non-payment Production Phase A.
 
 ---
 
@@ -44,7 +44,7 @@ Confirm `schema_migrations` contains the registry ids (currently `001_initial_sc
 
 ### Backup note
 
-Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg_dump` / `pg_restore` (`npm run backup:pg`). Cutover gate `backup_verified` stays unmet until [`docs/ops/backup-restore-drill.md`](ops/backup-restore-drill.md) is filled.
+Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg_dump` / `pg_restore` (`npm run backup:pg`). Cutover gate `backup_verified` is **met** — see [`docs/ops/backup-restore-drill.md`](ops/backup-restore-drill.md). Named rollback: [`docs/ops/named-rollback-plan.md`](ops/named-rollback-plan.md).
 
 ---
 
@@ -70,13 +70,21 @@ Set these in the Vercel project **Environment Variables** UI. Prefer **Preview**
 | `DATABASE_URL` | Supabase **pooler** URL for runtime |
 | `BOOTSTRAP_ADMIN_EMAIL` | Optional; with hash, only when user store is empty |
 | `BOOTSTRAP_ADMIN_PASSWORD_HASH` | From `npm run hash-password` (no `$` escaping needed in Vercel UI) |
-| `STRIPE_SECRET_KEY` | Preview: `sk_test_…` only |
-| `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Preview deployment URLs (or wildcards per Stripe/Vercel practice) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret for the Preview endpoint |
+| `STRIPE_SECRET_KEY` | **Optional until Stripe is registered.** Omit for non-payment Phase A; checkout creates a pending order and returns a clear “not configured” error. When ready: Preview uses `sk_test_…` only |
+| `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Required only when Stripe secret is set |
+| `STRIPE_WEBHOOK_SECRET` | Required only when Stripe webhooks are enabled |
 | `AI_SETTINGS_SECRET` | Min 32 characters if using admin BYOK AI |
 | `SMTP_*` / Zalo / Meili | Optional; unset → recording stubs |
 
 Never set `SEED_PASSWORD` or `DATABASE_PATH` on Vercel.
+
+### Stripe deferred
+
+Until the Stripe account is registered and test keys are available:
+
+- Leave all `STRIPE_*` vars unset on Preview/Production.
+- Rely on Wave 4 item **5** (pending checkout without Stripe) as the commerce proof.
+- Wave 4 item **6** (webhook → paid → outbox) stays **deferred**; re-open it after wiring Stripe CLI/test Checkout, then add env vars and the webhook endpoint.
 
 ---
 
@@ -84,11 +92,11 @@ Never set `SEED_PASSWORD` or `DATABASE_PATH` on Vercel.
 
 No agent should run these against a real cloud project unless an operator explicitly asks.
 
-1. Confirm Docker acceptance items **1–7** locally ([OPERATIONS](../app/web/OPERATIONS.md) / [gate pointer](docker-acceptance-gate.md); `npm run smoke:docker`).
+1. Confirm Docker acceptance items **1–5** and **7** locally ([OPERATIONS](../app/web/OPERATIONS.md) / [gate pointer](docker-acceptance-gate.md); `npm run smoke:docker`). Item **6** (Stripe) may stay deferred.
 2. Create Supabase project → apply migrations with direct `DATABASE_URL`.
 3. Create/link Vercel project → Root Directory `app/web` → set Preview env vars.
 4. Open a PR (or push a non-production branch) so Vercel builds a **Preview** URL — or use the Vercel dashboard **Deploy** for Preview only after operator instruction.
-5. Smoke on Preview: `/api/health` → `{"ok":true,"db":"ok"}`; login; catalog; checkout pending path; optional Stripe test webhook; optional admin AI playground.
+5. Smoke on Preview: `/api/health` → `{"ok":true,"db":"ok"}`; login; catalog; checkout pending path (Stripe may be unset); optional admin AI playground. Skip Stripe webhook until registered.
 6. **Stop.** Do not promote to Production, attach production domains, or change WordPress DNS.
 
 ---
@@ -97,9 +105,9 @@ No agent should run these against a real cloud project unless an operator explic
 
 Production on Vercel is **forbidden** until:
 
-1. Full Wave 4 checklist is green with evidence (including backup drill).
-2. Cutover gates in the B2C cutover plan are addressed as required for the chosen Phase A scope.
-3. An **explicit operator instruction** authorizes production deploy (CyberOS).
+1. Wave 4 required checklist rows are green with evidence (backup drill + named rollback). Item **6** (Stripe paid path) may remain deferred.
+2. Cutover gates `owner_go_decision` and `separate_deployment_instruction` are met by an **explicit operator instruction** (CyberOS).
+3. Rollback path is understood: [`docs/ops/named-rollback-plan.md`](ops/named-rollback-plan.md).
 
 This Wave 5 wiring document alone is insufficient for production.
 

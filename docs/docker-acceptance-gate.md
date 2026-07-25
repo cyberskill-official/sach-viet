@@ -12,7 +12,8 @@ npm run smoke:docker
 
 **Hard rules**
 
-- **Vercel production deploy is forbidden** until that checklist is 100% green with evidence.
-- **Vercel preview** may start only after local checklist items **1–7** pass.
-- Wave 5 preview wiring: [`docs/deploy-vercel-supabase.md`](deploy-vercel-supabase.md). Production cutover still needs an explicit operator instruction after this gate is green.
-- Cutover gate `backup_verified` remains **unmet** until [`docs/ops/backup-restore-drill.md`](ops/backup-restore-drill.md) is filled by an operator.
+- **Vercel production deploy is forbidden** until the Wave 4 checklist is green with evidence for all **required** rows. Item **6** (Stripe webhook → paid → outbox) may be **deferred** until Stripe is registered; item **5** covers unpaid checkout.
+- **Vercel preview** may start after local items **1–5** and **7** pass (item 6 optional/deferred).
+- Wave 5 preview wiring: [`docs/deploy-vercel-supabase.md`](deploy-vercel-supabase.md). Production cutover still needs an explicit operator instruction after this gate is green (`owner_go_decision` / `separate_deployment_instruction`).
+- Cutover gate `backup_verified`: see [`docs/ops/backup-restore-drill.md`](ops/backup-restore-drill.md) (operator-signed).
+- Named rollback: [`docs/ops/named-rollback-plan.md`](ops/named-rollback-plan.md).

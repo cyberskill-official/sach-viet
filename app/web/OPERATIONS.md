@@ -174,9 +174,9 @@ Tracked gate before any cloud deploy. Short pointer: [`docs/docker-acceptance-ga
 
 **Hard rules**
 
-- **Vercel production deploy is forbidden** until every row below is green with evidence.
-- **Vercel preview** may start only after local items **1–7** pass.
-- Wave 5 preview wiring ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md)) does not authorize production or DNS cutover; that still needs an explicit operator instruction.
+- **Vercel production deploy is forbidden** until every required row below is green with evidence (item **6** may be **deferred** until Stripe is registered — see row).
+- **Vercel preview** may start only after local items **1–5** and **7** pass (item 6 optional/deferred).
+- Wave 5 preview wiring ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md)) does not authorize production or DNS cutover; that still needs an explicit operator instruction (`owner_go_decision` / `separate_deployment_instruction`).
 - CapRover/SQLite remains transitional only and is not an escape hatch around this gate.
 
 **Automated smoke** (stack up + seeded; from `app/web`):
@@ -186,21 +186,21 @@ npm run smoke:docker
 # optional: SEED_PASSWORD='…' BASE_URL=http://127.0.0.1:3000 npm run smoke:docker
 ```
 
-`smoke:docker` covers items 1, 3–5, and fail-closed AI settings/chat (7). It prints MANUAL steps for 2, 6, real-key playground (7), 8, and 9. It never marks `backup_verified` met.
+`smoke:docker` covers items 1, 3–5, and fail-closed AI settings/chat (7). Item 6 (paid Stripe path) is deferred until Stripe registration. Item 8 is the backup drill doc. Item 9 is quality + CI.
 
 | # | Check | How | Evidence / status |
 |---|---|---|---|
-| 1 | Compose healthy; `/api/health` → Postgres OK | `docker compose up -d --build` from `app/`; `curl -s http://127.0.0.1:3000/api/health` → `{"ok":true,"db":"ok"}`; also `npm run smoke:docker` | _operator_ |
-| 2 | Seed idempotent; no default password stdout leak | `SEED_PASSWORD=… docker compose --profile seed run --rm seed` twice; confirm password not printed (file `.seed-password` or env only) | _operator_ |
-| 3 | Login admin + customer | Seeded `admin.seed@sachviet.test` + `khach-hang.seed@sachviet.test`; smoke automates | _operator_ |
-| 4 | Catalog search + suggestions | `q=hoang tu be` ranks Hoàng Tử Bé; `/api/catalog/search/suggestions?q=hoang`; smoke automates | _operator_ |
-| 5 | Cart → checkout pending path | Customer checkout without Stripe secrets → pending order + `Stripe checkout is not configured.`; smoke automates | _operator_ |
-| 6 | Stripe webhook → outbox path | **Manual / CLI:** Stripe test keys + CLI forward to `/api/webhooks/stripe`, complete Checkout → `paid` + `order_comms_outbox`; **stub:** after a paid transition, `DATABASE_URL=… node scripts/drain-order-comms-outbox.mjs` | _operator_ |
-| 7 | Admin AI BYOK playground | `/admin` AI panel with free-model key → non-500 reply; smoke checks settings + fail-closed chat without key | _operator_ |
-| 8 | Postgres backup/restore drill | Follow § Postgres backup and restore; record in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md). **`backup_verified` stays unmet until that file is filled** | unmet — see drill doc |
-| 9 | `npm run quality` + CI green | From `app/web` with `DATABASE_URL` set: `npm run quality`; confirm GitHub Actions Postgres CI green on the branch | _operator_ |
+| 1 | Compose healthy; `/api/health` → Postgres OK | `docker compose up -d --build` from `app/`; `curl -s http://127.0.0.1:3000/api/health` → `{"ok":true,"db":"ok"}`; also `npm run smoke:docker` | **met** — 2026-07-25 acceptance on `main` `ff2363b` (PR #19): health `{"ok":true,"db":"ok"}`; `npm run smoke:docker` item 1 PASS |
+| 2 | Seed idempotent; no default password stdout leak | `SEED_PASSWORD=… docker compose --profile seed run --rm seed` twice; confirm password not printed (file `.seed-password` or env only) | **met** — 2026-07-25 Compose seed ×2 idempotent; password not printed (SEED_PASSWORD / `.seed-password` path); recorded in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md) session notes |
+| 3 | Login admin + customer | Seeded `admin.seed@sachviet.test` + `khach-hang.seed@sachviet.test`; smoke automates | **met** — smoke 3a/3b PASS (same session / `ff2363b`) |
+| 4 | Catalog search + suggestions | `q=hoang tu be` ranks Hoàng Tử Bé; `/api/catalog/search/suggestions?q=hoang`; smoke automates | **met** — smoke 4a/4b/4c PASS |
+| 5 | Cart → checkout pending path | Customer checkout without Stripe secrets → pending order + `Stripe checkout is not configured.`; smoke automates | **met** — smoke item 5 PASS (non-payment checkout proof while Stripe unset) |
+| 6 | Stripe webhook → outbox path | **Deferred** until Stripe account registration is complete. When ready: Stripe test keys + CLI forward to `/api/webhooks/stripe`, complete Checkout → `paid` + `order_comms_outbox`. Non-payment checkout remains covered by item 5. | **deferred** — Stripe not registered; not a production prerequisite until payment is enabled |
+| 7 | Admin AI BYOK playground | `/admin` AI panel with free-model key → non-500 reply; smoke checks settings + fail-closed chat without key | **met** — smoke 7a/7b PASS (settings + fail-closed chat) |
+| 8 | Postgres backup/restore drill | Follow § Postgres backup and restore; record in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md) | **met** — drill evidence + operator sign-off (plan *Clear production blockers (Stripe deferred)*); see drill doc |
+| 9 | `npm run quality` + CI green | From `app/web` with `DATABASE_URL` set: `npm run quality`; confirm GitHub Actions Postgres CI green on the branch | **met** — CI green on `main` @ `ff2363b`: [actions/runs/30170121638](https://github.com/cyberskill-official/sach-viet/actions/runs/30170121638) (lint/test/verify/build with Postgres) |
 
-Do not check off rows from agent automation alone. Recording evidence here or in the drill doc is not production authorization.
+Recording checklist evidence clears the Wave 4 gate for non-Stripe scope. It does **not** authorize Vercel Production promote, DNS cutover, or WordPress retirement — those still need an explicit operator go.
 
 ## Vercel + Supabase preview (Wave 5)
 
@@ -245,7 +245,9 @@ Do not commit `.env` files, credentials, session cookies, password hashes, or da
 
 Generate the password hash with `npm run hash-password` from `app/web` (authorized operations path). Do not place a plain-text password in configuration or source control. Do not document or commit hash values.
 
-## Stripe paid path (code readiness)
+## Stripe paid path (code readiness; optional until registered)
+
+**Stripe is deferred** until account registration completes. Preview/Production may omit all `STRIPE_*` vars; unpaid checkout (Wave 4 item 5) remains the commerce proof. Wave 4 item 6 (webhook → paid → outbox) stays deferred until keys exist.
 
 Checkout (`POST /api/checkout`) creates a pending order, then a Stripe Checkout Session when all of these are set:
 
@@ -335,7 +337,7 @@ cat web/backups/sachviet-….dump | docker compose exec -T db pg_restore -U sach
 
 Historical SQLite scripts (`backup-sqlite.mjs` / `restore-sqlite.mjs`) remain only for transitional CapRover/SQLite volumes and are deprecated.
 
-**`backup_verified` stays unmet** until an operator records a successful restore drill in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md) (and mirrors the gate in the B2C cutover plan). These scripts never flip that cutover gate.
+**`backup_verified` is `met`** — drill evidence and operator sign-off: [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md). Re-run these scripts for future drills; they do not by themselves authorize production deploy.
 
 ### Schema migrations
 
@@ -351,21 +353,21 @@ Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewri
 
 This checklist is an artefact for an authorized operator. Completing the list does **not** authorize deploy. Map each item to unmet cutover gates in `docs/tasks/rebuild/TASK-REBUILD-023-…/ship/cutover-plan.md`. Step-by-step Preview wiring: [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md).
 
-**Platform note:** The production target is **Vercel + Supabase**. CapRover/SQLite is transitional / superseded for new work. **Vercel production deploy is forbidden** until the [Docker acceptance checklist (Wave 4)](#docker-acceptance-checklist-wave-4) is 100% green. Preview on Vercel may start only after local items 1–7 pass.
+**Platform note:** The production target is **Vercel + Supabase**. CapRover/SQLite is transitional / superseded for new work. **Vercel production deploy is forbidden** until Wave 4 required rows are green **and** an explicit operator go. Preview may start after items 1–5 and 7. Stripe (steps 3/5 paid path) is optional until registered.
 
 | Step | Action | Cutover gate |
 |---|---|---|
 | 1 | Link Vercel to the repo with Root Directory `app/web`; Preview deploy only (see Wave 5 doc). Do not Production-promote. | `separate_deployment_instruction` |
 | 2 | Provision Supabase Postgres; set pooler `DATABASE_URL` on Vercel; run `npm run migrate` via direct URL | — |
-| 3 | Set Vercel secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `STRIPE_SECRET_KEY` (test on Preview), `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `STRIPE_WEBHOOK_SECRET`, `AI_SETTINGS_SECRET`, optional `SMTP_*`, optional Meili/Zalo | — |
+| 3 | Set Vercel secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `AI_SETTINGS_SECRET`, optional `SMTP_*` / Meili/Zalo; **optional** `STRIPE_*` only after Stripe registration | — |
 | 4 | Confirm Preview HTTPS; auth cookies secure under `NODE_ENV=production` on the deployment | — |
-| 5 | Register Stripe webhook URL `https://<preview-or-prod-host>/api/webhooks/stripe` for `checkout.session.completed` (test mode on Preview) | — |
-| 6 | Verify Postgres **backup** and restore drill (Supabase +/or `pg_dump` / Wave 2) | `backup_verified` |
-| 7 | Document **named rollback** (previous Vercel deployment + Supabase restore / PITR) | `named_rollback_plan` |
-| 8 | Owner recorded **go / no-go** (Phase A only; no WP DNS cutover) | `owner_go_decision` |
-| 9 | Separate explicit operator instruction to Production-deploy (this document alone is insufficient) | `separate_deployment_instruction` |
+| 5 | **Deferred until Stripe registered:** webhook URL `https://<host>/api/webhooks/stripe` for `checkout.session.completed` | — |
+| 6 | Postgres backup/restore drill | `backup_verified` (**met** — see drill doc) |
+| 7 | Named rollback (previous Vercel deployment + Supabase PITR / `pg_restore`) | `named_rollback_plan` (**met** — [`docs/ops/named-rollback-plan.md`](../../docs/ops/named-rollback-plan.md)) |
+| 8 | Owner recorded **go / no-go** (Phase A only; no WP DNS cutover) | `owner_go_decision` (**unmet**) |
+| 9 | Separate explicit operator instruction to Production-deploy (this document alone is insufficient) | `separate_deployment_instruction` (**unmet**) |
 
-Unmet gates that still block owner go for WP retirement: `backup_verified`, `named_rollback_plan`, `owner_go_decision`, `separate_deployment_instruction`. Phase A can run as a **parallel** greenfield store without DNS/WP retirement once the operator authorizes deploy separately.
+Unmet gates that still block Production promote / WP retirement: `owner_go_decision`, `separate_deployment_instruction`. Phase A can run as a **parallel** greenfield store without DNS/WP retirement once the operator authorizes deploy separately.
 
 **Do not** push, deploy, merge, promote Production on Vercel, or change DNS from agent automation without that explicit instruction.
 
