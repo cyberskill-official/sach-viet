@@ -31,41 +31,11 @@ function lookupUserEmail(store, userId) {
 }
 
 function ensureNotificationTables(store) {
-  store.db.exec(`
-    CREATE TABLE IF NOT EXISTS notification_event_types (
-      key TEXT PRIMARY KEY,
-      description TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS notifications (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      event_type TEXT NOT NULL,
-      title TEXT NOT NULL,
-      body TEXT NOT NULL,
-      deeplink_path TEXT NOT NULL,
-      is_read INTEGER NOT NULL CHECK (is_read IN (0, 1)),
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications(user_id, created_at DESC, id DESC);
-    CREATE TABLE IF NOT EXISTS user_channels (
-      user_id TEXT NOT NULL,
-      channel TEXT NOT NULL,
-      is_enabled INTEGER NOT NULL CHECK (is_enabled IN (0, 1)),
-      updated_at INTEGER NOT NULL,
-      PRIMARY KEY (user_id, channel)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS user_notification_preferences (
-      user_id TEXT NOT NULL,
-      event_type TEXT NOT NULL,
-      in_app_enabled INTEGER NOT NULL CHECK (in_app_enabled IN (0, 1)),
-      updated_at INTEGER NOT NULL,
-      PRIMARY KEY (user_id, event_type)
-    ) STRICT;
-  `);
   const now = store.clock();
   store.db
-    .prepare("INSERT OR IGNORE INTO notification_event_types (key, description, created_at) VALUES (?, ?, ?)")
+    .prepare(
+      "INSERT INTO notification_event_types (key, description, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+    )
     .run("order.paid", "order paid", now);
 }
 

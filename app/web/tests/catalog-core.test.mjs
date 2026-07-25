@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { listTableColumns } from "../src/lib/db.mjs";
 import {
   addProductMedia,
   createCatalogStore,
@@ -36,7 +37,7 @@ function catalogFixture(store) {
 test("catalog products reject offer fields and schema keeps them off products", () => withStore((store) => {
   createCategory(store, { slug: "books", name: "Books" });
   assert.throws(() => createProduct(store, { categorySlug: "books", slug: "clean-code", title: "Clean Code", priceUsd: "9.99" }), /cannot contain offer data/);
-  const fields = store.db.prepare("PRAGMA table_info(products)").all().map((column) => column.name);
+  const fields = listTableColumns(store.db, "products").map((column) => column.name);
   assert.equal(fields.includes("price_usd"), false);
   assert.equal(fields.includes("list_price_usd"), false);
   assert.equal(fields.includes("stock_quantity"), false);

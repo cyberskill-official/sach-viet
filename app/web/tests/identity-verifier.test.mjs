@@ -14,8 +14,8 @@ function createFixture() {
     mkdirSync(resolve(root, file, ".."), { recursive: true });
     writeFileSync(resolve(root, file), "HttpOnly SameSite=Lax login_attempts AUTH_SESSION_SECRET");
   }
-  writeFileSync(resolve(root, "Dockerfile"), 'VOLUME ["/data"]');
-  writeFileSync(resolve(root, "OPERATIONS.md"), "BOOTSTRAP_ADMIN_PASSWORD_HASH");
+  writeFileSync(resolve(root, "Dockerfile"), "DATABASE_URL");
+  writeFileSync(resolve(root, "OPERATIONS.md"), "BOOTSTRAP_ADMIN_PASSWORD_HASH DATABASE_URL");
   return root;
 }
 
@@ -35,9 +35,9 @@ test("identity verifier rejects missing security and deployment checks", () => {
   const cases = [
     { file: "src/lib/auth-core.mjs", contents: "SameSite=Lax login_attempts AUTH_SESSION_SECRET", message: /httpOnly/ },
     { file: "src/lib/auth-core.mjs", contents: "HttpOnly SameSite=Lax", message: /throttling/ },
-    { file: "Dockerfile", contents: "FROM node:24", message: /storage volume/ },
-    { file: "OPERATIONS.md", contents: "No bootstrap instructions", message: /secret guidance/ },
-    { file: "OPERATIONS.md", contents: "BOOTSTRAP_ADMIN_PASSWORD_HASH=not-a-secret", message: /must not be documented/ },
+    { file: "OPERATIONS.md", contents: "BOOTSTRAP_ADMIN_PASSWORD_HASH", message: /DATABASE_URL|Postgres/ },
+    { file: "OPERATIONS.md", contents: "DATABASE_URL", message: /secret guidance/ },
+    { file: "OPERATIONS.md", contents: "BOOTSTRAP_ADMIN_PASSWORD_HASH=not-a-secret\nDATABASE_URL", message: /must not be documented/ },
   ];
   for (const testCase of cases) {
     const root = createFixture();

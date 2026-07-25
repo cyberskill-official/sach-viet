@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase, tableExists } from "./db.mjs";
 import { canAccessPortal, normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -24,10 +24,6 @@ function homeConfigActor(user) {
   employeeActor(user);
 }
 
-function tableExists(db, name) {
-  return Boolean(db.prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ?").get(name));
-}
-
 function countRows(db, table, whereSql = "", params = []) {
   if (!tableExists(db, table)) return 0;
   const row = db.prepare(`SELECT COUNT(*) AS count FROM ${table}${whereSql ? ` WHERE ${whereSql}` : ""}`).get(...params);
@@ -39,21 +35,7 @@ export function createEmployeeRetailStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-009", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS home_sections (
-      id TEXT PRIMARY KEY,
-      section_key TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      body TEXT NOT NULL DEFAULT '',
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      is_enabled INTEGER NOT NULL CHECK (is_enabled IN (0, 1)),
-      updated_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS home_sections_sort_idx ON home_sections(sort_order ASC, section_key ASC);
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 

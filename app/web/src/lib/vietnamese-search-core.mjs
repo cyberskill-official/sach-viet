@@ -87,18 +87,8 @@ function scoreDocument(query, document) {
   return score;
 }
 
-export function ensureSearchSchema(store) {
-  store.db.exec(`
-    CREATE TABLE IF NOT EXISTS search_logs (
-      id TEXT PRIMARY KEY,
-      query_normalized TEXT NOT NULL,
-      result_count INTEGER NOT NULL,
-      backend_mode TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS search_logs_query_idx ON search_logs(query_normalized, created_at);
-  `);
-}
+/** No-op: search_logs schema is applied by the initial migration. */
+export function ensureSearchSchema() {}
 
 export function createLocalVietnameseSearchBackend({ log } = {}) {
   return {

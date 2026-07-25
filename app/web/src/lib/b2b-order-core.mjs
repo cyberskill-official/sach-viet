@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const ORDER_STATUSES = Object.freeze(["awaiting_po", "confirmed", "cancelled"]);
@@ -110,41 +110,7 @@ export function createB2bOrderStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-014", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS b2b_orders (
-      id TEXT PRIMARY KEY,
-      quote_id TEXT NOT NULL UNIQUE,
-      organization_id TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('awaiting_po', 'confirmed', 'cancelled')),
-      currency TEXT NOT NULL CHECK (currency = 'USD'),
-      subtotal_usd TEXT NOT NULL,
-      created_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS b2b_order_items (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity >= 1),
-      unit_price_usd TEXT NOT NULL,
-      FOREIGN KEY (order_id) REFERENCES b2b_orders(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS b2b_artifacts (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('contract', 'purchase_order')),
-      reference_number TEXT NOT NULL,
-      storage_key TEXT NOT NULL,
-      created_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (order_id) REFERENCES b2b_orders(id)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS b2b_orders_org_idx ON b2b_orders(organization_id, updated_at DESC, id DESC);
-    CREATE INDEX IF NOT EXISTS b2b_orders_status_idx ON b2b_orders(status, updated_at DESC, id DESC);
-    CREATE INDEX IF NOT EXISTS b2b_artifacts_order_idx ON b2b_artifacts(order_id, kind, created_at ASC);
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 

@@ -55,7 +55,8 @@ Full list: `docs/tasks/BACKLOG.md`.
 
 ## Suggested next steps (operator-gated)
 
-1. Review and merge the rebuild branch only when an operator asks.
-2. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
-3. Release selected `on_hold` product tasks only with explicit operator instruction.
-4. Any CapRover preview or production deploy remains a separate authorized step.
+1. Complete the **Docker acceptance checklist (Wave 4)** in `app/web/OPERATIONS.md` (pointer: `docs/docker-acceptance-gate.md`). Run `npm run smoke:docker` from `app/web` against Compose. **Vercel production is forbidden** until that checklist is green; preview only after local items 1–7.
+2. Review and merge the rebuild / Postgres Docker branch only when an operator asks.
+3. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
+4. Release selected `on_hold` product tasks only with explicit operator instruction.
+5. Wave 5 preview wiring is documented in `docs/deploy-vercel-supabase.md` (Vercel Root Directory `app/web` + Supabase). CapRover is transitional. Any Preview/Production deploy remains a separate authorized step after the Docker gate; production still needs explicit operator go.

@@ -20,11 +20,10 @@ export function validateIdentity(rootPath) {
   const missing = requiredFiles.filter((file) => !existsSync(resolve(rootPath, file)));
   if (missing.length > 0) throw new Error(`Missing identity files: ${missing.join(", ")}`);
   const authCore = readFileSync(resolve(rootPath, "src/lib/auth-core.mjs"), "utf8");
-  const dockerfile = readFileSync(resolve(rootPath, "Dockerfile"), "utf8");
   const operations = readFileSync(resolve(rootPath, "OPERATIONS.md"), "utf8");
   if (!authCore.includes("HttpOnly") || !authCore.includes("SameSite=Lax")) throw new Error("Identity cookies must be httpOnly and same-site.");
   if (!authCore.includes("login_attempts") || !authCore.includes("AUTH_SESSION_SECRET")) throw new Error("Identity store must include throttling and session-secret handling.");
-  if (!dockerfile.includes('VOLUME ["/data"]')) throw new Error("Identity storage volume is missing.");
+  if (!operations.includes("DATABASE_URL")) throw new Error("Postgres DATABASE_URL guidance is missing.");
   if (!operations.includes("BOOTSTRAP_ADMIN_PASSWORD_HASH")) throw new Error("Bootstrap secret guidance is missing.");
   if (/BOOTSTRAP_ADMIN_PASSWORD_HASH\s*=\s*[^`\s]/.test(operations)) throw new Error("Bootstrap password hash value must not be documented.");
   return { requiredFileCount: requiredFiles.length };

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * @deprecated Transitional CapRover/SQLite artefact. Prefer `restore-postgres.mjs`
+ * (`npm run restore:pg`) for local Docker / Postgres.
+ *
  * Restore a SQLite backup file over DATABASE_PATH.
  *
  * Usage (from app/web) — stop the app first so writers are idle:

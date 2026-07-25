@@ -290,18 +290,27 @@ function seedNotifications(notifications, actor, messages, counters) {
 }
 
 /**
- * Populate the local SQLite database with a storefront + admin walkthrough dataset.
+ * Populate the local Postgres database with a storefront + admin walkthrough dataset.
  * Safe to re-run: catalog rows are upserted, and transactional records (orders,
  * payouts, applications, notifications, support records) are created only when absent.
+ *
+ * Prefer DATABASE_URL. Pass dbPath only for schema-isolated test environments.
  */
 export function seedLocalData({
-  dbPath = process.env.DATABASE_PATH || "/data/sachviet.sqlite",
+  databaseUrl,
+  dbPath,
   password = generateSeedPassword(),
   env = process.env,
   clock = () => Date.now(),
   log = () => {},
 } = {}) {
-  const storeOptions = { dbPath, log };
+  // Prefer an explicit dbPath (schema-isolated tests). Only fall back to
+  // DATABASE_URL when the caller did not ask for path-based isolation.
+  const resolvedUrl = databaseUrl ?? (dbPath ? undefined : process.env.DATABASE_URL);
+  const storeOptions = dbPath
+    ? { dbPath, databaseUrl: resolvedUrl, log }
+    : { databaseUrl: resolvedUrl || process.env.DATABASE_URL, log };
+  const connectionTarget = dbPath || resolvedUrl || process.env.DATABASE_URL;
   const auth = createAuthStore({ ...storeOptions, now: clock });
   const catalog = createCatalogStore({ ...storeOptions, now: clock });
   const commerce = createCommerceStore({ ...storeOptions, clock });
@@ -360,7 +369,7 @@ export function seedLocalData({
     }
 
     return {
-      databasePath: dbPath,
+      databaseUrl: connectionTarget,
       password,
       bootstrapAdmin: bootstrap.reason,
       accounts: SEED_USERS.map((definition) => ({ email: users.get(definition.key).email, role: users.get(definition.key).role })),

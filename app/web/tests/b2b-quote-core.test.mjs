@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { tableExists } from "../src/lib/db.mjs";
 import {
   addOrganizationMember,
   addSelectionListItem,
@@ -86,8 +87,9 @@ test("B2B staff advance the closed quote pipeline and set prices without creatin
     const detail = getStaffQuote(store, staff, quote.id);
     assert.equal(detail.createdBy, librarian.id);
     assert.equal(detail.status, "won");
-    assert.equal(store.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'orders'").get(), undefined);
-    assert.equal(store.db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('contracts', 'purchase_orders')").all().length, 0);
+    // orders exists via shared migration; b2b-quote-core must not create contracts or purchase_orders
+    assert.equal(tableExists(store.db, "contracts"), false);
+    assert.equal(tableExists(store.db, "purchase_orders"), false);
   } finally {
     store.close();
     catalog.close();

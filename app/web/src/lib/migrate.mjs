@@ -1,10 +1,9 @@
 /**
- * Lightweight versioned migrations for node:sqlite store factories.
+ * Lightweight versioned migrations for Postgres store factories.
  *
  * Migrations are registered in `migrations/registry.mjs` (ordered list of
  * `{ id, up(db) }`). The runner records applied ids in `schema_migrations`.
- * Prefer additive DDL. Unifying dual-owned CREATE TABLE IF NOT EXISTS across
- * cores is a follow-up — see OPERATIONS.md.
+ * Prefer additive DDL. Canonical CREATE TABLE lives in numbered migrations.
  */
 
 const appliedDbs = new WeakSet();
@@ -13,14 +12,14 @@ function ensureLedger(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id TEXT PRIMARY KEY,
-      applied_at INTEGER NOT NULL
-    ) STRICT;
+      applied_at BIGINT NOT NULL
+    );
   `);
 }
 
 /**
  * Applies any pending migrations from the provided ordered list.
- * Safe to call on every `openSqliteDatabase`; already-applied ids are skipped.
+ * Safe to call on every `openDatabase`; already-applied ids are skipped.
  */
 export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
   if (appliedDbs.has(db)) return { applied: [] };
@@ -35,7 +34,7 @@ export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
       throw new Error("Each migration must export { id, up }.");
     }
     if (applied.has(migration.id)) continue;
-    db.exec("BEGIN IMMEDIATE");
+    db.exec("BEGIN");
     try {
       migration.up(db);
       insert.run(migration.id, Date.now());
@@ -58,6 +57,6 @@ export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
 export function listAppliedMigrations(db) {
   ensureLedger(db);
   return db
-    .prepare("SELECT id, applied_at AS appliedAt FROM schema_migrations ORDER BY id ASC")
+    .prepare("SELECT id, applied_at AS \"appliedAt\" FROM schema_migrations ORDER BY id ASC")
     .all();
 }

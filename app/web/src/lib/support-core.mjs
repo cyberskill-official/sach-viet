@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase, tableExists } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const id = () => randomBytes(16).toString("hex");
@@ -7,13 +7,7 @@ const required = (value, name) => { if (typeof value !== "string" || value.trim(
 const staff = (user) => ["admin", "employee", "employee_b2c"].includes(normalizeRole(user?.role));
 
 export function createSupportStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-006", ...fields })) } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS support_tickets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL) STRICT;
-    CREATE TABLE IF NOT EXISTS ticket_messages (id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL, user_id TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL) STRICT;
-    CREATE TABLE IF NOT EXISTS goods_requests (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, product_id TEXT, details TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL) STRICT;
-    CREATE TABLE IF NOT EXISTS product_reviews (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, product_id TEXT NOT NULL, rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5), body TEXT NOT NULL, verified_purchase INTEGER NOT NULL, created_at INTEGER NOT NULL) STRICT;
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -50,7 +44,7 @@ export function listTicketMessages(store, user, ticketId) {
 export function createGoodsRequest(store, user, input) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
   const productId = typeof input?.productId === "string" && input.productId.trim() !== "" ? input.productId.trim() : null;
-  if (productId && store.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'").get()) {
+  if (productId && tableExists(store.db, "products")) {
     if (!store.db.prepare("SELECT 1 FROM products WHERE id = ? LIMIT 1").get(productId)) throw new Error("Requested product does not exist.");
   }
   const request = { id: id(), userId: user.id, productId, details: required(input?.details, "Goods request") };

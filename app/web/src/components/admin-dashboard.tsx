@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AdminAiPanel } from "@/components/admin-ai-panel";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
 
 type Dashboard = { orderCount: number; paidOrderCount: number; paidRevenueUsd: string; recentOrders: Array<{ id: string; status: string; subtotalUsd: string; createdAt: number }> };
@@ -88,6 +89,8 @@ export function AdminDashboard() {
       <section id="payouts" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6"><h2 className="text-2xl font-bold">Thanh toán đối tác</h2><p className="mt-2 text-sm text-muted">Lịch sử hiển thị để đối soát. Việc tạo khoản thanh toán vẫn tuân theo quy trình tài chính hiện có.</p><div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>Nhà bán</th><th>Số tiền</th><th>Dòng đơn hàng</th><th>Thời gian</th></tr></thead><tbody>{payouts.length ? payouts.map((payout) => <tr key={payout.id}><td>{payout.vendorId}</td><td>{formatUsd(payout.amountUsd)}</td><td>{payout.orderItemIds.length}</td><td>{new Date(payout.createdAt).toLocaleString("vi-VN")}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">Chưa có khoản thanh toán.</td></tr>}</tbody></table></div></section>
 
       <section id="import" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><h2 className="text-2xl font-bold">Nhập dữ liệu WordPress</h2><p className="mt-2 text-sm text-muted">Chỉ hiển thị trạng thái. Cutover sản xuất vẫn đang được hoãn theo quyết định vận hành.</p></div><span className="cs-badge">{importStatus?.adapter || "unknown"} · {importStatus?.runtime || "none"}</span></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-border p-4"><p className="text-sm text-muted">MySQL client</p><strong>{importStatus?.mysqlClient ? "Sẵn sàng" : "Chưa cấu hình"}</strong></div><div className="rounded-xl border border-border p-4"><p className="text-sm text-muted">WordPress PHP runtime</p><strong>{importStatus?.wordpressPhpRuntime ? "Sẵn sàng" : "Chưa cấu hình"}</strong></div></div><div className="mt-5 space-y-2">{importStatus?.recentRuns.length ? importStatus.recentRuns.map((run) => <div className="flex flex-wrap justify-between gap-3 rounded-xl border border-border p-4" key={run.id}><span><strong>{run.mode}</strong><small className="ml-2 text-muted">{new Date(run.createdAt).toLocaleString("vi-VN")}</small></span><span className="text-sm">Nhận {run.acceptedCount} · Bỏ qua {run.skippedCount} · Chưa khớp {run.unmatchedCount} · Từ chối {run.rejectedCount}</span></div>) : <p className="py-6 text-center text-muted">Chưa có lần nhập dữ liệu.</p>}</div></section>
+
+      <AdminAiPanel />
     </div>
   );
 }

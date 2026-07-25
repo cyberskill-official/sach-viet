@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -108,38 +108,7 @@ export function createPublisherPortalStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-017", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS publishing_requests (
-      id TEXT PRIMARY KEY,
-      publisher_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      notes TEXT NOT NULL DEFAULT '',
-      storage_key TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('submitted', 'withdrawn')),
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS publishing_requests_publisher_updated_idx
-      ON publishing_requests(publisher_id, updated_at DESC, id DESC);
-
-    CREATE TABLE IF NOT EXISTS publisher_marc_records (
-      publisher_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      storage_key TEXT NOT NULL,
-      updated_by TEXT NOT NULL,
-      updated_at INTEGER NOT NULL,
-      PRIMARY KEY (publisher_id, product_id)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS publisher_marc_publisher_updated_idx
-      ON publisher_marc_records(publisher_id, updated_at DESC, product_id ASC);
-
-    CREATE TABLE IF NOT EXISTS royalty_decision_acceptances (
-      decision_area TEXT PRIMARY KEY,
-      accepted_at INTEGER NOT NULL,
-      authority_source TEXT NOT NULL
-    ) STRICT;
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 

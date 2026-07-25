@@ -5,7 +5,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
-import { createCommerceStore, createPendingOrder, createStripeCheckoutSession, listCustomerOrders, processStripeWebhook, verifyStripeSignature } from "../src/lib/commerce-core.mjs";
+import {
+  createCommerceStore,
+  createPendingOrder,
+  createStripeCheckoutSession,
+  listCustomerOrders,
+  processStripeWebhook,
+  STRIPE_FETCH_TIMEOUT_MS,
+  verifyStripeSignature,
+} from "../src/lib/commerce-core.mjs";
 
 async function withStores(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-commerce-"));
@@ -42,9 +50,20 @@ test("Stripe checkout requires environment configuration and saves its hosted UR
   const { user, offer } = fixture(catalog);
   const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
   await assert.rejects(createStripeCheckoutSession(commerce, order.id, {}), /not configured/);
-  const session = await createStripeCheckoutSession(commerce, order.id, { STRIPE_SECRET_KEY: "sk_test_example", STRIPE_SUCCESS_URL: "https://example.test/success", STRIPE_CANCEL_URL: "https://example.test/cancel" }, async () => new Response(JSON.stringify({ id: "cs_test_1", url: "https://checkout.stripe.test/session" }), { status: 200 }));
+  let fetchOptions;
+  const session = await createStripeCheckoutSession(
+    commerce,
+    order.id,
+    { STRIPE_SECRET_KEY: "sk_test_example", STRIPE_SUCCESS_URL: "https://example.test/success", STRIPE_CANCEL_URL: "https://example.test/cancel" },
+    async (_url, options) => {
+      fetchOptions = options;
+      return new Response(JSON.stringify({ id: "cs_test_1", url: "https://checkout.stripe.test/session" }), { status: 200 });
+    },
+  );
   assert.deepEqual(session, { id: "cs_test_1", url: "https://checkout.stripe.test/session" });
   assert.equal(commerce.db.prepare("SELECT checkout_url FROM orders WHERE id = ?").get(order.id).checkout_url, session.url);
+  assert.ok(fetchOptions?.signal instanceof AbortSignal);
+  assert.ok(STRIPE_FETCH_TIMEOUT_MS >= 1_000);
 }));
 
 test("signed Stripe completion updates only the referenced pending order", () => withStores(({ catalog, commerce }) => {

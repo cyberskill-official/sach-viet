@@ -205,21 +205,8 @@ export function resolveZaloTransport(env = process.env, { log } = {}) {
   return createRecordingZaloTransport({ log });
 }
 
-export function ensureExternalDeliverySchema(store) {
-  store.db.exec(`
-    CREATE TABLE IF NOT EXISTS notification_delivery_attempts (
-      id TEXT PRIMARY KEY,
-      notification_id TEXT NOT NULL,
-      channel TEXT NOT NULL CHECK (channel IN ('email', 'zalo')),
-      outcome TEXT NOT NULL CHECK (outcome IN ('recorded', 'sent', 'skipped', 'failed')),
-      reason TEXT,
-      recipient_hash TEXT,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS notification_delivery_attempts_notification_idx
-      ON notification_delivery_attempts(notification_id, created_at DESC);
-  `);
-}
+/** No-op: notification_delivery_attempts schema is applied by the initial migration. */
+export function ensureExternalDeliverySchema() {}
 
 function isExternalChannelEnabled(store, userId, channel) {
   const row = store.db

@@ -123,10 +123,11 @@ test("publisher can register and list private MARC metadata for existing product
     const otherList = listPublisherMarcRecords(ctx.publisher, ctx.other);
     assert.equal(otherList.length, 0);
 
-    const institutionTables = ctx.publisher.db
-      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'institution_marc_records'`)
-      .get();
-    assert.equal(institutionTables, undefined);
+    // publisher-portal-core must not write into the institution_marc_records domain table
+    const institutionRecordCount = ctx.publisher.db
+      .prepare("SELECT COUNT(*) AS count FROM institution_marc_records")
+      .get().count;
+    assert.equal(institutionRecordCount, 0);
   } finally {
     ctx.publisher.close();
     ctx.catalog.close();

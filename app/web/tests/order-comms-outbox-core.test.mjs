@@ -41,9 +41,6 @@ function withPendingOrder(run) {
       stockQuantity: 3,
     });
     const user = { id: "customer-1", role: "customer" };
-    commerce.db.exec(`CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY, email TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL, created_at INTEGER NOT NULL
-    ) STRICT;`);
     commerce.db
       .prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
       .run(user.id, "customer@example.test", "hash", "customer", 1);
@@ -88,10 +85,6 @@ function drain(commerce, orderId, dispatchOverride) {
 
 /** Confirmation emails actually handed to a live transport (`sent` only). */
 function emailAttemptCount(commerce) {
-  const table = commerce.db
-    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'notification_delivery_attempts'")
-    .get();
-  if (!table) return 0;
   return Number(
     commerce.db
       .prepare(
