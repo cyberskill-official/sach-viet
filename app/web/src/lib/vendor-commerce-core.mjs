@@ -116,6 +116,13 @@ export function listVendorPayouts(store, actor, input = {}) {
   return payouts.map((payout) => ({ ...payout, orderItemIds: items.all(payout.id).map((row) => row.orderItemId) }));
 }
 
+export function listAdminPayouts(store, actor) {
+  adminOnly(actor);
+  const payouts = store.db.prepare("SELECT id, vendor_id AS vendorId, amount_usd AS amountUsd, created_by AS createdBy, created_at AS createdAt FROM payouts ORDER BY created_at DESC, id DESC LIMIT 100").all();
+  const items = store.db.prepare("SELECT order_item_id AS orderItemId FROM payout_items WHERE payout_id = ? ORDER BY order_item_id ASC");
+  return payouts.map((payout) => ({ ...payout, orderItemIds: items.all(payout.id).map((row) => row.orderItemId) }));
+}
+
 export function getVendorDashboard(store, actor, input = {}) {
   const vendorId = resolveVendorId(actor, input.vendorId);
   if (!canAccessOwnedRecord(actor, vendorId)) throw new Error("You cannot read this vendor's dashboard.");
