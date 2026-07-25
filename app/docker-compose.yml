@@ -21,5 +21,25 @@ services:
       retries: 5
       start_period: 20s
 
+  # One-shot local seeding. Runs the seed script from the source tree against the
+  # same SQLite volume the web service uses. Never started by `docker compose up`.
+  seed:
+    image: node:24-alpine
+    profiles:
+      - seed
+    # Matches the runtime image's nextjs user so files this container creates on a
+    # fresh volume stay writable by the web service.
+    user: "1001:1001"
+    working_dir: /app
+    env_file:
+      - .env.docker
+    environment:
+      DATABASE_PATH: /data/sachviet.sqlite
+    volumes:
+      - sachviet-data:/data
+      - ./web/scripts:/app/scripts:ro
+      - ./web/src/lib:/app/src/lib:ro
+    command: ["node", "scripts/seed-local.mjs"]
+
 volumes:
   sachviet-data:
