@@ -3,6 +3,17 @@ import { listPublicProducts } from "./catalog-core.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 
+/** Public search input is truncated to this many characters to bound Levenshtein/CPU cost. */
+export const MAX_SEARCH_QUERY_LENGTH = 120;
+
+/** Raw search_logs rows older than this are pruned on write (analytics retention, never public). */
+export const SEARCH_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function capSearchQuery(value) {
+  const query = typeof value === "string" ? value.trim() : "";
+  return query.slice(0, MAX_SEARCH_QUERY_LENGTH);
+}
+
 /** Fold Vietnamese diacritics for search (đ/Đ → d; combining marks stripped). */
 export function normalizeVietnameseText(value) {
   return String(value ?? "")
@@ -179,6 +190,9 @@ export function getSearchBackendStatus({ env = process.env } = {}) {
 
 function recordSearchLog(store, { queryNormalized, resultCount, backendMode }) {
   ensureSearchSchema(store);
+  store.db
+    .prepare("DELETE FROM search_logs WHERE created_at < ?")
+    .run(store.now() - SEARCH_LOG_RETENTION_MS);
   const id = identifier();
   store.db
     .prepare(
@@ -205,6 +219,7 @@ export function listSearchLogs(store, { limit = 50 } = {}) {
 
 /**
  * Search public catalog products. Empty/whitespace `q` returns existing list/category behavior.
+ * `q` is truncated to MAX_SEARCH_QUERY_LENGTH before ranking to bound CPU cost.
  * @param {import("./catalog-core.mjs").CatalogStore | { db: unknown, now: Function, log?: Function, close?: Function }} store
  * @param {{ q?: string | null, category?: string, limit?: number, backend?: { mode: string, search: Function } }} [options]
  * @returns {unknown[]}
@@ -212,7 +227,7 @@ export function listSearchLogs(store, { limit = 50 } = {}) {
 export function searchPublicProducts(store, options = {}) {
   const { q, category, limit = 24, backend } = options;
   const products = listPublicProducts(store, { category });
-  const query = typeof q === "string" ? q.trim() : "";
+  const query = capSearchQuery(q);
   if (!query) return products;
 
   const resolved = backend || resolveSearchBackend({ log: store.log });
@@ -227,39 +242,29 @@ export function searchPublicProducts(store, options = {}) {
 }
 
 /**
+ * Public search suggestions sourced ONLY from catalog product titles.
+ * Historical search_logs are analytics-only and must never be re-exposed here
+ * (user-typed queries can contain PII). `q` is truncated to MAX_SEARCH_QUERY_LENGTH.
  * @param {import("./catalog-core.mjs").CatalogStore | { db: unknown, now: Function, log?: Function }} store
  * @param {{ q?: string | null, limit?: number }} [options]
  * @returns {string[]}
  */
 export function suggestCatalogQueries(store, options = {}) {
-  ensureSearchSchema(store);
   const { q, limit = 8 } = options;
-  const query = typeof q === "string" ? q.trim() : "";
+  const query = capSearchQuery(q);
   if (!query) return [];
   const normalized = normalizeVietnameseText(query);
   if (!normalized) return [];
   const cappedLimit = Math.min(Math.max(Number(limit) || 8, 1), 20);
 
-  const fromLogs = store.db
-    .prepare(
-      `SELECT query_normalized AS suggestion, MAX(result_count) AS resultCount
-       FROM search_logs
-       WHERE query_normalized LIKE ? AND result_count > 0
-       GROUP BY query_normalized
-       ORDER BY resultCount DESC, query_normalized ASC
-       LIMIT ?`,
-    )
-    .all(`${normalized}%`, cappedLimit)
-    .map((row) => row.suggestion);
-
   const fromTitles = listPublicProducts(store)
     .map((product) => normalizeVietnameseText(product.title))
     .filter((title) => title.startsWith(normalized) || title.includes(` ${normalized}`));
 
-  const merged = [];
-  for (const suggestion of [...fromLogs, ...fromTitles]) {
-    if (!merged.includes(suggestion)) merged.push(suggestion);
-    if (merged.length >= cappedLimit) break;
+  const suggestions = [];
+  for (const suggestion of fromTitles) {
+    if (!suggestions.includes(suggestion)) suggestions.push(suggestion);
+    if (suggestions.length >= cappedLimit) break;
   }
-  return merged;
+  return suggestions;
 }

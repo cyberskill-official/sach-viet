@@ -17,3 +17,10 @@ test("suggestions route is public and uses suggestCatalogQueries", () => {
   assert.match(route, /suggestCatalogQueries/);
   assert.doesNotMatch(route, /readSession/);
 });
+
+test("public suggest source never reads raw search_logs", () => {
+  const core = readFileSync(resolve(root, "src/lib/vietnamese-search-core.mjs"), "utf8");
+  const suggestSource = core.slice(core.indexOf("export function suggestCatalogQueries"));
+  assert.ok(suggestSource.length > 0, "suggestCatalogQueries is exported");
+  assert.doesNotMatch(suggestSource, /search_logs/);
+});

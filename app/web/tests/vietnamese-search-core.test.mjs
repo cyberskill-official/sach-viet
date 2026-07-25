@@ -14,8 +14,10 @@ import {
   createMeilisearchSearchBackend,
   getSearchBackendStatus,
   listSearchLogs,
+  MAX_SEARCH_QUERY_LENGTH,
   normalizeVietnameseText,
   resolveSearchBackend,
+  SEARCH_LOG_RETENTION_MS,
   searchPublicProducts,
   suggestCatalogQueries,
 } from "../src/lib/vietnamese-search-core.mjs";
@@ -103,14 +105,67 @@ test("empty q preserves category list behavior without search logs", () =>
     assert.equal(listSearchLogs(store).length, 0);
   }));
 
-test("suggestions come from titles and prior successful logs", () =>
+test("suggestions come from catalog titles only, never from logged queries", () =>
   fixture(({ store }) => {
     searchPublicProducts(store, { q: "tieng viet" });
+    searchPublicProducts(store, { q: "tieng viet john.doe@example.com" });
+    assert.ok(listSearchLogs(store).length >= 2, "searches remain logged for analytics");
+
     const suggestions = suggestCatalogQueries(store, { q: "tieng" });
-    assert.ok(suggestions.includes("tieng viet"));
-    assert.ok(suggestions.some((row) => row.includes("tieng")));
+    assert.ok(suggestions.includes("tieng viet co ban"), "title-derived suggestion present");
+    assert.ok(!suggestions.includes("tieng viet"), "raw logged query is not re-exposed");
+    assert.ok(
+      suggestions.every((row) => !row.includes("example com")),
+      "PII-bearing logged query is not re-exposed",
+    );
     assert.deepEqual(suggestCatalogQueries(store, { q: "" }), []);
   }));
+
+test("public search and suggestion queries are capped in length", () =>
+  fixture(({ store }) => {
+    const oversized = `tieng ${"x".repeat(10_000)}`;
+    const results = searchPublicProducts(store, { q: oversized });
+    assert.ok(Array.isArray(results));
+    const logs = listSearchLogs(store);
+    assert.equal(logs.length, 1);
+    assert.ok(logs[0].queryNormalized.length <= MAX_SEARCH_QUERY_LENGTH);
+
+    const suggestions = suggestCatalogQueries(store, { q: `tieng${"y".repeat(10_000)}` });
+    assert.ok(Array.isArray(suggestions));
+  }));
+
+test("search logs older than the retention window are pruned on write", () => {
+  const directory = mkdtempSync(join(tmpdir(), "sachviet-search-ttl-"));
+  let clock = 1_000;
+  const store = createCatalogStore({ dbPath: join(directory, "catalog.sqlite"), now: () => clock, log: () => {} });
+  try {
+    createCategory(store, { slug: "sach", name: "Sách Việt" });
+    const product = createProduct(store, {
+      categorySlug: "sach",
+      slug: "tieng-viet-co-ban",
+      title: "Tiếng Việt Cơ Bản",
+      description: "Sách học tiếng Việt.",
+    });
+    writeVendorOffer(store, { id: "vendor-1", role: "vendor" }, {
+      productId: product.id,
+      vendorId: "vendor-1",
+      priceUsd: "12.00",
+      stockQuantity: 3,
+    });
+
+    searchPublicProducts(store, { q: "tieng viet" });
+    assert.equal(listSearchLogs(store).length, 1);
+
+    clock += SEARCH_LOG_RETENTION_MS + 1;
+    searchPublicProducts(store, { q: "lich su" });
+    const logs = listSearchLogs(store);
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0].queryNormalized, "lich su");
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test("local backend is default and Meilisearch seam is env-gated without network", () => {
   assert.equal(resolveSearchBackend({ env: {} }).mode, "local");
