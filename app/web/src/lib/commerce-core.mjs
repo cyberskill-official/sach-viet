@@ -1,4 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { enqueueOrderComms, ensureOrderCommsOutboxSchema } from "./order-comms-outbox-core.mjs";
 import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 
 function identifier() { return randomBytes(16).toString("hex"); }
@@ -125,9 +126,24 @@ export function processStripeWebhook(store, payload, signature, webhookSecret) {
   const session = event.data?.object;
   const orderId = session?.metadata?.order_id;
   if (!orderId || !session.id) throw new Error("Stripe event has no order reference.");
-  const update = store.db.prepare("UPDATE orders SET status = 'paid', stripe_session_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'").run(session.id, store.clock(), orderId);
-  store.log("checkout_payment_completed", { result: update.changes ? "accepted" : "ignored", order_id: orderId, provider: "stripe" });
-  return { handled: true, updated: update.changes === 1, orderId };
+  ensureOrderCommsOutboxSchema(store);
+  // The paid transition and the confirmation-comms enqueue commit together, so a crash or a
+  // failed dispatch can never leave an order paid with no durable record that it owes an email.
+  beginImmediateWithRetry(store.db);
+  let updated = false;
+  let paid = false;
+  let enqueued = false;
+  try {
+    updated = store.db.prepare("UPDATE orders SET status = 'paid', stripe_session_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'").run(session.id, store.clock(), orderId).changes === 1;
+    paid = store.db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId)?.status === "paid";
+    if (paid) enqueued = enqueueOrderComms(store, orderId, { kind: "order.paid" }).enqueued;
+    store.db.exec("COMMIT");
+  } catch (error) {
+    store.db.exec("ROLLBACK");
+    throw error;
+  }
+  store.log("checkout_payment_completed", { result: updated ? "accepted" : "ignored", order_id: orderId, provider: "stripe", paid, comms_enqueued: enqueued });
+  return { handled: true, updated, paid, enqueued, orderId };
 }
 
 export function listCustomerOrders(store, user) {
