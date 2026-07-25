@@ -15,4 +15,5 @@ test("vendor commerce routes use signed sessions and server-side repository call
   assert.match(payouts, /listVendorPayouts/);
   assert.match(dashboard, /getVendorDashboard/);
   assert.match(adminPayouts, /createVendorPayout/);
+  assert.match(adminPayouts, /listAdminPayouts/);
 });

@@ -6,7 +6,7 @@ import test from "node:test";
 import { createAuthStore, hashPassword } from "../src/lib/auth-core.mjs";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
 import { createCommerceStore, createPendingOrder } from "../src/lib/commerce-core.mjs";
-import { createVendorCommerceStore, createVendorPayout, getVendorDashboard, listVendorIncomingOrders, listVendorPayouts } from "../src/lib/vendor-commerce-core.mjs";
+import { createVendorCommerceStore, createVendorPayout, getVendorDashboard, listAdminPayouts, listVendorIncomingOrders, listVendorPayouts } from "../src/lib/vendor-commerce-core.mjs";
 
 function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-vendor-commerce-"));
@@ -68,6 +68,8 @@ test("administrators create payouts with explicit amounts and vendors read only 
   assert.throws(() => listVendorPayouts(stores.vendorStore, { id: "vendor-b", role: "vendor" }, { vendorId: "vendor-a" }), /another vendor/);
   const adminView = listVendorPayouts(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a" });
   assert.equal(adminView.length, 1);
+  assert.equal(listAdminPayouts(stores.vendorStore, { id: "admin", role: "admin" })[0].vendorId, "vendor-a");
+  assert.throws(() => listAdminPayouts(stores.vendorStore, { id: "vendor-a", role: "vendor" }), /Administrator/);
   const dashboard = getVendorDashboard(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a" });
   assert.equal(dashboard.payoutCount, 1);
   assert.equal(dashboard.payoutTotalUsd, "15.0000");

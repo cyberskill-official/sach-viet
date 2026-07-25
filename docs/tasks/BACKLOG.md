@@ -22,6 +22,10 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [on_hold] TASK-INTEGRATIONS-001-complete-admin-integrations - Complete Zalo and email settings screens
 - [on_hold] TASK-MIGRATION-001-reconcile-wp-order-items - Reconcile unmatched WordPress order items (improvement)
 - [done] TASK-NOTIFICATIONS-001-verify-notification-bell - Verify notification badge and deeplink behavior (improvement)
+- [done] TASK-PORTALUI-001-adopt-cyberskill-design-thuy - Adopt CyberSkill Design with the Thủy identity
+- [done] TASK-PORTALUI-002-build-customer-storefront - Build the customer storefront experience
+- [done] TASK-PORTALUI-003-build-admin-commerce-portal - Build the admin commerce portal
+- [done] TASK-PORTALUI-004-complete-shared-portal-chrome - Complete shared role-aware portal chrome
 - [on_hold] TASK-PUBLISHER-001-build-financial-dashboard - Add publisher sales rollups, royalties, and contract management
 - [done] TASK-QUALITY-001-test-checkout-payments - Add checkout and hosted-payment regression coverage (improvement)
 - [done] TASK-QUALITY-002-test-vendor-payouts - Add vendor payout regression coverage (improvement)
