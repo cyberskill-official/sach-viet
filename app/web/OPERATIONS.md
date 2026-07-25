@@ -206,3 +206,35 @@ When an order transitions to `paid`, `dispatchOrderPaidConfirmation` sends a min
 - Unset → recording stub (`recorded`). Missing customer email → `skipped`.
 
 This path does not require the customer to opt into the email notification channel. Admin integrations status still reflects SMTP credential presence.
+
+## Catalog for staging vs production
+
+**Staging / local:** use `npm run seed:local` or Compose `--profile seed` (see Seeding above). Safe, idempotent, `@sachviet.test` accounts only.
+
+**Production catalog options (operator choose; do not unlock cutover here):**
+
+1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Suitable for a controlled catalog load without live MySQL.
+2. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
+3. **Admin day-2 entry** — create categories/products/offers via admin commerce APIs/UI after bootstrap.
+
+Do not run `seed:local` against a production database.
+
+## Operator CapRover deploy checklist (Phase A — do not execute from this path)
+
+This checklist is an artefact for an authorized operator. Completing the list does **not** authorize deploy. Map each item to unmet cutover gates in `docs/tasks/rebuild/TASK-REBUILD-023-…/ship/cutover-plan.md`.
+
+| Step | Action | Cutover gate |
+|---|---|---|
+| 1 | Build/push image from `app/web` (`Dockerfile` / `captain-definition`) to the CapRover app | `separate_deployment_instruction` |
+| 2 | Attach persistent volume for `DATABASE_PATH` (default `/data/sachviet.sqlite`) | — |
+| 3 | Set secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `STRIPE_SECRET_KEY`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`, `STRIPE_WEBHOOK_SECRET`, optional `SMTP_*`, optional Meili/Zalo | — |
+| 4 | Configure CapRover TLS / HTTPS; confirm auth cookies are secure under `NODE_ENV=production` | — |
+| 5 | Register Stripe webhook URL `https://<prod-host>/api/webhooks/stripe` for `checkout.session.completed` | — |
+| 6 | Verify SQLite (+ media if any) **backup** and restore drill | `backup_verified` |
+| 7 | Document **named rollback** (previous CapRover image + volume restore) | `named_rollback_plan` |
+| 8 | Owner recorded **go / no-go** (Phase A only; no WP DNS cutover) | `owner_go_decision` |
+| 9 | Separate explicit operator instruction to deploy (this document alone is insufficient) | `separate_deployment_instruction` |
+
+Unmet gates that still block owner go for WP retirement: `backup_verified`, `named_rollback_plan`, `owner_go_decision`, `separate_deployment_instruction`. Phase A can run as a **parallel** greenfield store without DNS/WP retirement once the operator authorizes deploy separately.
+
+**Do not** push, deploy, merge CapRover, or change DNS from agent automation without that explicit instruction.
