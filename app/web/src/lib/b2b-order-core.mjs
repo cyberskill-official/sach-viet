@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const ORDER_STATUSES = Object.freeze(["awaiting_po", "confirmed", "cancelled"]);
@@ -112,9 +110,7 @@ export function createB2bOrderStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-014", ...fields })),
 } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS b2b_orders (
       id TEXT PRIMARY KEY,
@@ -188,7 +184,7 @@ export function convertWonQuoteToOrder(store, actor, input) {
     updatedAt: now,
   };
 
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     store.db.prepare(`
       INSERT INTO b2b_orders (id, quote_id, organization_id, status, currency, subtotal_usd, created_by, created_at, updated_at)

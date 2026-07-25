@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -12,9 +10,7 @@ function moneyUnits(value) { const [whole, fraction = ""] = value.split("."); re
 function moneyString(value) { return `${value / 10000n}.${String(value % 10000n).padStart(4, "0")}`; }
 
 export function createAdminCommerceStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-007", ...fields })) } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS vendor_applications (
       id TEXT PRIMARY KEY,
@@ -65,7 +61,7 @@ export function resolveVendorApplication(store, actor, input) {
   const rejectionReason = decision === "rejected" ? required(input?.rejectionReason, "Rejection reason") : null;
   const application = store.db.prepare("SELECT id, user_id, status FROM vendor_applications WHERE id = ?").get(applicationId);
   if (!application || application.status !== "pending") throw new Error("Only a pending vendor application can be resolved.");
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     if (decision === "approved") {
       const user = store.db.prepare("SELECT role FROM users WHERE id = ?").get(application.user_id);

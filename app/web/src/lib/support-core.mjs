@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const id = () => randomBytes(16).toString("hex");
@@ -9,9 +7,7 @@ const required = (value, name) => { if (typeof value !== "string" || value.trim(
 const staff = (user) => ["admin", "employee", "employee_b2c"].includes(normalizeRole(user?.role));
 
 export function createSupportStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-006", ...fields })) } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS support_tickets (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, subject TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL) STRICT;
     CREATE TABLE IF NOT EXISTS ticket_messages (id TEXT PRIMARY KEY, ticket_id TEXT NOT NULL, user_id TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL) STRICT;

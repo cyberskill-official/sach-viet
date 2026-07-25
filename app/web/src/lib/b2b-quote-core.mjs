@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
 import { normalizeRole } from "./access.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
@@ -96,9 +94,7 @@ export function createB2bQuoteStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-013", ...fields })),
 } = {}) {
-  const path = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(path))) mkdirSync(dirname(path), { recursive: true });
-  const db = new DatabaseSync(path);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
     CREATE TABLE IF NOT EXISTS organizations (
       id TEXT PRIMARY KEY,
@@ -253,7 +249,7 @@ export function requestQuoteFromSelectionList(store, actor, input) {
     createdAt: now,
     updatedAt: now,
   };
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     store.db.prepare("INSERT INTO b2b_quotes (id, organization_id, selection_list_id, status, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .run(quote.id, quote.organizationId, quote.selectionListId, quote.status, quote.createdBy, quote.createdAt, quote.updatedAt);
@@ -323,7 +319,7 @@ export function setQuoteItemPrices(store, actor, input) {
   if (!quote) throw new Error("Quote does not exist.");
   if (!["draft", "sent", "negotiating"].includes(quote.status)) throw new Error("Quote prices can only be set before a terminal status.");
   if (!Array.isArray(input?.items) || input.items.length === 0) throw new Error("At least one quote item price is required.");
-  store.db.exec("BEGIN IMMEDIATE");
+  beginImmediateWithRetry(store.db);
   try {
     for (const entry of input.items) {
       const itemId = required(entry?.id, "Quote item ID");

@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { openSqliteDatabase } from "./sqlite.mjs";
 import { canAccessOwnedRecord } from "./access.mjs";
 
 function defaultNow() {
@@ -49,11 +47,8 @@ function requireCatalogProductInput(input) {
 }
 
 export function createCatalogStore({ dbPath, now = defaultNow, log = defaultLog } = {}) {
-  const databasePath = dbPath || process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!existsSync(dirname(databasePath))) mkdirSync(dirname(databasePath), { recursive: true });
-  const db = new DatabaseSync(databasePath);
+  const db = openSqliteDatabase(dbPath);
   db.exec(`
-    PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
