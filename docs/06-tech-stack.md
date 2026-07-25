@@ -1,5 +1,7 @@
 # 06 — Tech Stack: Current, Recommended, Open for Discussion
 
+> **Archived handoff context — not current implementation truth.** The Nuxt/Laravel/Redis stack and production-preview claims below are superseded. The active code is `app/web`: Next.js 16, React 19, TypeScript, and SQLite via `node:sqlite`. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance. CI is defined in `.github/workflows/ci.yml` and performs checks only; it does not deploy.
+
 ## Current stack (working in production preview — don't rewrite without a reason)
 
 | Layer | Choice | Why it's there |

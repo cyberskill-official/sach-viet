@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: app/web
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/web/package-lock.json
+
+      - name: Check governance gates
+        working-directory: .
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE_SHA: ${{ github.event.before }}
+        run: |
+          BASE_SHA="${PR_BASE_SHA:-$PUSH_BASE_SHA}"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="$(git rev-list --max-parents=0 HEAD)"
+          fi
+          node app/web/scripts/require-hitl-verdict.mjs --base "$BASE_SHA"
+          node app/web/scripts/check-cyberos-install.mjs --if-present
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Verify
+        run: npm run verify
+
+      - name: Build
+        run: npm run build

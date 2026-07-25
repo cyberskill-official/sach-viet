@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "cyberosVersion": "1.1.0",
+  "rulesSha": "53a6198d0111b10104a11e899a02845e203e26668f396a0abe8f8b9cfa13bf9b",
+  "builtFromCommit": "81cf3f0",
+  "requireNoEval": true,
+  "runGatesSha256": "de28f096a8bb9e1da4db2e19eb0c0abab0fa35845752d444529a220775fd9ac7"
+}
