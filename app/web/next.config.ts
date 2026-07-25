@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": [
       "./src/lib/db-worker.mjs",
+      "./migrations/**/*",
       "./node_modules/pg/**/*",
       "./node_modules/pg-*/**/*",
       "./node_modules/postgres-*/**/*",

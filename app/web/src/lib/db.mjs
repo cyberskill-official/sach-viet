@@ -18,11 +18,19 @@ import { applyPendingMigrationsSync } from "./migrate.mjs";
  * Layout matches Dockerfile + local `app/web` cwd (`src/lib/db-worker.mjs`).
  */
 function resolveDbWorkerPath() {
-  const candidate = join(process.cwd(), "src/lib/db-worker.mjs");
-  if (!existsSync(candidate)) {
-    throw new Error(`db-worker.mjs not found at ${candidate} (cwd=${process.cwd()})`);
+  // Prefer cwd-relative paths (Docker + local). On Vercel file tracing the
+  // worker may land next to cwd or under .next — try a short candidate list.
+  const candidates = [
+    join(process.cwd(), "src/lib/db-worker.mjs"),
+    join(process.cwd(), "db-worker.mjs"),
+    join(process.cwd(), ".next/server/src/lib/db-worker.mjs"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
   }
-  return candidate;
+  throw new Error(
+    `db-worker.mjs not found (cwd=${process.cwd()}; tried ${candidates.join(", ")})`,
+  );
 }
 
 const callWorker = createSyncFn(resolveDbWorkerPath());
