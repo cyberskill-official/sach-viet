@@ -47,14 +47,14 @@ function withPaidOrder(run) {
   }
 }
 
-test("order confirmation records when SMTP is unset (recording stub)", () =>
+test("order confirmation records when SMTP is unset (recording stub is not delivery)", () =>
   withPaidOrder(({ commerce, order, events }) => {
     const transport = createRecordingEmailTransport({ log: commerce.log });
     const result = dispatchOrderPaidConfirmation(commerce, order.id, {
       env: {},
       emailTransport: transport,
     });
-    assert.equal(result.emailed, true);
+    assert.equal(result.emailed, false);
     assert.equal(result.outcome, "recorded");
     assert.equal(result.transportMode, "recording");
     assert.equal(result.notified, true);

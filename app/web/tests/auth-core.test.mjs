@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { canAccessOwnedRecord, canAccessPortal, normalizeRole } from "../src/lib/access.mjs";
-import { bootstrapFirstAdmin, createAuthStore, expiredCookie, hashPassword, login, readSession, revokeSession, safeRedirect, verifyPassword } from "../src/lib/auth-core.mjs";
+import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, verifyPassword } from "../src/lib/auth-core.mjs";
 
 const sessionSecret = "a-session-secret-that-is-long-enough-for-the-test-suite";
 
@@ -50,17 +50,123 @@ test("bootstrap requires every deployment input and creates one admin only", () 
   } finally { testStore.close(); }
 });
 
-test("failed login is throttled per normalized email and never starts a session", () => {
+test("failed login is throttled per email+client and never starts a session", () => {
   const testStore = fixture();
   try {
     bootstrap(testStore.store);
-    for (let attempt = 0; attempt < 4; attempt += 1) assert.equal(login(testStore.store, { email: "ADMIN@example.test", password: "wrong password", sessionSecret }).reason, "invalid");
-    assert.equal(login(testStore.store, { email: "admin@example.test", password: "wrong password", sessionSecret }).reason, "throttled");
-    assert.equal(login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret }).reason, "throttled");
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      assert.equal(
+        login(testStore.store, {
+          email: "ADMIN@example.test",
+          password: "wrong password",
+          sessionSecret,
+          clientKey: "203.0.113.10",
+        }).reason,
+        "invalid",
+      );
+    }
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "wrong password",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      }).reason,
+      "throttled",
+    );
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "correct horse battery staple",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      }).reason,
+      "throttled",
+    );
     assert.equal(testStore.store.db.prepare("SELECT COUNT(*) AS count FROM sessions").get().count, 0);
+    // A different client key must not be locked out by the attacker.
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "correct horse battery staple",
+        sessionSecret,
+        clientKey: "198.51.100.20",
+      }).ok,
+      true,
+    );
     testStore.advance(16 * 60 * 1000);
-    assert.equal(login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret }).ok, true);
-  } finally { testStore.close(); }
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "correct horse battery staple",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      }).ok,
+      true,
+    );
+  } finally {
+    testStore.close();
+  }
+});
+
+test("clearLoginLock unlocks an email without waiting for the lock window", () => {
+  const testStore = fixture();
+  try {
+    bootstrap(testStore.store);
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "wrong password",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      });
+    }
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "correct horse battery staple",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      }).reason,
+      "throttled",
+    );
+    clearLoginLock(testStore.store, "admin@example.test");
+    assert.equal(
+      login(testStore.store, {
+        email: "admin@example.test",
+        password: "correct horse battery staple",
+        sessionSecret,
+        clientKey: "203.0.113.10",
+      }).ok,
+      true,
+    );
+  } finally {
+    testStore.close();
+  }
+});
+
+test("successful PHPass login upgrades the stored hash to scrypt", () => {
+  const testStore = fixture();
+  try {
+    const password = "imported-password-ok";
+    const phpass = hashPhpassPassword(password, { salt: "abcdefgh" });
+    testStore.store.db
+      .prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
+      .run("user-legacy", "legacy@example.test", phpass, "customer", testStore.store.now());
+    const result = login(testStore.store, {
+      email: "legacy@example.test",
+      password,
+      sessionSecret,
+      clientKey: "127.0.0.1",
+    });
+    assert.equal(result.ok, true);
+    const stored = testStore.store.db.prepare("SELECT password_hash AS hash FROM users WHERE id = ?").get("user-legacy");
+    assert.equal(stored.hash.startsWith("scrypt$"), true);
+    assert.equal(verifyPassword(password, stored.hash), true);
+    assert.ok(testStore.events.some((row) => row.event === "auth_password_rehashed"));
+  } finally {
+    testStore.close();
+  }
 });
 
 test("signed opaque sessions reject tampering, expire, and can be revoked", () => {

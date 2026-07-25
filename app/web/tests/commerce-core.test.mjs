@@ -58,6 +58,16 @@ test("signed Stripe completion updates only the referenced pending order", () =>
   assert.deepEqual(processStripeWebhook(commerce, payload, signature, secret), {
     handled: true,
     updated: true,
+    paid: true,
+    enqueued: true,
+    orderId: order.id,
+  });
+  assert.equal(listCustomerOrders(commerce, user)[0].status, "paid");
+  assert.deepEqual(processStripeWebhook(commerce, payload, signature, secret), {
+    handled: true,
+    updated: false,
+    paid: true,
+    enqueued: false,
     orderId: order.id,
   });
   assert.equal(listCustomerOrders(commerce, user)[0].status, "paid");

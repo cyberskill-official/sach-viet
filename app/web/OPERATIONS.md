@@ -188,7 +188,9 @@ Checkout (`POST /api/checkout`) creates a pending order, then a Stripe Checkout 
 - `STRIPE_SUCCESS_URL`
 - `STRIPE_CANCEL_URL`
 
-Webhook (`POST /api/webhooks/stripe`) requires `STRIPE_WEBHOOK_SECRET` and a valid `Stripe-Signature` header. On `checkout.session.completed` the order becomes `paid` (idempotent) and the app dispatches order-confirmation email (SMTP or recording stub) plus an in-app `order.paid` notification.
+Webhook (`POST /api/webhooks/stripe`) requires `STRIPE_WEBHOOK_SECRET` and a valid `Stripe-Signature` header. On `checkout.session.completed` the order becomes `paid` (idempotent) and, in the same transaction, a confirmation row is queued in `order_comms_outbox`. The request then drains that queue, which sends order-confirmation email (SMTP or recording stub) plus an in-app `order.paid` notification.
+
+Only failures *before* the paid transition answer `400`. Once the payment is committed the webhook answers `200` even if delivery fails, because the confirmation is already durable; the failed entry stays `pending` with an exponential backoff and is retried by the next drain.
 
 Env names only live in `.env.example` / `.env.docker.example`. **Never commit real Stripe keys.** Operator must supply CapRover (or local) secrets before a real paid path works.
 
@@ -202,10 +204,86 @@ Local test-mode sketch (still not a CapRover deploy):
 
 When an order transitions to `paid`, `dispatchOrderPaidConfirmation` sends a minimal confirmation (Vietnamese/English subject + total) via `resolveEmailTransport`:
 
-- `SMTP_HOST` + `SMTP_FROM` set → SMTP transport mode (`sent` when a submitter is injected; otherwise locally recorded with SMTP presence flags).
+- `SMTP_HOST` + `SMTP_FROM` set with an injected submitter → `sent` (counts as delivered).
+- `SMTP_HOST` + `SMTP_FROM` set without a submitter → local `recorded` in non-production; **`failed`** in production (`smtp_submitter_unavailable`).
 - Unset → recording stub (`recorded`). Missing customer email → `skipped`.
 
+**`recorded` is not delivery.** APIs expose `outcome` separately; `emailed` / outbox `delivered` require `sent`. Recording stubs and missing production submitters leave the outbox pending for retry (or abandon after max attempts).
+
 This path does not require the customer to opt into the email notification channel. Admin integrations status still reflects SMTP credential presence.
+
+### Confirmation outbox
+
+`order_comms_outbox` is the durable record of confirmation work, keyed uniquely by `(order_id, kind)`:
+
+- `pending` — owed. `attempts` and `available_at` advance before each delivery so a crash mid-send retries instead of stalling.
+- `delivered` — transport returned `sent`. Replayed webhooks never re-send it. A `recorded` stub does **not** mark delivered.
+- `abandoned` — dead letter after 8 attempts, or immediately for a missing/unpaid order. `last_error` holds the reason.
+
+`processOrderCommsOutbox(store, { orderId })` drains due entries and is safe to call repeatedly; the queue, not the webhook result, decides what still needs sending. Inspect stuck comms with:
+
+```sql
+SELECT order_id, status, attempts, last_error, available_at FROM order_comms_outbox WHERE status <> 'delivered';
+```
+
+Stripe replays drain the queue on their own, but they stop once the webhook is acknowledged. Run the sweep so an entry that failed its last inline attempt is still retried (cron-safe, no arguments):
+
+```bash
+DATABASE_PATH=/data/sachviet.sqlite node scripts/drain-order-comms-outbox.mjs
+```
+
+
+## Health probe
+
+`GET /api/health` opens SQLite and runs `SELECT 1`. Compose wires the `web` service healthcheck to this endpoint. A 200 with `{ "ok": true, "db": "ok" }` means the process and database file are reachable.
+
+## Catalog for staging vs production
+
+**Staging / local:** use `npm run seed:local` or Compose `--profile seed` (see Seeding above). Safe, idempotent, `@sachviet.test` accounts only.
+
+**Production catalog options (operator choose; do not unlock cutover here):**
+
+1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Suitable for a controlled catalog load without live MySQL.
+2. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
+3. **Admin day-2 entry** — create categories/products/offers via admin commerce APIs/UI after bootstrap.
+
+Do not run `seed:local` against a production database.
+
+## SQLite backup and restore
+
+Practical backup/restore lives under `app/web/scripts/`. The backup opens the live DB, runs `PRAGMA wal_checkpoint(TRUNCATE)`, then copies the main database file. Restore copies a backup over `DATABASE_PATH` (after a safety copy) and probes `SELECT 1`.
+
+**Backup** (from `app/web`, or against the Compose volume with the stack stopped or briefly quiescent):
+
+```bash
+DATABASE_PATH=/data/sachviet.sqlite node scripts/backup-sqlite.mjs
+# or
+DATABASE_PATH=/path/to/sachviet.sqlite node scripts/backup-sqlite.mjs --out ./backups/sachviet-manual.sqlite
+```
+
+**Restore** (stop the web process first so writers are idle):
+
+```bash
+DATABASE_PATH=/data/sachviet.sqlite node scripts/restore-sqlite.mjs --from ./backups/sachviet-manual.sqlite
+```
+
+### Restore drill (operator evidence)
+
+The cutover gate `backup_verified` stays **unmet** until an operator records a successful drill. Suggested evidence path (create when you run the drill; do not invent a completed artefact):
+
+`docs/tasks/rebuild/TASK-REBUILD-023-b2c-parity-cutover-readiness/ship/backup-restore-drill.md`
+
+Minimum drill contents: timestamp, source DB path, backup file path + size, restore target, `SELECT 1` / login smoke result, operator initials. Completing the scripts alone does **not** satisfy `backup_verified`.
+
+### Schema migrations
+
+Versioned additive migrations live in `app/web/migrations/registry.mjs` and apply automatically from `openSqliteDatabase` via `schema_migrations`. Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids.
+
+**Follow-up (not done in this foundation):** move dual-owned `CREATE TABLE IF NOT EXISTS` definitions (`orders`, notification tables, `royalty_decision_acceptances`) into numbered migrations and thin the per-module ensure helpers.
+
+## Health probe
+
+`GET /api/health` opens SQLite and runs `SELECT 1`. Compose wires the `web` service healthcheck to this endpoint. A 200 with `{ "ok": true, "db": "ok" }` means the process and database file are reachable.
 
 ## Catalog for staging vs production
 

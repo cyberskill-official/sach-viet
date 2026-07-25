@@ -96,6 +96,16 @@ export function createSmtpEmailTransport({
         });
         return { outcome, reason: result?.reason || null, providerMessageId: result?.providerMessageId || null };
       }
+      // Production must not treat a missing submitter as delivery success.
+      if (process.env.NODE_ENV === "production") {
+        log?.("email_transport_smtp_unavailable", {
+          result: "failed",
+          channel: "email",
+          notification_id: message.notificationId,
+          reason: "smtp_submitter_unavailable",
+        });
+        return { outcome: "failed", reason: "smtp_submitter_unavailable", providerMessageId: null };
+      }
       log?.("email_transport_smtp_local", {
         result: "recorded",
         channel: "email",
@@ -139,6 +149,15 @@ export function createZaloOaHttpTransport({
           recipient_hash: redactRecipient(message.recipient),
         });
         return { outcome, reason: result?.reason || null, providerMessageId: result?.providerMessageId || null };
+      }
+      if (process.env.NODE_ENV === "production") {
+        log?.("zalo_transport_oa_unavailable", {
+          result: "failed",
+          channel: "zalo",
+          notification_id: message.notificationId,
+          reason: "zalo_submitter_unavailable",
+        });
+        return { outcome: "failed", reason: "zalo_submitter_unavailable", providerMessageId: null };
       }
       log?.("zalo_transport_oa_local", {
         result: "recorded",
