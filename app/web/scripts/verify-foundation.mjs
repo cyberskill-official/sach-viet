@@ -43,7 +43,7 @@ export function validateFoundation(rootPath) {
   if (!nextConfig.includes('output: "standalone"')) {
     throw new Error("The standalone server output is missing.");
   }
-  if (!page.includes("Greenfield Next.js foundation")) {
+  if (!page.includes("Storefront")) {
     throw new Error("The foundation page is missing its expected marker.");
   }
   if (captainDefinition.schemaVersion !== 2) {

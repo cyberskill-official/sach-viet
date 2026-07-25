@@ -182,7 +182,7 @@ export function selectPrimaryOffer(store, productId) {
   const offers = store.db.prepare("SELECT id, vendor_id, price_usd, list_price_usd, stock_quantity FROM vendor_offers WHERE product_id = ? AND is_active = 1 AND stock_quantity > 0").all(productId);
   offers.sort((left, right) => compareMoney(left.price_usd, right.price_usd) || left.vendor_id.localeCompare(right.vendor_id) || left.id.localeCompare(right.id));
   const winner = offers[0];
-  return winner ? { priceUsd: winner.price_usd, listPriceUsd: winner.list_price_usd, stockQuantity: winner.stock_quantity } : null;
+  return winner ? { id: winner.id, priceUsd: winner.price_usd, listPriceUsd: winner.list_price_usd, stockQuantity: winner.stock_quantity } : null;
 }
 
 function hydrateProduct(store, product) {

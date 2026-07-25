@@ -44,25 +44,26 @@ test("catalog products reject offer fields and schema keeps them off products", 
 
 test("primary offer chooses the lowest eligible offer and excludes inactive or empty stock", () => withStore((store) => {
   const { product, vendorA, vendorB } = catalogFixture(store);
-  writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "7.50", listPriceUsd: "9.00", stockQuantity: 1 });
+  const eligible = writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "7.50", listPriceUsd: "9.00", stockQuantity: 1 });
   writeVendorOffer(store, vendorB, { productId: product.id, vendorId: vendorB.id, priceUsd: "5.00", stockQuantity: 0 });
   writeVendorOffer(store, vendorB, { productId: product.id, vendorId: vendorB.id, priceUsd: "4.00", stockQuantity: 2, isActive: false });
-  assert.deepEqual(selectPrimaryOffer(store, product.id), { priceUsd: "7.5000", listPriceUsd: "9.0000", stockQuantity: 1 });
+  assert.deepEqual(selectPrimaryOffer(store, product.id), { id: eligible.id, priceUsd: "7.5000", listPriceUsd: "9.0000", stockQuantity: 1 });
 }));
 
 test("primary offer uses vendor ID as a stable tie-breaker", () => withStore((store) => {
   const { product, vendorA, vendorB } = catalogFixture(store);
   writeVendorOffer(store, vendorB, { productId: product.id, vendorId: vendorB.id, priceUsd: "5", stockQuantity: 4 });
-  writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "5.0000", stockQuantity: 2 });
-  assert.deepEqual(selectPrimaryOffer(store, product.id), { priceUsd: "5.0000", listPriceUsd: null, stockQuantity: 2 });
+  const winner = writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "5.0000", stockQuantity: 2 });
+  assert.deepEqual(selectPrimaryOffer(store, product.id), { id: winner.id, priceUsd: "5.0000", listPriceUsd: null, stockQuantity: 2 });
 }));
 
 test("catalog public reads include product facts and the buy box without vendor disclosure", () => withStore((store) => {
   const { product, vendorA } = catalogFixture(store);
   addProductMedia(store, { productId: product.id, url: "https://example.test/cover.jpg", altText: "Cover" });
   createProductVariant(store, { productId: product.id, sku: "clean-code-hardcover", title: "Hardcover", attributes: { format: "hardcover" } });
-  writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "12.5", stockQuantity: 3 });
+  const offer = writeVendorOffer(store, vendorA, { productId: product.id, vendorId: vendorA.id, priceUsd: "12.5", stockQuantity: 3 });
   const publicProduct = getPublicProduct(store, "clean-code");
+  assert.equal(publicProduct.primaryOffer.id, offer.id);
   assert.equal(publicProduct.primaryOffer.priceUsd, "12.5000");
   assert.equal(JSON.stringify(publicProduct).includes("vendor-a"), false);
   assert.equal(listPublicProducts(store, { category: "books" }).length, 1);
