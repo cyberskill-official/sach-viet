@@ -1,5 +1,7 @@
 # 03 — The 9 Portals: What Each Does, What's Real, What's Needed
 
+> **Archived handoff context — not current implementation truth.** Paths, implementation statuses, and framework references below describe the superseded Nuxt/Laravel handoff and may overstate current UI coverage. The active code is the Next.js application in `app/web`. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance.
+
 Every portal = its own folder in `web/pages/`, its own layout + accent color, its own login page, its own middleware guard. Full page-by-page detail: `app/misc/docs/project_full_map.md`.
 
 Status legend: ✅ wired to real API · 🟡 partially real · 🔴 mocked/stub

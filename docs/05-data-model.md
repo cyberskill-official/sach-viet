@@ -1,5 +1,7 @@
 # 05 — Data Model (Entities by Domain)
 
+> **Archived handoff context — not current implementation truth.** The Eloquent model and Laravel migration inventory below describes the superseded handoff. The active data implementation uses SQLite through the Next.js application in `app/web`; exact schema ownership is in its domain modules. Use `docs/07-status-roadmap.md` for current scope/status and `app/web/OPERATIONS.md` for operational guidance.
+
 ~45 Eloquent models, 65+ migrations. This is the conceptual map; read the migrations for exact columns.
 
 ## Catalog
