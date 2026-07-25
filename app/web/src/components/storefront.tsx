@@ -1,0 +1,135 @@
+"use client";
+
+import Link from "next/link";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
+
+type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  category: { slug: string; name: string };
+  primaryOffer: null | { id: string; priceUsd: string; listPriceUsd?: string | null; stockQuantity: number };
+};
+
+function readCart() {
+  try { return normalizeCart(JSON.parse(window.localStorage.getItem(CART_KEY) || "[]")); }
+  catch { return []; }
+}
+
+export function Storefront() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [query, setQuery] = useState("");
+  const [submittedQuery, setSubmittedQuery] = useState("");
+  const [category, setCategory] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [cartCount, setCartCount] = useState(() => typeof window === "undefined" ? 0 : readCart().reduce((sum, item) => sum + item.quantity, 0));
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const params = new URLSearchParams();
+    if (submittedQuery) params.set("q", submittedQuery);
+    if (category) params.set("category", category);
+    fetch(`/api/catalog/products?${params}`, { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !Array.isArray(body.products)) throw new Error(body.error || "Không thể tải danh mục.");
+        setProducts(body.products);
+      })
+      .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [category, submittedQuery]);
+
+  const categories = useMemo(() => [...new Map(products.map((product) => [product.category.slug, product.category])).values()], [products]);
+
+  function submitSearch(event: FormEvent) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setSubmittedQuery(query.trim());
+  }
+
+  function addToCart(product: Product) {
+    if (!product.primaryOffer) return;
+    const next = addCartItem(readCart(), {
+      vendorOfferId: product.primaryOffer.id,
+      title: product.title,
+      priceUsd: product.primaryOffer.priceUsd,
+      quantity: 1,
+      plasticCover: false,
+      giftWrap: false,
+    });
+    window.localStorage.setItem(CART_KEY, JSON.stringify(next));
+    setCartCount(next.reduce((sum, item) => sum + item.quantity, 0));
+  }
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
+            <span><strong className="block text-lg">Sách Việt</strong><small className="text-muted">Sách hay, gần bạn</small></span>
+          </Link>
+          <nav className="flex items-center gap-2 text-sm">
+            <Link className="cs-button cs-button--ghost" href="/ecom/orders">Đơn hàng</Link>
+            <Link className="cs-button cs-button--secondary" href="/ecom/cart">Giỏ hàng ({cartCount})</Link>
+            <Link className="cs-button" href="/login">Đăng nhập</Link>
+          </nav>
+        </div>
+      </header>
+
+      <section className="relative overflow-hidden border-b border-border">
+        <div className="cs-aurora-wash absolute inset-0 opacity-25" />
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[1.2fr_.8fr] lg:py-24">
+          <div>
+            <p className="cs-eyebrow text-accent-strong">Tủ sách dành cho người Việt</p>
+            <h1 className="mt-4 max-w-3xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl">Tìm cuốn sách mở ra điều mới</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">Khám phá sách Việt chọn lọc từ các nhà xuất bản và nhà bán uy tín. Tìm kiếm tiếng Việt tự nhiên, đặt mua trong vài bước.</p>
+            <form onSubmit={submitSearch} className="cs-surface-standard mt-8 flex max-w-2xl gap-3 rounded-2xl p-3">
+              <input aria-label="Tìm sách" className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên sách, tác giả hoặc chủ đề…" />
+              <button className="cs-button" type="submit">Tìm sách</button>
+            </form>
+          </div>
+          <div className="cs-surface-heavy hidden min-h-72 rounded-[2rem] p-8 lg:flex lg:flex-col lg:justify-end">
+            <p className="cs-eyebrow">Gợi ý hôm nay</p>
+            <p className="mt-3 text-2xl font-bold">Đọc chậm một chút, hiểu sâu hơn một chút.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div><p className="cs-eyebrow text-accent-strong">Danh mục</p><h2 className="mt-2 text-3xl font-bold">Sách đang có</h2></div>
+          <select aria-label="Lọc theo danh mục" className="cs-field__control" value={category} onChange={(event) => { setLoading(true); setError(""); setCategory(event.target.value); }}>
+            <option value="">Tất cả danh mục</option>
+            {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
+          </select>
+        </div>
+
+        {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="cs-skeleton h-72 rounded-2xl" />)}</div> : null}
+        {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert">{error}<button className="ml-3 underline" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>Thử lại</button></div> : null}
+        {!loading && !error && products.length === 0 ? <div className="cs-empty-state mt-8"><h3>Chưa tìm thấy sách phù hợp</h3><p>Thử từ khoá ngắn hơn hoặc xem tất cả danh mục.</p><button className="cs-button cs-button--secondary" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>Xem tất cả</button></div> : null}
+        {!loading && !error && products.length ? (
+          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((product) => (
+              <article key={product.id} className="cs-surface-standard group flex min-h-80 flex-col rounded-2xl p-6">
+                <div className="mb-6 grid h-28 place-items-center rounded-xl bg-accent-tint text-4xl font-extrabold text-accent-strong">{product.title.slice(0, 2).toUpperCase()}</div>
+                <p className="cs-eyebrow text-muted">{product.category.name}</p>
+                <h3 className="mt-2 text-xl font-bold"><Link href={`/products/${product.slug}`}>{product.title}</Link></h3>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{product.description}</p>
+                <div className="mt-auto flex items-end justify-between gap-3 pt-6">
+                  <div>{product.primaryOffer ? <><strong className="text-lg">{formatUsd(product.primaryOffer.priceUsd)}</strong><small className="block text-muted">Còn {product.primaryOffer.stockQuantity} cuốn</small></> : <span className="cs-badge">Tạm hết hàng</span>}</div>
+                  <button className="cs-button" disabled={!product.primaryOffer} onClick={() => addToCart(product)}>Thêm vào giỏ</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </section>
+    </main>
+  );
+}
