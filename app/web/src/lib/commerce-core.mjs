@@ -125,7 +125,7 @@ export function processStripeWebhook(store, payload, signature, webhookSecret) {
   if (!orderId || !session.id) throw new Error("Stripe event has no order reference.");
   const update = store.db.prepare("UPDATE orders SET status = 'paid', stripe_session_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'").run(session.id, store.clock(), orderId);
   store.log("checkout_payment_completed", { result: update.changes ? "accepted" : "ignored", order_id: orderId, provider: "stripe" });
-  return { handled: true, updated: update.changes === 1 };
+  return { handled: true, updated: update.changes === 1, orderId };
 }
 
 export function listCustomerOrders(store, user) {
