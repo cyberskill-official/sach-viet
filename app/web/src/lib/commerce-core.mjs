@@ -1,6 +1,11 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { enqueueOrderComms, ensureOrderCommsOutboxSchema } from "./order-comms-outbox-core.mjs";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, openDatabase } from "./db.mjs";
+
+/** Stripe Checkout Session create must fail closed rather than hang the checkout request. */
+export const STRIPE_FETCH_TIMEOUT_MS = 15_000;
+/** Reject oversized webhook bodies before JSON parse / signature work. */
+export const STRIPE_WEBHOOK_MAX_BODY_BYTES = 64 * 1024;
 
 function identifier() { return randomBytes(16).toString("hex"); }
 function now() { return Date.now(); }
@@ -8,48 +13,20 @@ function required(value, label) { if (typeof value !== "string" || value.trim() 
 function moneyUnits(value) { const [whole, fraction = ""] = value.split("."); return BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, "0")); }
 function moneyString(value) { return `${value / 10000n}.${String(value % 10000n).padStart(4, "0")}`; }
 
-export function createCommerceStore({ dbPath, clock = now, log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-005", ...fields })) } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('pending_payment', 'paid', 'payment_failed')),
-      currency TEXT NOT NULL CHECK (currency = 'USD'),
-      subtotal_usd TEXT NOT NULL,
-      checkout_url TEXT,
-      stripe_session_id TEXT UNIQUE,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS order_items (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      vendor_offer_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      unit_price_usd TEXT NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity > 0),
-      plastic_cover INTEGER NOT NULL CHECK (plastic_cover IN (0, 1)),
-      gift_wrap INTEGER NOT NULL CHECK (gift_wrap IN (0, 1)),
-      FOREIGN KEY (order_id) REFERENCES orders(id)
-    ) STRICT;
-  `);
+function defaultCommerceLog(event, fields = {}) {
+  const line = JSON.stringify({ event, task_id: "TASK-REBUILD-005", ...fields });
+  if (fields.result === "failed") console.error(line);
+  else if (fields.result === "rejected") console.warn(line);
+  else console.info(line);
+}
+
+export function createCommerceStore({ dbPath, clock = now, log = defaultCommerceLog } = {}) {
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
-export function ensureCommerceLegacyColumns(store) {
-  const orderColumns = store.db.prepare("PRAGMA table_info(orders)").all().map((row) => row.name);
-  if (!orderColumns.includes("legacy_wp_order_id")) {
-    store.db.exec("ALTER TABLE orders ADD COLUMN legacy_wp_order_id TEXT");
-  }
-  const itemColumns = store.db.prepare("PRAGMA table_info(order_items)").all().map((row) => row.name);
-  if (!itemColumns.includes("legacy_wp_order_item_id")) {
-    store.db.exec("ALTER TABLE order_items ADD COLUMN legacy_wp_order_item_id TEXT");
-  }
-  store.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS orders_legacy_wp_order_id_uq ON orders(legacy_wp_order_id) WHERE legacy_wp_order_id IS NOT NULL");
-  store.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS order_items_legacy_wp_order_item_id_uq ON order_items(legacy_wp_order_item_id) WHERE legacy_wp_order_item_id IS NOT NULL");
-}
+/** No-op: legacy columns and indexes are now applied by the initial migration. */
+export function ensureCommerceLegacyColumns() {}
 
 export function normalizeCartItem(item) {
   const quantity = Number(item?.quantity);
@@ -101,7 +78,12 @@ export async function createStripeCheckoutSession(store, orderId, environment = 
     body.set(`line_items[${index}][price_data][unit_amount_decimal]`, item.unit_price_usd);
     body.set(`line_items[${index}][quantity]`, String(item.quantity));
   });
-  const response = await fetcher("https://api.stripe.com/v1/checkout/sessions", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" }, body });
+  const response = await fetcher("https://api.stripe.com/v1/checkout/sessions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+    signal: AbortSignal.timeout(STRIPE_FETCH_TIMEOUT_MS),
+  });
   const session = await response.json();
   if (!response.ok || !session.id || !session.url) throw new Error("Stripe checkout session could not be created.");
   store.db.prepare("UPDATE orders SET stripe_session_id = ?, checkout_url = ?, updated_at = ? WHERE id = ?").run(session.id, session.url, store.clock(), order.id);

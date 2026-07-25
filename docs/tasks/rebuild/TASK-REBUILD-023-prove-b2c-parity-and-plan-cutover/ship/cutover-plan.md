@@ -9,7 +9,7 @@ live_wp_parity_claimed: `false`
 |---|---|
 | `parity_evidence_packet_complete` | `met` |
 | `quality_preview_bar_green` | `met` |
-| `backup_verified` | `unmet` |
+| `backup_verified` | `unmet` — evidence path: [`docs/ops/backup-restore-drill.md`](../../../../ops/backup-restore-drill.md); Docker gate: [`docs/docker-acceptance-gate.md`](../../../../docker-acceptance-gate.md) |
 | `named_rollback_plan` | `unmet` |
 | `owner_go_decision` | `unmet` |
 | `separate_deployment_instruction` | `unmet` |

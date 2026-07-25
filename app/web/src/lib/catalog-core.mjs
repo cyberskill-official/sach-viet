@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase } from "./db.mjs";
 import { canAccessOwnedRecord } from "./access.mjs";
 
 function defaultNow() {
@@ -47,59 +47,7 @@ function requireCatalogProductInput(input) {
 }
 
 export function createCatalogStore({ dbPath, now = defaultNow, log = defaultLog } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      slug TEXT NOT NULL UNIQUE,
-      name TEXT NOT NULL,
-      primary_offer_policy TEXT NOT NULL DEFAULT 'lowest_price' CHECK (primary_offer_policy = 'lowest_price'),
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS products (
-      id TEXT PRIMARY KEY,
-      category_id TEXT NOT NULL,
-      slug TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      description TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (category_id) REFERENCES categories(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS product_media (
-      id TEXT PRIMARY KEY,
-      product_id TEXT NOT NULL,
-      url TEXT NOT NULL,
-      alt_text TEXT,
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (product_id) REFERENCES products(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS product_variants (
-      id TEXT PRIMARY KEY,
-      product_id TEXT NOT NULL,
-      sku TEXT NOT NULL UNIQUE,
-      title TEXT NOT NULL,
-      attributes_json TEXT NOT NULL DEFAULT '{}',
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (product_id) REFERENCES products(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS vendor_offers (
-      id TEXT PRIMARY KEY,
-      product_id TEXT NOT NULL,
-      variant_id TEXT,
-      vendor_id TEXT NOT NULL,
-      currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
-      price_usd TEXT NOT NULL,
-      list_price_usd TEXT,
-      stock_quantity INTEGER NOT NULL CHECK (stock_quantity >= 0),
-      is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)),
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (product_id) REFERENCES products(id),
-      FOREIGN KEY (variant_id) REFERENCES product_variants(id)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS vendor_offers_product_eligibility_idx ON vendor_offers(product_id, is_active, stock_quantity, vendor_id);
-  `);
+  const db = openDatabase(dbPath);
   return { db, now, log, close: () => db.close() };
 }
 

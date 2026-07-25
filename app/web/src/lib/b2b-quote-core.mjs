@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, isUniqueViolationError, openDatabase, tableExists } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
@@ -50,7 +50,7 @@ function requireOrganizationForActor(store, user) {
 }
 
 function productExists(store, productId) {
-  if (!store.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'").get()) return true;
+  if (!tableExists(store.db, "products")) return true;
   return Boolean(store.db.prepare("SELECT 1 FROM products WHERE id = ? LIMIT 1").get(productId));
 }
 
@@ -94,57 +94,7 @@ export function createB2bQuoteStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-013", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS organizations (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS organization_members (
-      organization_id TEXT NOT NULL,
-      user_id TEXT NOT NULL UNIQUE,
-      created_at INTEGER NOT NULL,
-      PRIMARY KEY (organization_id, user_id),
-      FOREIGN KEY (organization_id) REFERENCES organizations(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS selection_lists (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      created_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (organization_id) REFERENCES organizations(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS selection_list_items (
-      id TEXT PRIMARY KEY,
-      selection_list_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity >= 1),
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (selection_list_id) REFERENCES selection_lists(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS b2b_quotes (
-      id TEXT PRIMARY KEY,
-      organization_id TEXT NOT NULL,
-      selection_list_id TEXT,
-      status TEXT NOT NULL CHECK (status IN ('draft', 'sent', 'negotiating', 'won', 'lost')),
-      created_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (organization_id) REFERENCES organizations(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS b2b_quote_items (
-      id TEXT PRIMARY KEY,
-      quote_id TEXT NOT NULL,
-      product_id TEXT NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity >= 1),
-      unit_price_usd TEXT,
-      FOREIGN KEY (quote_id) REFERENCES b2b_quotes(id)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS b2b_quotes_status_idx ON b2b_quotes(status, updated_at DESC, id DESC);
-    CREATE INDEX IF NOT EXISTS b2b_quotes_org_idx ON b2b_quotes(organization_id, updated_at DESC, id DESC);
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -164,7 +114,7 @@ export function addOrganizationMember(store, actor, input) {
   try {
     store.db.prepare("INSERT INTO organization_members (organization_id, user_id, created_at) VALUES (?, ?, ?)").run(organizationId, userId, store.clock());
   } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) throw new Error("User already belongs to an organization.");
+    if (isUniqueViolationError(error)) throw new Error("User already belongs to an organization.");
     throw error;
   }
   store.log("b2b_organization_member_added", { result: "accepted", organization_id: organizationId });

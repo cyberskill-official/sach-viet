@@ -1,5 +1,5 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase } from "./db.mjs";
 import { isKnownRole } from "./access.mjs";
 
 const PHPASS_ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -71,7 +71,10 @@ function defaultNow() {
 }
 
 function defaultLog(event, fields = {}) {
-  console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-002", ...fields }));
+  const line = JSON.stringify({ event, task_id: "TASK-REBUILD-002", ...fields });
+  if (fields.result === "failed") console.error(line);
+  else if (fields.result === "rejected") console.warn(line);
+  else console.info(line);
 }
 
 function constantTimeEqual(a, b) {
@@ -118,87 +121,25 @@ export function verifyPassword(password, storedHash) {
   return constantTimeEqual(actual, expected);
 }
 
-export function ensureAuthLegacyColumns(store) {
-  const columns = store.db.prepare("PRAGMA table_info(users)").all().map((row) => row.name);
-  if (!columns.includes("legacy_wp_user_id")) {
-    store.db.exec("ALTER TABLE users ADD COLUMN legacy_wp_user_id TEXT");
-  }
-  store.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS users_legacy_wp_user_id_uq ON users(legacy_wp_user_id) WHERE legacy_wp_user_id IS NOT NULL");
-}
+/** No-op: legacy columns and index are now applied by the initial migration. */
+export function ensureAuthLegacyColumns() {}
 
 /**
- * Upgrades email-only login_attempts (pre-harden) to a composite (email, client_key) key
- * so a remote attacker cannot lock out a victim logging in from a different IP/device.
+ * No-op: login_attempts schema (including composite primary key) is applied by the initial
+ * migration. Kept as an export so callers (e.g. tests) don't break.
  */
-export function ensureLoginAttemptsSchema(store) {
-  const columns = store.db.prepare("PRAGMA table_info(login_attempts)").all();
-  if (columns.length === 0) {
-    store.db.exec(`
-      CREATE TABLE login_attempts (
-        email TEXT NOT NULL,
-        client_key TEXT NOT NULL,
-        failures INTEGER NOT NULL,
-        window_started_at INTEGER NOT NULL,
-        locked_until INTEGER NOT NULL,
-        PRIMARY KEY (email, client_key)
-      ) STRICT;
-    `);
-    return;
-  }
-  if (columns.some((column) => column.name === "client_key")) return;
+export function ensureLoginAttemptsSchema() {}
 
-  store.db.exec(`
-    CREATE TABLE login_attempts_v2 (
-      email TEXT NOT NULL,
-      client_key TEXT NOT NULL,
-      failures INTEGER NOT NULL,
-      window_started_at INTEGER NOT NULL,
-      locked_until INTEGER NOT NULL,
-      PRIMARY KEY (email, client_key)
-    ) STRICT;
-    INSERT INTO login_attempts_v2 (email, client_key, failures, window_started_at, locked_until)
-      SELECT email, 'unknown', failures, window_started_at, locked_until FROM login_attempts;
-    DROP TABLE login_attempts;
-    ALTER TABLE login_attempts_v2 RENAME TO login_attempts;
-  `);
-}
-
-export function createAuthStore({ dbPath, now = defaultNow, log = defaultLog } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS sessions (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      expires_at INTEGER NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS login_attempts (
-      email TEXT NOT NULL,
-      client_key TEXT NOT NULL,
-      failures INTEGER NOT NULL,
-      window_started_at INTEGER NOT NULL,
-      locked_until INTEGER NOT NULL,
-      PRIMARY KEY (email, client_key)
-    ) STRICT;
-  `);
-  const store = { db, now, log, close: () => db.close() };
-  ensureLoginAttemptsSchema(store);
-  return store;
+export function createAuthStore({ dbPath, databaseUrl, now = defaultNow, log = defaultLog } = {}) {
+  const db = openDatabase(dbPath, { databaseUrl });
+  return { db, now, log, close: () => db.close() };
 }
 
 export function getAuthStore() {
-  const path = process.env.DATABASE_PATH || "/data/sachviet.sqlite";
-  if (!cachedStore || cachedStore.path !== path) {
+  const url = process.env.DATABASE_URL || undefined;
+  if (!cachedStore || cachedStore.url !== url) {
     cachedStore?.store.close();
-    cachedStore = { path, store: createAuthStore({ dbPath: path }) };
+    cachedStore = { url, store: createAuthStore({ databaseUrl: url }) };
   }
   return cachedStore.store;
 }

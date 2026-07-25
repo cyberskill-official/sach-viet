@@ -1,10 +1,14 @@
-// Worker used by sqlite-concurrency.test.mjs: performs write transactions
-// against a shared database to contend with a sibling worker.
+// Reusable Postgres writer worker: performs write transactions against a shared
+// Postgres schema to contend with a sibling worker. Kept for future Worker-thread
+// concurrency tests; pg-concurrency.test.mjs currently uses in-process sessions.
 import { parentPort, workerData } from "node:worker_threads";
-import { beginImmediateWithRetry, openSqliteDatabase } from "../../src/lib/sqlite.mjs";
+import { beginImmediateWithRetry, openDatabase } from "../../src/lib/db.mjs";
 
-const { dbPath, writerId, iterations } = workerData;
-const db = openSqliteDatabase(dbPath);
+const { dbPath, schema, writerId, iterations } = workerData;
+
+// Use explicit schema + skipMigrations so the worker does not race on CREATE SCHEMA
+// against the main-thread setup connection (which keeps the schema alive).
+const db = openDatabase(dbPath, { schema, skipMigrations: true });
 const insert = db.prepare("INSERT INTO concurrency_probe (id, writer, iteration) VALUES (?, ?, ?)");
 
 for (let iteration = 0; iteration < iterations; iteration += 1) {

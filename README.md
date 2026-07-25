@@ -4,25 +4,33 @@ SachViet is a private greenfield rebuild of a Vietnamese-book marketplace for re
 
 ## Current repository truth
 
-- The active application is `app/web`: Next.js 16, React 19, TypeScript, and SQLite through Node's `node:sqlite`.
+- The active application is `app/web`: Next.js 16, React 19, TypeScript, and **Postgres** (local Docker + CI; Vercel + Supabase is the production target). CapRover/SQLite is transitional only.
 - The live WordPress store and any production environment are outside this repository's verified state. This README does not claim production readiness, deployment, or cutover.
 - Current scope, deferrals, and readiness: `docs/07-status-roadmap.md`.
 - Local, container, preview-preparation, and deployment-safety guidance: `app/web/OPERATIONS.md`.
+- **Docker acceptance gate (Wave 4):** `docs/docker-acceptance-gate.md` — **Vercel production deploy is forbidden** until the OPERATIONS checklist is 100% green; preview only after local items 1–7 pass.
+- **Vercel + Supabase preview wiring (Wave 5):** `docs/deploy-vercel-supabase.md` — Preview only after the gate; no production without explicit operator go. CapRover is transitional.
 - Historical handoff documents `docs/01-vision.md` through `docs/06-tech-stack.md` are archived context. Their Nuxt/Laravel topology and production claims are not the current implementation.
 
 ## Development
 
-Use Node.js 24 and run from `app/web`:
+Use Node.js 24 and run from `app/web`. Tests and migrate expect Postgres (`DATABASE_URL`; Compose publishes `127.0.0.1:54329`):
 
 ```bash
+# From app/: docker compose up -d db   # or use CI service / local Postgres
+cd app/web
 npm ci
+export DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet
+npm run migrate
 npm run lint
 npm test
 npm run verify
 npm run build
 ```
 
-GitHub Actions runs the same checks on pushes and pull requests. It does not deploy.
+Local production-like stack (Postgres + web + optional seed): see `app/web/OPERATIONS.md` § Local Docker.
+
+GitHub Actions runs the same checks on pushes and pull requests (with a Postgres service). It does not deploy.
 
 ## Governance and licensing
 

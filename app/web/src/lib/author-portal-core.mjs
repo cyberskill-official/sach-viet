@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { openSqliteDatabase } from "./sqlite.mjs";
+import { openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 import {
   assertRoyaltyActivationGate,
@@ -77,37 +77,7 @@ export function createAuthorPortalStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-018", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS author_manuscript_requests (
-      id TEXT PRIMARY KEY,
-      author_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      notes TEXT NOT NULL DEFAULT '',
-      storage_key TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('submitted', 'withdrawn')),
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS author_manuscript_requests_author_updated_idx
-      ON author_manuscript_requests(author_id, updated_at DESC, id DESC);
-
-    CREATE TABLE IF NOT EXISTS author_manuscript_request_logs (
-      id TEXT PRIMARY KEY,
-      manuscript_request_id TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('submitted', 'withdrawn')),
-      actor_id TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS author_manuscript_request_logs_request_created_idx
-      ON author_manuscript_request_logs(manuscript_request_id, created_at ASC, id ASC);
-
-    CREATE TABLE IF NOT EXISTS royalty_decision_acceptances (
-      decision_area TEXT PRIMARY KEY,
-      accepted_at INTEGER NOT NULL,
-      authority_source TEXT NOT NULL
-    ) STRICT;
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 

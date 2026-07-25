@@ -65,9 +65,6 @@ test("enabled channels use recording stubs and omit raw recipients", () =>
     assert.equal(prefs.channels.find((row) => row.channel === "email").isEnabled, true);
     assert.equal(prefs.channels.find((row) => row.channel === "zalo").isEnabled, true);
 
-    store.db.exec(`CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY, email TEXT NOT NULL, password_hash TEXT NOT NULL, role TEXT NOT NULL, created_at INTEGER NOT NULL
-    ) STRICT;`);
     store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)").run(
       customer.id,
       "customer@example.com",

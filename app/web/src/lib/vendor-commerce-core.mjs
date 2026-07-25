@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, isUniqueViolationError, openDatabase } from "./db.mjs";
 import { canAccessOwnedRecord, normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -31,23 +31,7 @@ function resolveVendorId(actor, requestedVendorId) {
 }
 
 export function createVendorCommerceStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-008", ...fields })) } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS payouts (
-      id TEXT PRIMARY KEY,
-      vendor_id TEXT NOT NULL,
-      amount_usd TEXT NOT NULL,
-      created_by TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS payout_items (
-      id TEXT PRIMARY KEY,
-      payout_id TEXT NOT NULL,
-      order_item_id TEXT NOT NULL UNIQUE,
-      FOREIGN KEY (payout_id) REFERENCES payouts(id)
-    ) STRICT;
-    CREATE INDEX IF NOT EXISTS payouts_vendor_created_idx ON payouts(vendor_id, created_at DESC, id DESC);
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -91,7 +75,7 @@ export function createVendorPayout(store, actor, input) {
     for (const orderItemId of orderItemIds) {
       try { insertItem.run(identifier(), payout.id, orderItemId); }
       catch (error) {
-        if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) throw new Error("Order item is already included in a payout.");
+        if (isUniqueViolationError(error)) throw new Error("Order item is already included in a payout.");
         throw error;
       }
     }

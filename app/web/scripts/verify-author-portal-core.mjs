@@ -3,10 +3,10 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const source = readFileSync(resolve(root, "src/lib/author-portal-core.mjs"), "utf8");
+const migration = readFileSync(resolve(root, "migrations/001_initial_schema.sql"), "utf8");
 for (const required of [
   "author_manuscript_requests",
   "author_manuscript_request_logs",
-  "royalty_decision_acceptances",
   "createAuthorManuscriptRequest",
   "listAuthorManuscriptRequests",
   "getAuthorManuscriptRequest",
@@ -19,6 +19,9 @@ for (const required of [
   "TASK-REBUILD-018",
 ]) {
   if (!source.includes(required)) throw new Error(`Author portal core is missing ${required}.`);
+}
+if (!migration.includes("royalty_decision_acceptances")) {
+  throw new Error("Initial schema must include royalty_decision_acceptances.");
 }
 
 if (source.includes("STRIPE_") || source.includes("createStripeCheckoutSession")) {

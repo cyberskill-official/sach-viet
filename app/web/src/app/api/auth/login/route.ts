@@ -37,7 +37,14 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ user: result.user, redirectTo: safeRedirect(body.redirect) });
     response.headers.append("Set-Cookie", result.cookie);
     return response;
-  } catch {
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "auth_login_failed",
+        result: "failed",
+        reason: error instanceof Error ? error.message : "auth_not_configured",
+      }),
+    );
     return NextResponse.json({ error: "Authentication is not configured." }, { status: 503 });
   }
 }

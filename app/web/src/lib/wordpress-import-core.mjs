@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { normalizeRole } from "./access.mjs";
 import { ensureAuthLegacyColumns, normalizeEmail } from "./auth-core.mjs";
 import { ensureCommerceLegacyColumns } from "./commerce-core.mjs";
-import { beginImmediateWithRetry } from "./sqlite.mjs";
+import { beginImmediateWithRetry } from "./db.mjs";
 
 function identifier() {
   return randomBytes(16).toString("hex");
@@ -33,29 +33,8 @@ function isPhpassHash(value) {
   return typeof value === "string" && (value.startsWith("$P$") || value.startsWith("$H$")) && value.length >= 34;
 }
 
-export function ensureWordpressImportRunSchema(store) {
-  store.db.exec(`
-    CREATE TABLE IF NOT EXISTS wordpress_import_runs (
-      id TEXT PRIMARY KEY,
-      mode TEXT NOT NULL CHECK (mode IN ('dry_run', 'apply')),
-      accepted_count INTEGER NOT NULL,
-      skipped_count INTEGER NOT NULL,
-      unmatched_count INTEGER NOT NULL,
-      rejected_count INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS wordpress_import_outcomes (
-      id TEXT PRIMARY KEY,
-      run_id TEXT NOT NULL,
-      entity_type TEXT NOT NULL CHECK (entity_type IN ('user', 'order')),
-      legacy_id TEXT,
-      outcome TEXT NOT NULL CHECK (outcome IN ('accepted', 'skipped_duplicate', 'unmatched', 'rejected')),
-      reason TEXT,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (run_id) REFERENCES wordpress_import_runs(id)
-    ) STRICT;
-  `);
-}
+/** No-op: wordpress_import_runs and wordpress_import_outcomes schema is applied by the initial migration. */
+export function ensureWordpressImportRunSchema() {}
 
 export function ensureWordpressImportSchema(authStore, commerceStore) {
   ensureAuthLegacyColumns(authStore);

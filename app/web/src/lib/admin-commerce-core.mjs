@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, isUniqueViolationError, openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -10,28 +10,7 @@ function moneyUnits(value) { const [whole, fraction = ""] = value.split("."); re
 function moneyString(value) { return `${value / 10000n}.${String(value % 10000n).padStart(4, "0")}`; }
 
 export function createAdminCommerceStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-007", ...fields })) } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS vendor_applications (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL UNIQUE,
-      status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected')),
-      rejection_reason TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS orders (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('pending_payment', 'paid', 'payment_failed')),
-      currency TEXT NOT NULL CHECK (currency = 'USD'),
-      subtotal_usd TEXT NOT NULL,
-      checkout_url TEXT,
-      stripe_session_id TEXT UNIQUE,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -41,7 +20,7 @@ export function submitVendorApplication(store, user) {
   try {
     store.db.prepare("INSERT INTO vendor_applications (id, user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").run(application.id, application.userId, application.status, store.clock(), store.clock());
   } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) throw new Error("A vendor application already exists for this user.");
+    if (isUniqueViolationError(error)) throw new Error("A vendor application already exists for this user.");
     throw error;
   }
   store.log("vendor_application_submitted", { result: "accepted", vendor_application_id: application.id });

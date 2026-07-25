@@ -1,4 +1,21 @@
 services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "127.0.0.1:54329:5432"
+    environment:
+      POSTGRES_USER: sachviet
+      POSTGRES_PASSWORD: sachviet
+      POSTGRES_DB: sachviet
+    volumes:
+      - sachviet-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sachviet -d sachviet"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   web:
     build:
       context: ./web
@@ -7,9 +24,10 @@ services:
     env_file:
       - .env.docker
     environment:
-      DATABASE_PATH: /data/sachviet.sqlite
-    volumes:
-      - sachviet-data:/data
+      DATABASE_URL: postgres://sachviet:sachviet@db:5432/sachviet
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -21,25 +39,32 @@ services:
       retries: 5
       start_period: 20s
 
-  # One-shot local seeding. Runs the seed script from the source tree against the
-  # same SQLite volume the web service uses. Never started by `docker compose up`.
+  # One-shot local seeding. Runs against the Compose Postgres service.
+  # Never started by `docker compose up` — use: docker compose --profile seed run --rm seed
   seed:
-    image: node:24-alpine
+    image: node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd
     profiles:
       - seed
-    # Matches the runtime image's nextjs user so files this container creates on a
-    # fresh volume stay writable by the web service.
-    user: "1001:1001"
     working_dir: /app
     env_file:
       - .env.docker
     environment:
-      DATABASE_PATH: /data/sachviet.sqlite
+      DATABASE_URL: postgres://sachviet:sachviet@db:5432/sachviet
+      # Prefer host SEED_PASSWORD; otherwise write 0600 file under app/web/.seed-password.
+      SEED_PASSWORD: ${SEED_PASSWORD:-}
+      SEED_PASSWORD_FILE: /seed-out/.seed-password
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
-      - sachviet-data:/data
       - ./web/scripts:/app/scripts:ro
       - ./web/src/lib:/app/src/lib:ro
+      - ./web/migrations:/app/migrations:ro
+      - ./web/package.json:/app/package.json:ro
+      - ./web/node_modules:/app/node_modules:ro
+      - ./web:/seed-out
     command: ["node", "scripts/seed-local.mjs"]
 
+
 volumes:
-  sachviet-data:
+  sachviet-pg:

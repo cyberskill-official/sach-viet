@@ -20,6 +20,24 @@ jobs:
       run:
         working-directory: app/web
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sachviet
+          POSTGRES_PASSWORD: sachviet
+          POSTGRES_DB: sachviet
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U sachviet -d sachviet"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://sachviet:sachviet@127.0.0.1:54329/sachviet
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -51,6 +69,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Migrate
+        run: npm run migrate
 
       - name: Test
         run: npm test

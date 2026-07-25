@@ -33,6 +33,13 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+!.env.vercel.example
+
+# Local seed password file written by npm run seed:local (mode 0600)
+.seed-password
+
+# Operator Postgres dumps from npm run backup:pg
+/backups/
 
 # vercel
 .vercel

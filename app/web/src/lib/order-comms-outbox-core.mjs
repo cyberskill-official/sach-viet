@@ -32,25 +32,8 @@ export function orderCommsRetryDelayMs(attempt) {
   return Math.min(BASE_RETRY_DELAY_MS * 2 ** exponent, MAX_RETRY_DELAY_MS);
 }
 
+/** No-op: order_comms_outbox schema is applied by the initial migration. */
 export function ensureOrderCommsOutboxSchema(store) {
-  if (schemaReady.has(store)) return;
-  store.db.exec(`
-    CREATE TABLE IF NOT EXISTS order_comms_outbox (
-      id TEXT PRIMARY KEY,
-      order_id TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('order.paid')),
-      status TEXT NOT NULL CHECK (status IN ('pending', 'delivered', 'abandoned')),
-      attempts INTEGER NOT NULL CHECK (attempts >= 0),
-      available_at INTEGER NOT NULL,
-      last_error TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE UNIQUE INDEX IF NOT EXISTS order_comms_outbox_order_kind_uq
-      ON order_comms_outbox(order_id, kind);
-    CREATE INDEX IF NOT EXISTS order_comms_outbox_ready_idx
-      ON order_comms_outbox(status, available_at);
-  `);
   schemaReady.add(store);
 }
 
@@ -66,9 +49,10 @@ export function enqueueOrderComms(store, orderId, { kind = "order.paid" } = {}) 
   const timestamp = store.clock();
   const inserted = store.db
     .prepare(
-      `INSERT OR IGNORE INTO order_comms_outbox
+      `INSERT INTO order_comms_outbox
         (id, order_id, kind, status, attempts, available_at, last_error, created_at, updated_at)
-       VALUES (?, ?, ?, 'pending', 0, ?, NULL, ?, ?)`,
+       VALUES (?, ?, ?, 'pending', 0, ?, NULL, ?, ?)
+       ON CONFLICT DO NOTHING`,
     )
     .run(identifier(), orderId, kind, timestamp, timestamp, timestamp);
   return { enqueued: inserted.changes === 1, orderId, kind };

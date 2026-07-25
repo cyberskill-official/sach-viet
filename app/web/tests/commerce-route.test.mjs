@@ -12,9 +12,11 @@ test("commerce routes use signed sessions and raw Stripe webhook verification", 
   const cart = readFileSync(resolve(root, "src/components/cart-panel.tsx"), "utf8");
   assert.match(checkout, /readSession/);
   assert.match(checkout, /createStripeCheckoutSession/);
+  assert.match(webhook, /STRIPE_WEBHOOK_MAX_BODY_BYTES/);
   assert.match(webhook, /request\.text/);
   assert.match(webhook, /processStripeWebhook/);
   assert.match(webhook, /processOrderCommsOutbox/);
+  assert.match(webhook, /console\.error/);
   assert.match(orders, /listCustomerOrders/);
   assert.match(cart, /localStorage/);
   assert.match(cart, /plasticCover/);

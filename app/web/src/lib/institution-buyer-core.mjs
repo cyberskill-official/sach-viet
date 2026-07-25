@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { beginImmediateWithRetry, openSqliteDatabase } from "./sqlite.mjs";
+import { beginImmediateWithRetry, openDatabase, tableExists } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
@@ -83,22 +83,7 @@ export function createInstitutionBuyerStore({
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-015", ...fields })),
 } = {}) {
-  const db = openSqliteDatabase(dbPath);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS institution_budgets (
-      organization_id TEXT PRIMARY KEY,
-      amount_usd TEXT NOT NULL,
-      currency TEXT NOT NULL CHECK (currency = 'USD'),
-      updated_by TEXT NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-    CREATE TABLE IF NOT EXISTS institution_marc_records (
-      product_id TEXT PRIMARY KEY,
-      storage_key TEXT NOT NULL,
-      updated_by TEXT NOT NULL,
-      updated_at INTEGER NOT NULL
-    ) STRICT;
-  `);
+  const db = openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -190,7 +175,7 @@ export function registerInstitutionMarcRecord(store, actor, input) {
   staffActor(actor);
   const productId = required(input?.productId, "Product ID");
   const storageKey = assertOpaqueStorageKey(required(input?.storageKey, "Storage key"));
-  if (store.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'products'").get()) {
+  if (tableExists(store.db, "products")) {
     if (!store.db.prepare("SELECT 1 FROM products WHERE id = ? LIMIT 1").get(productId)) {
       throw new Error("Product does not exist.");
     }

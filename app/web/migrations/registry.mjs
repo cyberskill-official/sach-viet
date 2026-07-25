@@ -1,25 +1,42 @@
 /**
  * Ordered schema migrations. Add new entries at the end; never reorder or
- * rewrite an already-shipped `id`. Keep each `up` additive and STRICT-friendly.
+ * rewrite an already-shipped `id`. Keep each `up` additive.
  *
- * Follow-up (not in this foundation): move dual-owned CREATE TABLE definitions
- * (orders, notifications, royalty_decision_acceptances) into numbered migrations
- * and thin the per-module ensureSchema helpers.
+ * Wave 1 folded dual-owned CREATE TABLE definitions into `001_initial_schema`
+ * so store factories no longer own DDL.
  */
+
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/**
+ * Prefer cwd/`migrations` so Next Turbopack does not rewrite
+ * `fileURLToPath(import.meta.url)` into a broken media path during build.
+ * Dockerfile copies SQL into `/app/migrations` beside the standalone server.
+ */
+function migrationsDir() {
+  const candidate = join(process.cwd(), "migrations");
+  if (!existsSync(join(candidate, "001_initial_schema.sql"))) {
+    throw new Error(`migrations SQL not found under ${candidate} (cwd=${process.cwd()})`);
+  }
+  return candidate;
+}
+
+function loadSql(name) {
+  return readFileSync(join(migrationsDir(), name), "utf8");
+}
 
 export const MIGRATIONS = Object.freeze([
   {
-    id: "001_user_channel_endpoints",
+    id: "001_initial_schema",
     up(db) {
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS user_channel_endpoints (
-          user_id TEXT NOT NULL,
-          channel TEXT NOT NULL CHECK (channel IN ('email', 'zalo')),
-          endpoint TEXT NOT NULL,
-          updated_at INTEGER NOT NULL,
-          PRIMARY KEY (user_id, channel)
-        ) STRICT;
-      `);
+      db.exec(loadSql("001_initial_schema.sql"));
+    },
+  },
+  {
+    id: "002_ai_settings",
+    up(db) {
+      db.exec(loadSql("002_ai_settings.sql"));
     },
   },
 ]);

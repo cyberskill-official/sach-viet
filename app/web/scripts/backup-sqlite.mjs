@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * @deprecated Transitional CapRover/SQLite artefact. Prefer `backup-postgres.mjs`
+ * (`npm run backup:pg`) for local Docker / Postgres.
+ *
  * Online-safe SQLite backup: opens the live DB, checkpoints WAL into the main
  * file, then copies the main database file to the destination.
  *

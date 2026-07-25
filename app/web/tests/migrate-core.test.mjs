@@ -1,27 +1,22 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { MIGRATIONS } from "../migrations/registry.mjs";
 import { applyPendingMigrationsSync, listAppliedMigrations } from "../src/lib/migrate.mjs";
-import { openSqliteDatabase } from "../src/lib/sqlite.mjs";
+import { openDatabase, tableExists } from "../src/lib/db.mjs";
 
-test("openSqliteDatabase applies the migration registry once", () => {
-  const directory = mkdtempSync(join(tmpdir(), "sachviet-migrate-"));
-  const dbPath = join(directory, "app.sqlite");
+test("openDatabase applies the migration registry once", () => {
+  const dbPath = `/tmp/sachviet-migrate-test-${randomUUID()}`;
+  const db = openDatabase(dbPath);
   try {
-    const db = openSqliteDatabase(dbPath);
     const applied = listAppliedMigrations(db);
-    assert.ok(applied.some((row) => row.id === "001_user_channel_endpoints"));
-    const table = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_channel_endpoints'")
-      .get();
-    assert.equal(table.name, "user_channel_endpoints");
+    assert.ok(applied.some((row) => row.id === "001_initial_schema"));
+    assert.ok(applied.some((row) => row.id === "002_ai_settings"));
+    assert.ok(tableExists(db, "user_channel_endpoints"));
+    assert.ok(tableExists(db, "ai_settings"));
     const second = applyPendingMigrationsSync(db, MIGRATIONS);
     assert.deepEqual(second.applied, []);
-    db.close();
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    db.close();
   }
 });

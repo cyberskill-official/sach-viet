@@ -38,6 +38,21 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // `pg` stays external; include it (and the synckit worker) in standalone
+  // tracing so /app/node_modules/pg exists for db-worker.mjs at runtime.
+  serverExternalPackages: ["pg"],
+  outputFileTracingIncludes: {
+    "/*": [
+      "./src/lib/db-worker.mjs",
+      "./node_modules/pg/**/*",
+      "./node_modules/pg-*/**/*",
+      "./node_modules/postgres-*/**/*",
+      "./node_modules/pgpass/**/*",
+      "./node_modules/split2/**/*",
+      "./node_modules/xtend/**/*",
+      "./node_modules/synckit/**/*",
+    ],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
