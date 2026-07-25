@@ -20,7 +20,7 @@ function createFixture() {
   }));
   writeFileSync(resolve(fixtureRoot, "next.config.ts"), 'export default { output: "standalone" };');
   writeFileSync(resolve(fixtureRoot, "src/app/layout.tsx"), "export default function Layout() { return null; }");
-  writeFileSync(resolve(fixtureRoot, "src/app/page.tsx"), "Greenfield Next.js foundation");
+  writeFileSync(resolve(fixtureRoot, "src/app/page.tsx"), "Storefront");
   writeFileSync(resolve(fixtureRoot, "Dockerfile"), "FROM node:24-alpine");
   writeFileSync(resolve(fixtureRoot, "captain-definition"), JSON.stringify({ schemaVersion: 2 }));
   writeFileSync(resolve(fixtureRoot, "OPERATIONS.md"), "Foundation operations.");
