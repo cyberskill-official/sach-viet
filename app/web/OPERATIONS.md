@@ -75,6 +75,62 @@ Add `-v` only if you intend to reset the SQLite volume (`sachviet-data`).
 
 When SMTP, Zalo, Stripe webhook, or Meili env vars are unset, those integrations use recording stubs / local defaults. Compose always sets `DATABASE_PATH` to `/data/sachviet.sqlite` on the named volume.
 
+Password hashes contain `$` characters. Keep them in `app/.env.docker`, where Compose passes values through literally. If you ever inline a hash under a service `environment:` key instead, double every `$` (`scrypt$$salt$$digest`) so Compose does not treat it as variable interpolation.
+
+### Seeding local demo data
+
+`app/web/scripts/seed-local.mjs` fills the SQLite database with a walkthrough dataset: three categories, ten Vietnamese book products (one deliberately out of stock), competing vendor offers, two vendors, two customers, one paid and one pending order, one vendor payout, one pending vendor application, notifications, a review, and a support ticket. It is **local development material only** and must never run against a deployed database.
+
+The seed is idempotent. Catalog rows are upserted; orders, payouts, applications, notifications, and support records are created only when the seeded user has none. It also runs the first-admin bootstrap before creating any seed user, so an operator-configured `BOOTSTRAP_ADMIN_EMAIL` account is still created rather than blocked by the seed data.
+
+**Against the Docker volume** (recommended; run from `app/` with the stack already up):
+
+```bash
+docker compose --profile seed run --rm seed
+```
+
+The `seed` service is a one-shot `node:24-alpine` container that mounts the same `sachviet-data` volume plus a read-only copy of `web/scripts` and `web/src/lib`. It never starts with `docker compose up`.
+
+To choose the account password instead of accepting a generated one:
+
+```bash
+SEED_PASSWORD='<local-only-password>' docker compose --profile seed run --rm -e SEED_PASSWORD seed
+```
+
+**Against a host database** (for example when running `next dev` outside Docker), from `app/web`:
+
+```bash
+DATABASE_PATH=./data/sachviet.sqlite npm run seed:local
+```
+
+The script prints the seeded accounts and the password used. Every seeded account shares that one password, and re-running the seed resets all seeded accounts to the current password. Do not record the value in this file, in `.env` files, or in commits.
+
+Seeded accounts (`admin`, two `vendor`, two `customer`) all use the `@sachviet.test` reserved domain so they cannot collide with real addresses.
+
+To reset to a clean database, tear down with `docker compose down -v`, bring the stack back up, and seed again.
+
+### Local end-to-end smoke
+
+With the stack up and seeded, these checks exercise the storefront and admin paths:
+
+```bash
+curl -s http://127.0.0.1:3000/api/catalog/products | head -c 400   # seeded products with a buy box
+curl -s "http://127.0.0.1:3000/api/catalog/products?q=hoang%20tu%20be"   # Vietnamese search without diacritics
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3000/products/hoang-tu-be
+curl -s -c /tmp/sv-cookies -X POST http://127.0.0.1:3000/api/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"admin.seed@sachviet.test","password":"<seed password>"}'
+curl -s -b /tmp/sv-cookies http://127.0.0.1:3000/api/admin/commerce/dashboard
+```
+
+Then open `http://127.0.0.1:3000` for the storefront and `http://127.0.0.1:3000/admin` after signing in as the seeded administrator.
+
+Expected local limits:
+
+- **Checkout stops at Stripe.** `POST /api/checkout` creates the pending order and then returns `400 Stripe checkout is not configured.` because `STRIPE_SECRET_KEY`, `STRIPE_SUCCESS_URL`, and `STRIPE_CANCEL_URL` are unset. The cart shows that message; the pending order is visible at `/ecom/orders`. Orders never reach `paid` locally without a Stripe session and a signed webhook.
+- **Email, Zalo, Meilisearch, and WordPress import** stay on recording stubs / local defaults, so the WordPress import panel reports `fixture · none` with no runs.
+- Only the admin portal has a populated dashboard. Other portals render the shared shell with an empty table or the pending-policy notice.
+
 ## Preview release preparation
 
 Prepare and validate a CapRover preview package offline (no CapRover API call, no push, no deploy):
