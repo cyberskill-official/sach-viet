@@ -55,7 +55,29 @@ test("signed Stripe completion updates only the referenced pending order", () =>
   const timestamp = "1700000000";
   const signature = `t=${timestamp},v1=${createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex")}`;
   assert.equal(verifyStripeSignature(payload, signature, secret), true);
-  assert.deepEqual(processStripeWebhook(commerce, payload, signature, secret), { handled: true, updated: true });
+  assert.deepEqual(processStripeWebhook(commerce, payload, signature, secret), {
+    handled: true,
+    updated: true,
+    orderId: order.id,
+  });
   assert.equal(listCustomerOrders(commerce, user)[0].status, "paid");
   assert.throws(() => processStripeWebhook(commerce, payload, "t=1,v1=bad", secret), /signature/);
+  assert.throws(() => processStripeWebhook(commerce, payload, signature, undefined), /signature/);
+  assert.throws(() => processStripeWebhook(commerce, payload, signature, "short"), /signature/);
+}));
+
+test("Stripe checkout rejects missing success or cancel URLs even when secret is set", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = fixture(catalog);
+  const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  await assert.rejects(
+    createStripeCheckoutSession(commerce, order.id, { STRIPE_SECRET_KEY: "sk_test_example" }),
+    /not configured/,
+  );
+  await assert.rejects(
+    createStripeCheckoutSession(commerce, order.id, {
+      STRIPE_SECRET_KEY: "sk_test_example",
+      STRIPE_SUCCESS_URL: "https://example.test/success",
+    }),
+    /not configured/,
+  );
 }));
