@@ -4,6 +4,13 @@ import {
   resolveEmailTransport,
 } from "./email-zalo-integrations-core.mjs";
 import { createNotification } from "./notification-core.mjs";
+import {
+  claimDueOrderComms,
+  ensureOrderCommsOutboxSchema,
+  markOrderCommsAbandoned,
+  markOrderCommsDelivered,
+  markOrderCommsFailed,
+} from "./order-comms-outbox-core.mjs";
 
 function identifier() {
   return randomBytes(16).toString("hex");
@@ -167,11 +174,77 @@ export function dispatchOrderPaidConfirmation(
     recipient_hash: redactRecipient(recipient),
   });
 
+  // `recorded` means a local stub accepted the payload — not a delivered email.
+  // Only `sent` counts as emailed / outbox-deliverable (B-009 / F-009).
   return {
-    emailed: outcome === "sent" || outcome === "recorded",
+    emailed: outcome === "sent",
     notified,
     outcome,
     transportMode: emailTransport.mode,
     recipientHash: redactRecipient(recipient),
   };
+}
+
+// Reasons that will never succeed on a later attempt, so retrying only delays the dead letter.
+const TERMINAL_DISPATCH_REASONS = new Set(["order_missing", "not_paid"]);
+
+/**
+ * Drains due `order_comms_outbox` entries. Runs the same way whether it is called inline by the
+ * Stripe webhook or later as a retry sweep: the queue state, not the webhook result, decides what
+ * still needs delivering, so an order whose first dispatch failed is picked up on replay.
+ */
+export function processOrderCommsOutbox(
+  store,
+  { orderId = null, limit = 10, dispatch = dispatchOrderPaidConfirmation, dispatchOptions = {} } = {},
+) {
+  ensureOrderCommsOutboxSchema(store);
+  const claimed = claimDueOrderComms(store, { orderId, limit });
+  const summary = { claimed: claimed.length, delivered: 0, retryScheduled: 0, abandoned: 0 };
+
+  for (const entry of claimed) {
+    let result = null;
+    let failureReason = null;
+    try {
+      result = dispatch(store, entry.orderId, dispatchOptions);
+    } catch (error) {
+      failureReason = error instanceof Error ? error.message : "dispatch_threw";
+    }
+
+    if (!failureReason && result?.outcome === "sent") {
+      markOrderCommsDelivered(store, entry.id);
+      summary.delivered += 1;
+      store.log?.("order_comms_outbox_delivered", {
+        result: "accepted",
+        order_id: entry.orderId,
+        kind: entry.kind,
+        attempt: entry.attempt,
+        outcome: result.outcome,
+      });
+      continue;
+    }
+
+    const reason =
+      failureReason ||
+      result?.reason ||
+      (result?.outcome === "recorded" ? "recorded_not_sent" : null) ||
+      result?.outcome ||
+      "not_emailed";
+    if (!failureReason && TERMINAL_DISPATCH_REASONS.has(reason)) {
+      markOrderCommsAbandoned(store, entry.id, reason);
+      summary.abandoned += 1;
+    } else {
+      const outcome = markOrderCommsFailed(store, entry.id, reason);
+      if (outcome.status === "abandoned") summary.abandoned += 1;
+      else summary.retryScheduled += 1;
+    }
+    store.log?.("order_comms_outbox_delivery_failed", {
+      result: "failed",
+      order_id: entry.orderId,
+      kind: entry.kind,
+      attempt: entry.attempt,
+      reason,
+    });
+  }
+
+  return summary;
 }
