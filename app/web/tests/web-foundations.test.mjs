@@ -11,7 +11,8 @@ test("locales fall back to Vietnamese and retain missing keys", () => {
 
 test("themes use only documented values", () => {
   assert.equal(normalizeTheme("dark"), "dark");
-  assert.equal(normalizeTheme("glass"), "glass");
+  assert.equal(normalizeTheme("light"), "light");
+  assert.equal(normalizeTheme("glass"), "light");
   assert.equal(normalizeTheme("unknown"), "light");
 });
 
