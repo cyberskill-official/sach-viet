@@ -249,6 +249,54 @@ DATABASE_PATH=/data/sachviet.sqlite node scripts/drain-order-comms-outbox.mjs
 
 Do not run `seed:local` against a production database.
 
+## SQLite backup and restore
+
+Practical backup/restore lives under `app/web/scripts/`. The backup opens the live DB, runs `PRAGMA wal_checkpoint(TRUNCATE)`, then copies the main database file. Restore copies a backup over `DATABASE_PATH` (after a safety copy) and probes `SELECT 1`.
+
+**Backup** (from `app/web`, or against the Compose volume with the stack stopped or briefly quiescent):
+
+```bash
+DATABASE_PATH=/data/sachviet.sqlite node scripts/backup-sqlite.mjs
+# or
+DATABASE_PATH=/path/to/sachviet.sqlite node scripts/backup-sqlite.mjs --out ./backups/sachviet-manual.sqlite
+```
+
+**Restore** (stop the web process first so writers are idle):
+
+```bash
+DATABASE_PATH=/data/sachviet.sqlite node scripts/restore-sqlite.mjs --from ./backups/sachviet-manual.sqlite
+```
+
+### Restore drill (operator evidence)
+
+The cutover gate `backup_verified` stays **unmet** until an operator records a successful drill. Suggested evidence path (create when you run the drill; do not invent a completed artefact):
+
+`docs/tasks/rebuild/TASK-REBUILD-023-b2c-parity-cutover-readiness/ship/backup-restore-drill.md`
+
+Minimum drill contents: timestamp, source DB path, backup file path + size, restore target, `SELECT 1` / login smoke result, operator initials. Completing the scripts alone does **not** satisfy `backup_verified`.
+
+### Schema migrations
+
+Versioned additive migrations live in `app/web/migrations/registry.mjs` and apply automatically from `openSqliteDatabase` via `schema_migrations`. Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids.
+
+**Follow-up (not done in this foundation):** move dual-owned `CREATE TABLE IF NOT EXISTS` definitions (`orders`, notification tables, `royalty_decision_acceptances`) into numbered migrations and thin the per-module ensure helpers.
+
+## Health probe
+
+`GET /api/health` opens SQLite and runs `SELECT 1`. Compose wires the `web` service healthcheck to this endpoint. A 200 with `{ "ok": true, "db": "ok" }` means the process and database file are reachable.
+
+## Catalog for staging vs production
+
+**Staging / local:** use `npm run seed:local` or Compose `--profile seed` (see Seeding above). Safe, idempotent, `@sachviet.test` accounts only.
+
+**Production catalog options (operator choose; do not unlock cutover here):**
+
+1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Suitable for a controlled catalog load without live MySQL.
+2. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
+3. **Admin day-2 entry** — create categories/products/offers via admin commerce APIs/UI after bootstrap.
+
+Do not run `seed:local` against a production database.
+
 ## Operator CapRover deploy checklist (Phase A — do not execute from this path)
 
 This checklist is an artefact for an authorized operator. Completing the list does **not** authorize deploy. Map each item to unmet cutover gates in `docs/tasks/rebuild/TASK-REBUILD-023-…/ship/cutover-plan.md`.
