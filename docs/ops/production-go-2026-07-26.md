@@ -34,7 +34,7 @@
 ## Operator execution checklist
 
 1. Vercel project **sachviet** (`cyberskill-world/sachviet`):
-   - Root Directory = `app/web`
+   - Root Directory = `app/web` (also pinned in repo-root `vercel.json` — required; `rootDirectory: null` was the Preview/Production deploy failure mode)
    - Node.js Version = **24.x**
    - Production branch = `main` (or promote the authorized deployment)
 2. Supabase: create/use Production project → `npm run migrate` with **direct** `DATABASE_URL` from a trusted machine.

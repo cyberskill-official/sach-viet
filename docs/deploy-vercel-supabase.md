@@ -53,9 +53,9 @@ Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg
 ## 2. Link Vercel to the repo / `app/web`
 
 1. Create or open a Vercel project linked to this Git repository.
-2. Set **Root Directory** to `app/web` (required — the Next app is not at the repo root).
-3. Framework: Next.js. Optional local config: [`app/web/vercel.json`](../app/web/vercel.json) (`installCommand` / `buildCommand` only).
-4. Node: match `engines` in `app/web/package.json` (`24.x`). Also set **Node.js Version = 24.x** in the Vercel project Build & Deployment settings so Preview is not stuck on 22.x.
+2. **Root Directory** must be `app/web`. Repo-root [`vercel.json`](../vercel.json) sets `"rootDirectory": "app/web"` so Git deployments do not build the monorepo root (`rootDirectory: null` fails with an empty Preview/Production URL). Still set the same path in the Vercel project UI when available.
+3. Framework: Next.js. App-local overrides: [`app/web/vercel.json`](../app/web/vercel.json).
+4. Node: match `engines` in `app/web/package.json` (`24.x`). Also set **Node.js Version = 24.x** in the Vercel project Build & Deployment settings.
 5. Prefer **Production** deployments from `main`. Preview may be disabled (operator: no Preview mode).
 
 `output: "standalone"` in `next.config.ts` remains for the Docker/CapRover image path. Vercel uses its own Next.js build pipeline; do not deploy the CapRover Dockerfile through Vercel.
