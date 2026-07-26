@@ -22,8 +22,8 @@
 
 ## Preview deploy status (PR #21)
 
-- GitHub Actions `web` job: green.
-- Vercel Preview: **failing** (empty `previewUrl`) as of 2026-07-26 — inspect `dpl_CFto5nYYgk41NgRzzKtvfRd8de5P` after Node 24.x / Root Directory / env are confirmed. Agents lack Vercel CLI/MCP credentials in this environment.
+- GitHub Actions `web` job: green (`2feac6a` and prior).
+- Vercel Preview: **failing** (empty `previewUrl`) as of 2026-07-26 — latest inspect id `dpl_5eWXU66rTNnVVpgvYhRKJuuShTeK` (prior `dpl_CFto5nYYgk41NgRzzKtvfRd8de5P`). After Node 24.x / Root Directory / Preview env are confirmed, redeploy and paste the build error (or authenticate Vercel MCP). Agents lack Vercel CLI/MCP credentials in this environment.
 
 ## Cutover gates (unchanged by this go)
 
