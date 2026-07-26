@@ -4,6 +4,7 @@
  * Exposes a DatabaseSync-compatible sync surface (prepare/get/all/run/exec)
  * backed by `pg` via a synckit worker, so existing store factories stay sync.
  */
+import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -35,7 +36,60 @@ function resolveDbWorkerPath() {
   );
 }
 
-const callWorker = createSyncFn(resolveDbWorkerPath());
+/** Lazy init — top-level createSyncFn can hang cold-start on some serverless hosts. */
+let callWorker;
+
+function getCallWorker() {
+  if (!callWorker) {
+    callWorker = createSyncFn(resolveDbWorkerPath());
+  }
+  return callWorker;
+}
+
+function resolveDbRpcPath() {
+  const besideModule = join(dirname(fileURLToPath(import.meta.url)), "db-rpc-oneshot.mjs");
+  const candidates = [
+    join(process.cwd(), "src/lib/db-rpc-oneshot.mjs"),
+    join(process.cwd(), "db-rpc-oneshot.mjs"),
+    besideModule,
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(
+    `db-rpc-oneshot.mjs not found (cwd=${process.cwd()}; tried ${candidates.join(", ")})`,
+  );
+}
+
+/**
+ * Vercel serverless: worker_threads / synckit hang. Use one-shot spawnSync RPC instead.
+ * @param {object} message
+ */
+function callViaSpawnSync(message) {
+  const rpc = resolveDbRpcPath();
+  const result = spawnSync(process.execPath, [rpc], {
+    input: JSON.stringify(message),
+    encoding: "utf8",
+    timeout: 20_000,
+    env: process.env,
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  const stdout = (result.stdout || "").trim();
+  let parsed;
+  try {
+    parsed = stdout ? JSON.parse(stdout) : null;
+  } catch {
+    throw new Error(
+      `db-rpc invalid JSON (status=${result.status}): ${(result.stderr || stdout).slice(0, 400)}`,
+    );
+  }
+  if (parsed?.__error) throw new Error(parsed.__error);
+  if (result.status !== 0) {
+    throw new Error((result.stderr || stdout || `db-rpc exited ${result.status}`).slice(0, 400));
+  }
+  return parsed?.__result;
+}
 
 /** Default local Compose Postgres (see app/docker-compose.yml). */
 export const DEFAULT_DATABASE_URL = "postgres://sachviet:sachviet@127.0.0.1:54329/sachviet";
@@ -67,7 +121,8 @@ function newSessionId() {
 
 function call(message) {
   try {
-    return callWorker(message);
+    if (process.env.VERCEL) return callViaSpawnSync(message);
+    return getCallWorker()(message);
   } catch (error) {
     if (error instanceof Error) throw error;
     throw new Error(typeof error === "string" ? error : "Database worker failed.");
@@ -103,16 +158,28 @@ export function isUniqueViolationError(error) {
  * Sync Postgres handle with a node:sqlite-like API.
  */
 export class PgDatabase {
-  /** @param {string} id */
-  constructor(id) {
+  /**
+   * @param {string} id
+   * @param {string} [databaseUrl]
+   * @param {string | null} [schema]
+   */
+  constructor(id, databaseUrl = "", schema = null) {
     this.id = id;
+    this.databaseUrl = databaseUrl;
+    this.schema = schema;
   }
 
   /**
    * @param {string} sql
    */
   exec(sql) {
-    call({ op: "exec", id: this.id, sql });
+    call({
+      op: "exec",
+      id: this.id,
+      databaseUrl: this.databaseUrl,
+      schema: this.schema,
+      sql,
+    });
   }
 
   /**
@@ -120,21 +187,23 @@ export class PgDatabase {
    */
   prepare(sql) {
     const id = this.id;
+    const databaseUrl = this.databaseUrl;
+    const schema = this.schema;
     return {
       get(...params) {
-        return call({ op: "query", id, sql, params, mode: "get" });
+        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "get" });
       },
       all(...params) {
-        return call({ op: "query", id, sql, params, mode: "all" });
+        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "all" });
       },
       run(...params) {
-        return call({ op: "query", id, sql, params, mode: "run" });
+        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "run" });
       },
     };
   }
 
   close() {
-    call({ op: "close", id: this.id });
+    call({ op: "close", id: this.id, databaseUrl: this.databaseUrl, schema: this.schema });
   }
 }
 
@@ -172,7 +241,7 @@ export function openDatabase(databaseUrlOrDbPath, options = {}) {
   const id = newSessionId();
 
   call({ op: "open", id, databaseUrl, schema });
-  const db = new PgDatabase(id);
+  const db = new PgDatabase(id, databaseUrl, schema);
   if (!skipMigrations) applyPendingMigrationsSync(db, MIGRATIONS);
   return db;
 }
@@ -186,7 +255,14 @@ export function openSqliteDatabase(dbPath, options = {}) {
 export function beginImmediateWithRetry(db, { retries = 3, backoffMs = 50 } = {}) {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      call({ op: "begin", id: db.id, retries: 0, backoffMs });
+      call({
+        op: "begin",
+        id: db.id,
+        databaseUrl: db.databaseUrl,
+        schema: db.schema,
+        retries: 0,
+        backoffMs,
+      });
       return;
     } catch (error) {
       if (!isSerializationConflictError(error) || attempt >= retries) throw error;

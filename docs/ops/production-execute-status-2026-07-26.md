@@ -6,13 +6,17 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 |---|---|---|
 | PR #21 merged to `main` | **done** | `f46ffa7` |
 | PR #22 helpers + handoff on `main` | **done** | `6a5b726` — `wire:production` / `smoke:production` + local checklist |
-| Vercel Production **build** for `main` | **done** | GitHub deployment `5606431287` — state `success`; URL `https://sachviet-l1yd7a260-cyberskill-world.vercel.app` |
-| Authenticate Vercel + Supabase MCP / CLI | **blocked** | Cloud agent 2026-07-26 retry: MCP `needsAuth`; no `VERCEL_TOKEN` / `DATABASE_URL*` / `AUTH_SESSION_SECRET` in env; no Cursor environment secrets |
-| Supabase project + `npm run migrate` (direct URL) | **pending** | Needs Supabase credentials |
-| Vercel Production env (`AUTH_SESSION_SECRET`, pooler `DATABASE_URL`) | **pending** | Needs Vercel API/dashboard |
-| Redeploy Production after env | **pending** | Depends on env |
-| Smoke `/api/health` → db ok | **pending** | Depends on env + public/bypass access |
-| Cutover `executed: true` | **pending** | Flip only after health smoke |
+| PR #23 status sync | **done** | Merged `160f153` (2026-07-26 desktop) |
+| Vercel project settings | **done** | Node `24.x`; Root Directory=`app/web`; SSO protection off |
+| Supabase Production project | **done** | `eskazygpnygqsrcwlszz` (CyberSkill / ap-southeast-1); schema migrations `001`+`002` applied |
+| Vercel Production env | **done** | `wire:production` upserted pooler `DATABASE_URL` + new `AUTH_SESSION_SECRET` (2026-07-26) |
+| Runtime fix (synckit hang) | **done (live)** | Health uses async `pg`; Vercel path uses `db-rpc-oneshot.mjs` spawnSync (deploy `dpl_CHYMbTjZ6Yk9a8CnVxEKumQvyvvg`) — land to git so next `main` deploy keeps it |
+| Smoke `/api/health` → db ok | **done** | `https://sachviet.cyberskill.world/api/health` → `{"ok":true,"db":"ok"}`; `npm run smoke:production` exit 0 (health+catalog PASS; admin-login skipped; empty catalog day-2) |
+| Cutover `executed: true` | **done** | [`cutover-plan.md`](../tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/ship/cutover-plan.md) @ 2026-07-26T08:09:00Z |
+| Day-2 catalog | **pending** | Admin commerce APIs/UI only (no WordPress) — **never** `seed:local` on Production |
+| Stripe | **on_hold** | Deferred until explicit Stripe registration instruction |
+| WordPress / DNS / retirement | **N/A — no WP** | Do not pursue WP import, DNS, or retirement |
+| Phase B/C | **on_hold** | No unlock without new operator instruction |
 
 Helpers on `main` (from PR #22):
 
@@ -98,15 +102,13 @@ npm run smoke:production
 
 ---
 
-## Day-2 catalog (Phase A — no live WordPress)
+## Day-2 catalog (Phase A — no WordPress)
 
-After `/api/health` is green, choose one catalog path (operator):
+After `/api/health` is green, load catalog via **admin commerce APIs/UI** (categories / products / offers).
 
-1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Preferred controlled load.
-2. **Admin commerce APIs/UI** — create categories/products/offers day-2 without import.
-3. **Live WP MySQL migration** — stays `on_hold` (`TASK-MIGRATION-001`). Not part of this Production go.
-
-**Never** run `seed:local` / Compose seed against Supabase Preview or Production.
+- **No WordPress** — no fixture WP import, no live WP MySQL migration, no WP DNS.
+- **Stripe** stays deferred until an explicit registration instruction.
+- **Never** run `seed:local` / Compose seed against Supabase Production.
 
 ---
 
