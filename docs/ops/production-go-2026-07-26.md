@@ -33,18 +33,20 @@
 
 ## Operator execution checklist
 
+Live tracker: [`production-execute-status-2026-07-26.md`](production-execute-status-2026-07-26.md).
+
 1. Vercel project **sachviet** (`cyberskill-world/sachviet`):
    - Root Directory = `app/web` in the Vercel UI when possible (`rootDirectory` cannot be set in `vercel.json`). Repo-root `vercel.json` workarounds a null Root Directory by copying `app/web` into the build root at install time.
    - Node.js Version = **24.x**
    - Production branch = `main` (or promote the authorized deployment)
-2. Supabase: create/use Production project → `npm run migrate` with **direct** `DATABASE_URL` from a trusted machine.
+2. Supabase: create/use Production project → `npm run migrate` with **direct** `DATABASE_URL` from a trusted machine. Helper: `app/web/scripts/wire-production-env.mjs` (needs `VERCEL_TOKEN` + URLs).
 3. Vercel **Production** env (names in [`app/web/.env.vercel.example`](../../app/web/.env.vercel.example)):
    - Required: `AUTH_SESSION_SECRET`, `DATABASE_URL` (pooler)
    - Optional: bootstrap admin, `AI_SETTINGS_SECRET`, SMTP
    - Omit all `STRIPE_*` until registered
-4. Merge readiness PR #21 (or equivalent) to `main` so Production builds the authorized commit.
-5. Confirm Production URL: `GET /api/health` → `{"ok":true,"db":"ok"}`; login; catalog; unpaid checkout path.
-6. Authenticate **Vercel** + **Supabase** MCP in Cursor if agents should operate the dashboards next.
+4. ~~Merge readiness PR #21~~ — **done** (`f46ffa7` on `main`; Production build deployment succeeded).
+5. Confirm Production URL: `GET /api/health` → `{"ok":true,"db":"ok"}`; login; catalog; unpaid checkout path. Helper: `npm run smoke:production` with `BASE_URL`.
+6. Authenticate **Vercel** + **Supabase** MCP in Cursor desktop (cloud agents cannot run interactive MCP auth) — **required** before agents can finish steps 2–3/5.
 
 ## Cutover plan gates
 

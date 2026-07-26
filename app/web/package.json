@@ -17,6 +17,7 @@
     "restore:pg": "node scripts/restore-postgres.mjs",
     "migrate": "node scripts/migrate.mjs",
     "smoke:docker": "node scripts/smoke-docker.mjs",
+    "smoke:production": "node scripts/smoke-production.mjs",
     "verify": "node scripts/verify-foundation.mjs && node scripts/verify-identity.mjs && node scripts/verify-web-foundations.mjs && node scripts/verify-catalog-core.mjs && node scripts/verify-commerce-core.mjs && node scripts/verify-support-core.mjs && node scripts/verify-admin-commerce-core.mjs && node scripts/verify-vendor-commerce-core.mjs && node scripts/verify-employee-retail-core.mjs && node scripts/verify-notification-core.mjs && node scripts/verify-live-notifications-core.mjs && node scripts/verify-b2b-quote-core.mjs && node scripts/verify-b2b-order-core.mjs && node scripts/verify-institution-buyer-core.mjs && node scripts/verify-publisher-portal-core.mjs && node scripts/verify-author-portal-core.mjs && node scripts/verify-email-zalo-integrations-core.mjs && node scripts/verify-vietnamese-search-core.mjs && node scripts/verify-wordpress-import-core.mjs && node scripts/verify-quality-preview-release-core.mjs && node scripts/verify-b2c-parity-cutover-core.mjs",
     "verify:identity": "node scripts/verify-identity.mjs"
   },
