@@ -44,7 +44,7 @@ Live tracker: [`production-execute-status-2026-07-26.md`](production-execute-sta
    - Required: `AUTH_SESSION_SECRET`, `DATABASE_URL` (pooler)
    - Optional: bootstrap admin, `AI_SETTINGS_SECRET`, SMTP
    - Omit all `STRIPE_*` until registered
-4. ~~Merge readiness PR #21~~ — **done** (`f46ffa7` on `main`; Production build deployment succeeded).
+4. ~~Merge readiness PR #21~~ — **done** (`f46ffa7`). ~~Merge execute helpers PR #22~~ — **done** (`6a5b726` on `main`; Production build succeeded earlier; runtime env still pending).
 5. Confirm Production URL: `GET /api/health` → `{"ok":true,"db":"ok"}`; login; catalog; unpaid checkout path. Helper: `npm run smoke:production` with `BASE_URL`.
 6. Authenticate **Vercel** + **Supabase** MCP in Cursor desktop (cloud agents cannot run interactive MCP auth) — **required** before agents can finish steps 2–3/5.
 

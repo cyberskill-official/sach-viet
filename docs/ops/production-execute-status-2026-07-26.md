@@ -5,15 +5,16 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 | Step | State | Evidence |
 |---|---|---|
 | PR #21 merged to `main` | **done** | `f46ffa7` |
+| PR #22 helpers + handoff on `main` | **done** | `6a5b726` — `wire:production` / `smoke:production` + local checklist |
 | Vercel Production **build** for `main` | **done** | GitHub deployment `5606431287` — state `success`; URL `https://sachviet-l1yd7a260-cyberskill-world.vercel.app` |
-| Authenticate Vercel + Supabase MCP / CLI | **blocked** | Cloud agent: interactive MCP auth unavailable; CLI has no token; dashboard SSO blocks anonymous smoke |
+| Authenticate Vercel + Supabase MCP / CLI | **blocked** | Cloud agent 2026-07-26 retry: MCP `needsAuth`; no `VERCEL_TOKEN` / `DATABASE_URL*` / `AUTH_SESSION_SECRET` in env; no Cursor environment secrets |
 | Supabase project + `npm run migrate` (direct URL) | **pending** | Needs Supabase credentials |
 | Vercel Production env (`AUTH_SESSION_SECRET`, pooler `DATABASE_URL`) | **pending** | Needs Vercel API/dashboard |
 | Redeploy Production after env | **pending** | Depends on env |
 | Smoke `/api/health` → db ok | **pending** | Depends on env + public/bypass access |
 | Cutover `executed: true` | **pending** | Flip only after health smoke |
 
-Helpers on PR #22 / branch `cursor/production-execute-3880`:
+Helpers on `main` (from PR #22):
 
 - `npm run wire:production` → [`app/web/scripts/wire-production-env.mjs`](../../app/web/scripts/wire-production-env.mjs)
 - `npm run smoke:production` → [`app/web/scripts/smoke-production.mjs`](../../app/web/scripts/smoke-production.mjs)
