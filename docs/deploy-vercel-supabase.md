@@ -53,8 +53,8 @@ Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg
 ## 2. Link Vercel to the repo / `app/web`
 
 1. Create or open a Vercel project linked to this Git repository.
-2. **Root Directory** must be `app/web`. Repo-root [`vercel.json`](../vercel.json) sets `"rootDirectory": "app/web"` so Git deployments do not build the monorepo root (`rootDirectory: null` fails with an empty Preview/Production URL). Still set the same path in the Vercel project UI when available.
-3. Framework: Next.js. App-local overrides: [`app/web/vercel.json`](../app/web/vercel.json).
+2. **Root Directory** should be `app/web` in the Vercel project UI when available. `rootDirectory` is **not** allowed in `vercel.json` (schema rejects it). Until the UI is set, repo-root [`vercel.json`](../vercel.json) copies `app/web` into the build root during install so Git deployments with `rootDirectory: null` still build the Next app. Prefer setting the UI Root Directory long-term (then simplify installCommand to `npm ci` inside `app/web`).
+3. Framework: Next.js. App-local config: [`app/web/vercel.json`](../app/web/vercel.json) (used when Root Directory is `app/web`).
 4. Node: match `engines` in `app/web/package.json` (`24.x`). Also set **Node.js Version = 24.x** in the Vercel project Build & Deployment settings.
 5. Prefer **Production** deployments from `main`. Preview may be disabled (operator: no Preview mode).
 

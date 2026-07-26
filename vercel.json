@@ -1,7 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "rootDirectory": "app/web",
   "framework": "nextjs",
-  "installCommand": "npm ci",
+  "installCommand": "sh -c 'set -e; for item in app/web/* app/web/.[!.]*; do [ -e \"$item\" ] || continue; base=$(basename \"$item\"); case \"$base\" in .|..|node_modules|.next) continue;; esac; rm -rf \"./$base\"; cp -a \"$item\" \"./$base\"; done; npm ci'",
   "buildCommand": "npm run build"
 }
