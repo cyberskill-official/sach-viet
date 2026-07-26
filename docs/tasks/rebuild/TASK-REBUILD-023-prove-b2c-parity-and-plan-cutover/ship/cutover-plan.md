@@ -19,10 +19,10 @@ wordpress_dns_authorized: `false`
 | `owner_go_decision` | `met` — operator 2026-07-26: *go straight to production* ([`production-go-2026-07-26.md`](../../../../ops/production-go-2026-07-26.md)) |
 | `separate_deployment_instruction` | `met` — Vercel Production + Supabase, Stripe deferred, no Preview, no WP DNS ([same](../../../../ops/production-go-2026-07-26.md)) |
 
-Unmet / out of scope for this authorization:
-- Live WordPress DNS cutover, traffic switch, or WP retirement (`TASK-CUTOVER-001` / `TASK-CUTOVER-002` remain `on_hold`).
-- Stripe paid/webhook path stays **deferred** until Stripe registration (Wave 4 item 6). Non-payment checkout remains proven (item 5).
+Out of scope / held (no WP in this go):
+- WordPress is **not** in play — no WP import, DNS, traffic switch, or retirement. `TASK-CUTOVER-001` / `TASK-CUTOVER-002` / `TASK-MIGRATION-001` stay `on_hold` / unused.
+- Stripe paid/webhook path stays **deferred** until an explicit Stripe registration instruction (Wave 4 item 6). Non-payment checkout remains the commerce proof.
 - Phase B/C product tasks remain `on_hold` until a new explicit operator instruction.
 
-Day-2 (not blocking `executed`):
-- Load catalog via admin fixture WordPress import or commerce APIs — **never** `seed:local` against Supabase Production.
+Day-2 catalog (not blocking `executed`):
+- Load catalog via **admin commerce APIs/UI only** — **never** `seed:local` against Supabase Production. No WordPress fixture/import path.

@@ -13,8 +13,10 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 | Runtime fix (synckit hang) | **done (live)** | Health uses async `pg`; Vercel path uses `db-rpc-oneshot.mjs` spawnSync (deploy `dpl_CHYMbTjZ6Yk9a8CnVxEKumQvyvvg`) — land to git so next `main` deploy keeps it |
 | Smoke `/api/health` → db ok | **done** | `https://sachviet.cyberskill.world/api/health` → `{"ok":true,"db":"ok"}`; `npm run smoke:production` exit 0 (health+catalog PASS; admin-login skipped; empty catalog day-2) |
 | Cutover `executed: true` | **done** | [`cutover-plan.md`](../tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/ship/cutover-plan.md) @ 2026-07-26T08:09:00Z |
-| Day-2 catalog | **pending** | Admin fixture WP import or commerce APIs — **never** `seed:local` on Production |
-| Phase B/C / Stripe / WP DNS | **on_hold** | No unlock without new operator instruction |
+| Day-2 catalog | **pending** | Admin commerce APIs/UI only (no WordPress) — **never** `seed:local` on Production |
+| Stripe | **on_hold** | Deferred until explicit Stripe registration instruction |
+| WordPress / DNS / retirement | **N/A — no WP** | Do not pursue WP import, DNS, or retirement |
+| Phase B/C | **on_hold** | No unlock without new operator instruction |
 
 Helpers on `main` (from PR #22):
 
@@ -100,15 +102,13 @@ npm run smoke:production
 
 ---
 
-## Day-2 catalog (Phase A — no live WordPress)
+## Day-2 catalog (Phase A — no WordPress)
 
-After `/api/health` is green, choose one catalog path (operator):
+After `/api/health` is green, load catalog via **admin commerce APIs/UI** (categories / products / offers).
 
-1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Preferred controlled load.
-2. **Admin commerce APIs/UI** — create categories/products/offers day-2 without import.
-3. **Live WP MySQL migration** — stays `on_hold` (`TASK-MIGRATION-001`). Not part of this Production go.
-
-**Never** run `seed:local` / Compose seed against Supabase Preview or Production.
+- **No WordPress** — no fixture WP import, no live WP MySQL migration, no WP DNS.
+- **Stripe** stays deferred until an explicit registration instruction.
+- **Never** run `seed:local` / Compose seed against Supabase Production.
 
 ---
 
