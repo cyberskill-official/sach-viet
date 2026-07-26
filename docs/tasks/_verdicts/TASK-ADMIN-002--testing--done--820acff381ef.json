@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-07-26T22:56:59Z",
+  "task_id": "TASK-ADMIN-002",
+  "from": "testing",
+  "to": "done",
+  "evidence_path": "docs/tasks/admin/TASK-ADMIN-002-admin-catalog-writes/ship/final-acceptance.md",
+  "evidence_sha256": "820acff381ef007cce3bab06ea43fd6220916cd02fdc19aff39254d7956b8c7c",
+  "artifact_sha256": "9c50424528ea4128e770e8cfe62cf8562a53359d02f1028aedde3d8d29496084"
+}

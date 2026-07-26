@@ -57,6 +57,10 @@ export function createCategory(store, input) {
   return category;
 }
 
+export function listCategories(store) {
+  return store.db.prepare("SELECT id, slug, name, created_at AS createdAt FROM categories ORDER BY name, id").all();
+}
+
 export function createProduct(store, input) {
   requireCatalogProductInput(input);
   const category = store.db.prepare("SELECT id FROM categories WHERE id = ? OR slug = ?").get(input.categoryId ?? "", input.categorySlug ?? "");

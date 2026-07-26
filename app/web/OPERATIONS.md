@@ -312,9 +312,9 @@ DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet node scripts/
 
 **Production catalog options (operator choose; do not unlock cutover here):**
 
-1. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON (greenfield compatibility already proven). Suitable for a controlled catalog load without live MySQL.
-2. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
-3. **Admin day-2 entry** — create categories/products/offers via admin commerce APIs/UI after bootstrap.
+1. **Admin day-2 entry (recommended)** — create categories/products/offers via admin catalog APIs/UI after bootstrap (`TASK-ADMIN-002`: `/api/admin/catalog/*` and the catalog section on `/admin`). Prefer this for the first Production catalog load.
+2. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON remains available for compatibility testing but is **not recommended** as the Day-2 Production load path.
+3. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
 
 Do not run `seed:local` against a production database.
 
