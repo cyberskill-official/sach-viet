@@ -25,4 +25,4 @@ Out of scope / held (no WP in this go):
 - Phase B/C product tasks remain `on_hold` until a new explicit operator instruction.
 
 Day-2 catalog (not blocking `executed`):
-- Load catalog via **admin commerce APIs/UI only** — **never** `seed:local` against Supabase Production. No WordPress fixture/import path.
+- **done** (2026-07-27) via admin catalog APIs (`TASK-ADMIN-002`) — public catalog non-empty; Production smoke 4/4. Still **never** `seed:local` against Supabase Production. No WordPress fixture/import path.
