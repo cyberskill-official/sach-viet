@@ -10,4 +10,5 @@ if (!migration.includes("CREATE TABLE IF NOT EXISTS vendor_offers")) throw new E
 if (/price|stock/i.test(productsSchema)) throw new Error("Product schema must not contain price or stock columns.");
 if (!source.includes("selectPrimaryOffer")) throw new Error("Primary offer selection is missing.");
 if (!source.includes("canAccessOwnedRecord")) throw new Error("Vendor offer ownership enforcement is missing.");
+if (!source.includes("export function listCategories")) throw new Error("Category listing helper is missing.");
 console.info(JSON.stringify({ event: "catalog_core_verified", task_id: "TASK-REBUILD-004", result: "passed" }));

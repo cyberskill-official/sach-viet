@@ -12,6 +12,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 - (none yet - add rows as `- [ready_to_implement] TASK-001-slug - title`; append `(improvement)` for hardening tasks)
 - [on_hold] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
+- [done] TASK-ADMIN-002-admin-catalog-writes - Add admin catalog write APIs and thin dashboard UI
 - [done] TASK-AUTH-001-align-role-guards - Align frontend and API role guards (improvement)
 - [done] TASK-AUTHOR-001-build-lifecycle-and-earnings - Add author manuscript lifecycle stages and earnings views
 - [done] TASK-B2B-002-convert-quotes-to-orders - Convert approved B2B quotes into orders
