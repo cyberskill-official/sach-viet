@@ -6,7 +6,8 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createSyncFn } from "synckit";
 import { MIGRATIONS } from "../../migrations/registry.mjs";
 import { applyPendingMigrationsSync } from "./migrate.mjs";
@@ -15,14 +16,23 @@ import { applyPendingMigrationsSync } from "./migrate.mjs";
  * Resolve the synckit worker without `new URL(..., import.meta.url)`.
  * Turbopack rewrites that pattern into a media asset URL and breaks
  * `createSyncFn` / `pathToFileURL` during `next build` page collection.
- * Layout matches Dockerfile + local `app/web` cwd (`src/lib/db-worker.mjs`).
+ * Prefer cwd-relative paths (Docker + local). On Vercel file tracing, also try
+ * the module directory via `fileURLToPath(import.meta.url)` (not `new URL`).
  */
 function resolveDbWorkerPath() {
-  const candidate = join(process.cwd(), "src/lib/db-worker.mjs");
-  if (!existsSync(candidate)) {
-    throw new Error(`db-worker.mjs not found at ${candidate} (cwd=${process.cwd()})`);
+  const besideModule = join(dirname(fileURLToPath(import.meta.url)), "db-worker.mjs");
+  const candidates = [
+    join(process.cwd(), "src/lib/db-worker.mjs"),
+    join(process.cwd(), "db-worker.mjs"),
+    besideModule,
+    join(process.cwd(), ".next/server/src/lib/db-worker.mjs"),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
   }
-  return candidate;
+  throw new Error(
+    `db-worker.mjs not found (cwd=${process.cwd()}; tried ${candidates.join(", ")})`,
+  );
 }
 
 const callWorker = createSyncFn(resolveDbWorkerPath());

@@ -24,6 +24,6 @@ Pointer: see plan overview *Production commercial gaps* — Phase B/C are additi
 
 ## Remaining HITL (operator)
 
-1. Supply CapRover / platform secrets (`AUTH_SESSION_SECRET`, bootstrap admin, Stripe live/test keys + webhook secret, SMTP if desired).
-2. Authorize CapRover image deploy, volume, TLS, backup verification, named rollback, and owner go.
+1. Supply Vercel + Supabase **Production** secrets (`AUTH_SESSION_SECRET`, `DATABASE_URL`, bootstrap admin; Stripe live/test keys + webhook secret when registered; SMTP if desired). CapRover is transitional/superseded. Preview is abandoned (operator: no Preview mode).
+2. **Production:** authorized 2026-07-26 — [`docs/ops/production-go-2026-07-26.md`](../../../ops/production-go-2026-07-26.md). Execute checklist there; backup + named rollback already recorded. WP DNS still separate.
 3. Choose production catalog path: fixture WP import vs keep `TASK-MIGRATION-001` on_hold for live MySQL.

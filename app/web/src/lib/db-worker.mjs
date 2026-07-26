@@ -23,10 +23,38 @@ function quoteIdent(ident) {
   return `"${ident}"`;
 }
 
+function isLocalDatabaseHost(databaseUrl) {
+  try {
+    const { hostname } = new URL(databaseUrl);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "db" ||
+      hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function poolOptions(databaseUrl) {
+  const onVercel = Boolean(process.env.VERCEL);
+  const local = isLocalDatabaseHost(databaseUrl);
+  return {
+    connectionString: databaseUrl,
+    // Serverless: keep pools tiny; reuse across warm invocations via the Map.
+    max: onVercel ? 1 : 10,
+    connectionTimeoutMillis: 8_000,
+    idleTimeoutMillis: onVercel ? 5_000 : 30_000,
+    // Supabase / remote Postgres require TLS; Compose `db` and loopback do not.
+    ...(local ? {} : { ssl: { rejectUnauthorized: true } }),
+  };
+}
+
 function getSharedPool(databaseUrl) {
   let pool = sharedPools.get(databaseUrl);
   if (!pool) {
-    pool = new Pool({ connectionString: databaseUrl, max: 10 });
+    pool = new Pool(poolOptions(databaseUrl));
     sharedPools.set(databaseUrl, pool);
   }
   return pool;
