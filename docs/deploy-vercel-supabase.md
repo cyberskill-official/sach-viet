@@ -55,7 +55,7 @@ Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg
 1. Create or open a Vercel project linked to this Git repository.
 2. Set **Root Directory** to `app/web` (required — the Next app is not at the repo root).
 3. Framework: Next.js. Optional local config: [`app/web/vercel.json`](../app/web/vercel.json) (`installCommand` / `buildCommand` only).
-4. Node: match `engines` in `app/web/package.json` (Node ≥ 24).
+4. Node: match `engines` in `app/web/package.json` (`24.x`). Also set **Node.js Version = 24.x** in the Vercel project Build & Deployment settings so Preview is not stuck on 22.x.
 5. Enable **Preview** deployments for PRs/branches as desired. Leave **Production** deployments disabled or protected until the Wave 4 gate is green and an operator explicitly authorizes production.
 
 `output: "standalone"` in `next.config.ts` remains for the Docker/CapRover image path. Vercel uses its own Next.js build pipeline; do not deploy the CapRover Dockerfile through Vercel.

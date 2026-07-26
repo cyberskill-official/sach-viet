@@ -12,11 +12,18 @@
 
 ## Operator / agent next actions
 
-1. Confirm Vercel project **sachviet** (`cyberskill-world/sachviet`) Root Directory = `app/web`.
-2. Set **Preview**-scoped env vars from [`app/web/.env.vercel.example`](../../app/web/.env.vercel.example): at minimum `AUTH_SESSION_SECRET`, `DATABASE_URL` (Supabase **pooler**), optional `AI_SETTINGS_SECRET` / bootstrap admin. Omit all `STRIPE_*` until registered.
-3. Apply migrations against Supabase **direct** URL (`npm run migrate` from `app/web`) — never `seed:local` on cloud.
-4. Open/merge a Preview-triggering PR (or redeploy Preview) and smoke: `/api/health`, login, catalog, unpaid checkout path.
-5. **Stop.** Production still needs `owner_go_decision` + `separate_deployment_instruction` on the cutover plan.
+1. Confirm Vercel project **sachviet** (`cyberskill-world/sachviet`) **Root Directory** = `app/web`.
+2. Set project **Node.js Version** to **24.x** (Build & Deployment). `package.json` `engines.node` is `24.x` so Preview matches CI; a project still on 22.x can fail install before a Preview URL is produced.
+3. Set **Preview**-scoped env vars from [`app/web/.env.vercel.example`](../../app/web/.env.vercel.example): at minimum `AUTH_SESSION_SECRET`, `DATABASE_URL` (Supabase **pooler**), optional `AI_SETTINGS_SECRET` / bootstrap admin. Omit all `STRIPE_*` until registered.
+4. Apply migrations against Supabase **direct** URL (`npm run migrate` from `app/web`) — never `seed:local` on cloud.
+5. Redeploy Preview (or push to the open PR) and smoke: `/api/health`, login, catalog, unpaid checkout path.
+6. Authenticate the **Vercel** (and **Supabase**) MCP servers in Cursor so agents can read deploy logs without the dashboard.
+7. **Stop.** Production still needs `owner_go_decision` + `separate_deployment_instruction` on the cutover plan.
+
+## Preview deploy status (PR #21)
+
+- GitHub Actions `web` job: green.
+- Vercel Preview: **failing** (empty `previewUrl`) as of 2026-07-26 — inspect `dpl_CFto5nYYgk41NgRzzKtvfRd8de5P` after Node 24.x / Root Directory / env are confirmed. Agents lack Vercel CLI/MCP credentials in this environment.
 
 ## Cutover gates (unchanged by this go)
 
