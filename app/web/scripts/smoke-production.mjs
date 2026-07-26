@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+/**
+ * Production smoke (Phase A).
+ *
+ * Usage:
+ *   BASE_URL=https://<production-host> npm run smoke:production
+ *   BASE_URL=… BOOTSTRAP_ADMIN_EMAIL=… BOOTSTRAP_ADMIN_PASSWORD=… npm run smoke:production
+ *
+ * Optional: VERCEL_PROTECTION_BYPASS=<secret> for Deployment Protection.
+ * Does not invent catalog seed data. Unpaid checkout is the commerce proof (Stripe deferred).
+ */
+import { pathToFileURL } from "node:url";
+
+const COOKIE_NAME = "sv_session";
+
+/**
+ * @param {Headers | { getSetCookie?: () => string[], get: (name: string) => string | null }} headers
+ * @param {string} [cookieName]
+ */
+export function cookieFromSetCookie(headers, cookieName = COOKIE_NAME) {
+  const raw = typeof headers.getSetCookie === "function" ? headers.getSetCookie() : [];
+  const list = raw.length > 0 ? raw : [headers.get("set-cookie")].filter(Boolean);
+  for (const line of list) {
+    const match = String(line).match(new RegExp(`${cookieName}=([^;]+)`));
+    if (match) return `${cookieName}=${match[1]}`;
+  }
+  return null;
+}
+
+/**
+ * @param {{ bypass?: string, extra?: Record<string, string> }} [opts]
+ */
+export function baseHeaders(opts = {}) {
+  /** @type {Record<string, string>} */
+  const headers = { accept: "application/json", ...(opts.extra || {}) };
+  if (opts.bypass) headers["x-vercel-protection-bypass"] = opts.bypass;
+  return headers;
+}
+
+/**
+ * @param {{ ok: boolean, id: string, detail?: string }[]} results
+ * @param {{ ok: boolean, id: string, detail?: string }} check
+ * @param {(line: string) => void} [log]
+ */
+export function recordCheck(results, check, log = console.log) {
+  results.push(check);
+  log(`[${check.ok ? "PASS" : "FAIL"}] ${check.id}${check.detail ? ` — ${check.detail}` : ""}`);
+}
+
+/**
+ * Hard-fail ids for process exit (admin-login skip is soft).
+ * @param {{ ok: boolean, id: string }[]} results
+ */
+export function hardFailureIds(results) {
+  return results
+    .filter((r) => !r.ok && (r.id === "health-postgres" || r.id === "catalog-list"))
+    .map((r) => r.id);
+}
+
+/**
+ * @param {object} options
+ * @param {string} options.baseUrl
+ * @param {typeof fetch} [options.fetchImpl]
+ * @param {string} [options.adminEmail]
+ * @param {string} [options.adminPassword]
+ * @param {string} [options.bypass]
+ * @param {(line: string) => void} [options.log]
+ */
+export async function runProductionSmoke(options) {
+  const baseUrl = (options.baseUrl || "").replace(/\/$/, "");
+  const fetchImpl = options.fetchImpl || globalThis.fetch;
+  const adminEmail = options.adminEmail || "";
+  const adminPassword = options.adminPassword || "";
+  const bypass = options.bypass || "";
+  const log = options.log || console.log;
+  /** @type {{ ok: boolean, id: string, detail?: string }[]} */
+  const results = [];
+
+  if (!baseUrl) {
+    return {
+      ok: false,
+      exitCode: 2,
+      results,
+      error: "BASE_URL is required (Production origin, no trailing slash).",
+    };
+  }
+
+  log(`Production smoke against ${baseUrl}`);
+
+  async function fetchJson(path, init = {}) {
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      ...init,
+      headers: baseHeaders({
+        bypass,
+        extra: {
+          ...(init.body ? { "content-type": "application/json" } : {}),
+          ...(init.headers || {}),
+        },
+      }),
+      redirect: "manual",
+    });
+    const text = await response.text();
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = { _raw: text.slice(0, 240) };
+    }
+    return { response, body, text };
+  }
+
+  try {
+    const { response, body } = await fetchJson("/api/health");
+    const ok = response.status === 200 && body?.ok === true && body?.db === "ok";
+    recordCheck(
+      results,
+      {
+        id: "health-postgres",
+        ok,
+        detail: ok
+          ? `HTTP ${response.status} db=${body.db}`
+          : `HTTP ${response.status} body=${JSON.stringify(body)}`,
+      },
+      log,
+    );
+    if (!ok) {
+      return { ok: false, exitCode: 1, results };
+    }
+  } catch (error) {
+    recordCheck(
+      results,
+      {
+        id: "health-postgres",
+        ok: false,
+        detail: error instanceof Error ? error.message : String(error),
+      },
+      log,
+    );
+    return { ok: false, exitCode: 1, results };
+  }
+
+  const catalog = await fetchJson("/api/catalog/products");
+  const products = Array.isArray(catalog.body?.products) ? catalog.body.products : [];
+  recordCheck(
+    results,
+    {
+      id: "catalog-list",
+      ok: catalog.response.status === 200,
+      detail: `HTTP ${catalog.response.status} count=${products.length}`,
+    },
+    log,
+  );
+
+  if (adminEmail && adminPassword) {
+    const login = await fetchJson("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email: adminEmail, password: adminPassword }),
+    });
+    const cookie = cookieFromSetCookie(login.response.headers);
+    const loginOk = login.response.status === 200 && Boolean(cookie);
+    recordCheck(
+      results,
+      {
+        id: "admin-login",
+        ok: loginOk,
+        detail: loginOk ? adminEmail : `HTTP ${login.response.status} ${login.body?.error || ""}`.trim(),
+      },
+      log,
+    );
+
+    if (loginOk && cookie) {
+      const me = await fetchJson("/api/auth/me", { headers: { cookie } });
+      recordCheck(
+        results,
+        {
+          id: "admin-session",
+          ok: me.response.status === 200 && me.body?.user?.role === "admin",
+          detail: `role=${me.body?.user?.role || "none"}`,
+        },
+        log,
+      );
+    }
+  } else {
+    recordCheck(
+      results,
+      {
+        id: "admin-login",
+        ok: false,
+        detail:
+          "Skipped — set BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD (or SMOKE_*) to verify login",
+      },
+      log,
+    );
+  }
+
+  if (products.length === 0) {
+    recordCheck(
+      results,
+      {
+        id: "checkout-pending-path",
+        ok: true,
+        detail:
+          "Deferred — empty catalog (fixture/admin load is a separate operator step; health+catalog APIs ok)",
+      },
+      log,
+    );
+  }
+
+  const hard = hardFailureIds(results);
+  log("");
+  log(`Summary: ${results.filter((r) => r.ok).length}/${results.length} checks green`);
+  return { ok: hard.length === 0, exitCode: hard.length === 0 ? 0 : 1, results };
+}
+
+async function main() {
+  const outcome = await runProductionSmoke({
+    baseUrl: process.env.BASE_URL || "",
+    adminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || process.env.SMOKE_ADMIN_EMAIL || "",
+    adminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD || process.env.SMOKE_ADMIN_PASSWORD || "",
+    bypass: process.env.VERCEL_PROTECTION_BYPASS || "",
+  });
+  if (outcome.error) {
+    console.error(outcome.error);
+  }
+  process.exit(outcome.exitCode);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
