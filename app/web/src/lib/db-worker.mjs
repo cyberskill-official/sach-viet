@@ -40,6 +40,11 @@ function isLocalDatabaseHost(databaseUrl) {
 function poolOptions(databaseUrl) {
   const onVercel = Boolean(process.env.VERCEL);
   const local = isLocalDatabaseHost(databaseUrl);
+  // On Vercel + Supabase pooler, strict CA verification can fail with
+  // SELF_SIGNED_CERT_IN_CHAIN depending on the runtime trust store.
+  const rejectUnauthorized = local
+    ? false
+    : process.env.PGSSL_REJECT_UNAUTHORIZED !== "0" && !onVercel;
   return {
     connectionString: databaseUrl,
     // Serverless: keep pools tiny; reuse across warm invocations via the Map.
@@ -47,7 +52,7 @@ function poolOptions(databaseUrl) {
     connectionTimeoutMillis: 8_000,
     idleTimeoutMillis: onVercel ? 5_000 : 30_000,
     // Supabase / remote Postgres require TLS; Compose `db` and loopback do not.
-    ...(local ? {} : { ssl: { rejectUnauthorized: true } }),
+    ...(local ? {} : { ssl: { rejectUnauthorized } }),
   };
 }
 

@@ -6,13 +6,16 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 |---|---|---|
 | PR #21 merged to `main` | **done** | `f46ffa7` |
 | PR #22 helpers + handoff on `main` | **done** | `6a5b726` — `wire:production` / `smoke:production` + local checklist |
-| Vercel Production **build** for `main` | **done** | GitHub deployment `5606431287` — state `success`; URL `https://sachviet-l1yd7a260-cyberskill-world.vercel.app` |
-| Authenticate Vercel + Supabase MCP / CLI | **blocked** | Cloud agent 2026-07-26 retry: MCP `needsAuth`; no `VERCEL_TOKEN` / `DATABASE_URL*` / `AUTH_SESSION_SECRET` in env; no Cursor environment secrets |
-| Supabase project + `npm run migrate` (direct URL) | **pending** | Needs Supabase credentials |
-| Vercel Production env (`AUTH_SESSION_SECRET`, pooler `DATABASE_URL`) | **pending** | Needs Vercel API/dashboard |
-| Redeploy Production after env | **pending** | Depends on env |
-| Smoke `/api/health` → db ok | **pending** | Depends on env + public/bypass access |
-| Cutover `executed: true` | **pending** | Flip only after health smoke |
+| PR #23 status sync | **done** | Merged `160f153` (2026-07-26 desktop) |
+| Vercel Production **build** for `main` | **done** | Latest: `dpl_FgTFmp8368gwRYrKeKUtgdcw4vKb` after Root Directory fix; alias `https://sachviet.cyberskill.world` |
+| Authenticate Vercel + Supabase MCP / CLI | **blocked in this agent** | Vercel **CLI** OK. This chat is a **private-worker** agent: MCP `mcp_auth` unavailable (“only available in the Cursor desktop IDE”); CallMcpTool only sees `goldfish`. Other IDE Agent sessions can use Vercel/Supabase MCP — continue execute there, or export `DATABASE_URL*` here. |
+| Vercel project settings | **done** | Node `24.x`; **Root Directory=`app/web`** (API PATCH); Deployment Protection SSO cleared (`ssoProtection=null`). Prior null-root builds nested routes under `/web/src/app/...` (404). |
+| Supabase project + `npm run migrate` (direct URL) | **blocked** | Needs plaintext `DATABASE_URL_DIRECT` (sensitive env not readable via `vercel env pull` / `env run`) |
+| Vercel Production env (`AUTH_SESSION_SECRET`, pooler `DATABASE_URL`) | **present / unverified** | Names set on Production (sensitive). Values cannot be pulled; `vercel env run` sees empty. Must re-upsert via `wire:production` with operator URLs if wrong. |
+| Redeploy Production after Root Directory | **done** | CLI `vercel deploy --prod` → ready; homepage `200` on custom domain |
+| Smoke `/api/health` → db ok | **blocked** | `GET https://sachviet.cyberskill.world/api/health` hangs (0 bytes / timeout). Static `/` and `/login` OK. Likely bad/unreachable `DATABASE_URL` and/or synckit worker at runtime — cannot PASS until DB strings verified. |
+| Cutover `executed: true` | **pending** | Flip only after health smoke with `db=ok` |
+| Phase B/C / Stripe / WP DNS | **on_hold** | No unlock without new operator instruction |
 
 Helpers on `main` (from PR #22):
 
