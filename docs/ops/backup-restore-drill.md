@@ -39,4 +39,4 @@ See `app/web/OPERATIONS.md` § Postgres backup and restore.
 
 ## Sign-off note
 
-Flipping this gate to `met` does **not** authorize Vercel production deploy, DNS cutover, or WordPress retirement. Those still require `owner_go_decision` and `separate_deployment_instruction`.
+This gate was flipped to `met` before Production go. Greenfield Vercel Production is now authorized separately via [`production-go-2026-07-26.md`](production-go-2026-07-26.md). WordPress DNS cutover / retirement still requires its own cutover instruction.

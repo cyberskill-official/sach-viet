@@ -5,7 +5,7 @@
 **Scope:** Phase A greenfield on Vercel + Supabase (no WordPress DNS cutover).  
 **Authority:** operator-owned runbook; this document names the rollback path.
 
-This plan does **not** authorize production deploy. It exists so that when an operator later issues a production go, a named recovery path is already written.
+Production go is recorded in [`production-go-2026-07-26.md`](production-go-2026-07-26.md). This runbook remains the named recovery path for Vercel + Supabase (not WordPress DNS).
 
 ## 1. Application (Vercel)
 

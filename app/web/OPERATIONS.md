@@ -202,20 +202,20 @@ npm run smoke:docker
 
 Recording checklist evidence clears the Wave 4 gate for non-Stripe scope. It does **not** authorize Vercel Production promote, DNS cutover, or WordPress retirement — those still need an explicit operator go.
 
-## Vercel + Supabase preview (Wave 5)
+## Vercel + Supabase Production
 
-**Primary cloud target:** Vercel (`app/web`) + Supabase (Postgres). CapRover is transitional / superseded for new preview work.
+**Primary cloud target:** Vercel (`app/web`) + Supabase (Postgres). CapRover is transitional / superseded. Operator: **no Preview mode** — Production only.
 
-Full operator steps (create project, pooler `DATABASE_URL`, migrations, Vercel Root Directory, env names, preview vs production rules): [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). Env name template: [`.env.vercel.example`](./.env.vercel.example). Minimal Vercel config: [`vercel.json`](./vercel.json).
+Full operator steps (create project, pooler `DATABASE_URL`, migrations, Vercel Root Directory, env names, Production rules): [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). Env name template: [`.env.vercel.example`](./.env.vercel.example). Minimal Vercel config: [`vercel.json`](./vercel.json).
 
-**Operator Preview go (2026-07-26):** recorded in [`docs/ops/wave5-preview-go.md`](../../docs/ops/wave5-preview-go.md). That go does **not** authorize Production.
+**Operator Production go (2026-07-26):** [`docs/ops/production-go-2026-07-26.md`](../../docs/ops/production-go-2026-07-26.md). Cutover gates `owner_go_decision` + `separate_deployment_instruction` are met for greenfield Vercel Production (Stripe deferred). WordPress DNS / retirement is still not authorized.
 
-**Rules (unchanged from Wave 4 gate)**
+**Rules**
 
-- Preview on Vercel only after Docker acceptance items **1–7** pass locally (item **6** Stripe may stay deferred).
-- Production on Vercel is **forbidden** until the full Wave 4 checklist is green **and** an explicit operator instruction authorizes it (`owner_go_decision` / `separate_deployment_instruction`).
-- Do not run `vercel deploy` or Supabase cloud CLI against real projects from agent automation without that instruction.
-- Never run `seed:local` against a Supabase Preview/Production database.
+- Wave 4 required rows must stay green (item **6** Stripe may stay deferred); unpaid checkout remains the commerce proof.
+- Production env vars + Supabase migrate before relying on the Production URL.
+- Do not run `seed:local` against a Supabase Production database.
+- Agents need authenticated Vercel/Supabase access (MCP or CLI) to operate the real projects.
 
 ## Preview release preparation (CapRover — transitional)
 
@@ -225,11 +225,11 @@ Historical CapRover offline package prep (no CapRover API call, no push, no depl
 npm run prepare:preview
 ```
 
-When CapRover/preview hosting credentials are absent, a successful offline prepare records `prepared_local` and exits without deploying. Production targets and unauthorized remote publish attempts are refused. **Prefer Vercel Preview** ([§ Vercel + Supabase preview](#vercel--supabase-preview-wave-5)). Live CapRover deploy remains an operator-authorized step outside the default path and is not the primary target.
+When CapRover/preview hosting credentials are absent, a successful offline prepare records `prepared_local` and exits without deploying. **Prefer Vercel Production** ([§ Vercel + Supabase Production](#vercel--supabase-production)). Live CapRover deploy remains outside the default path and is not the primary target.
 
-## Preview verification
+## Production verification
 
-Browser acceptance belongs to the preview deployment created by an authorized release step (Vercel Preview preferred). A local development server does not replace that verification.
+Browser acceptance belongs to the Vercel Production deployment created by the authorized Production go. A local development server does not replace that verification.
 
 ## B2C evidence matrix and cutover plan
 
@@ -351,27 +351,25 @@ DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet npm run migra
 
 Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids. Dual-owned `CREATE TABLE` definitions were folded into `001_initial_schema`.
 
-## Operator cloud deploy checklist (Phase A — do not execute from this path)
+## Operator cloud deploy checklist (Phase A — Production authorized)
 
-This checklist is an artefact for an authorized operator. Completing the list does **not** authorize deploy. Map each item to unmet cutover gates in `docs/tasks/rebuild/TASK-REBUILD-023-…/ship/cutover-plan.md`. Step-by-step Preview wiring: [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md).
+Canonical go: [`docs/ops/production-go-2026-07-26.md`](../../docs/ops/production-go-2026-07-26.md). Step-by-step: [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). Cutover plan: `docs/tasks/rebuild/TASK-REBUILD-023-…/ship/cutover-plan.md`.
 
-**Platform note:** The production target is **Vercel + Supabase**. CapRover/SQLite is transitional / superseded for new work. **Vercel production deploy is forbidden** until Wave 4 required rows are green **and** an explicit operator go. Preview may start after items 1–5 and 7. Stripe (steps 3/5 paid path) is optional until registered.
+**Platform note:** Target is **Vercel + Supabase**. CapRover/SQLite is transitional / superseded. Operator: **no Preview mode** — Production only. Stripe (steps 3/5 paid path) optional until registered. WP DNS / retirement still blocked.
 
 | Step | Action | Cutover gate |
 |---|---|---|
-| 1 | Link Vercel to the repo with Root Directory `app/web`; Preview deploy only (see Wave 5 doc). Do not Production-promote. | `separate_deployment_instruction` |
-| 2 | Provision Supabase Postgres; set pooler `DATABASE_URL` on Vercel; run `npm run migrate` via direct URL | — |
-| 3 | Set Vercel secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `AI_SETTINGS_SECRET`, optional `SMTP_*` / Meili/Zalo; **optional** `STRIPE_*` only after Stripe registration | — |
-| 4 | Confirm Preview HTTPS; auth cookies secure under `NODE_ENV=production` on the deployment | — |
+| 1 | Link Vercel to the repo with Root Directory `app/web`, Node **24.x**; deploy **Production** from `main` | `separate_deployment_instruction` (**met**) |
+| 2 | Provision Supabase Postgres; set pooler `DATABASE_URL` on Vercel Production; run `npm run migrate` via direct URL | — |
+| 3 | Set Vercel **Production** secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `AI_SETTINGS_SECRET`, optional `SMTP_*` / Meili/Zalo; **optional** `STRIPE_*` only after Stripe registration | — |
+| 4 | Confirm Production HTTPS; auth cookies secure under `NODE_ENV=production` on the deployment | — |
 | 5 | **Deferred until Stripe registered:** webhook URL `https://<host>/api/webhooks/stripe` for `checkout.session.completed` | — |
 | 6 | Postgres backup/restore drill | `backup_verified` (**met** — see drill doc) |
 | 7 | Named rollback (previous Vercel deployment + Supabase PITR / `pg_restore`) | `named_rollback_plan` (**met** — [`docs/ops/named-rollback-plan.md`](../../docs/ops/named-rollback-plan.md)) |
-| 8 | Owner recorded **go / no-go** (Phase A only; no WP DNS cutover) | `owner_go_decision` (**unmet**) |
-| 9 | Separate explicit operator instruction to Production-deploy (this document alone is insufficient) | `separate_deployment_instruction` (**unmet**) |
+| 8 | Owner recorded **go** (Phase A only; no WP DNS cutover) | `owner_go_decision` (**met** — production-go doc) |
+| 9 | Separate explicit operator instruction to Production-deploy | `separate_deployment_instruction` (**met** — production-go doc) |
 
-Unmet gates that still block Production promote / WP retirement: `owner_go_decision`, `separate_deployment_instruction`. Phase A can run as a **parallel** greenfield store without DNS/WP retirement once the operator authorizes deploy separately.
-
-**Do not** push, deploy, merge, promote Production on Vercel, or change DNS from agent automation without that explicit instruction.
+**Still blocked without a further instruction:** WordPress DNS cutover / WP retirement. Agents need authenticated Vercel/Supabase access to finish cloud execution.
 
 ### Operator CapRover deploy checklist (superseded)
 

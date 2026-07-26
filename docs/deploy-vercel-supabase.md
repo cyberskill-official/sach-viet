@@ -1,11 +1,11 @@
-# Deploy: Vercel + Supabase (Wave 5 — preview wiring)
+# Deploy: Vercel + Supabase (Production path)
 
 **Primary production target:** Vercel (Next.js in `app/web`) + Supabase (Postgres).  
 **CapRover / SQLite** is transitional only — see [`app/web/OPERATIONS.md`](../app/web/OPERATIONS.md) (historical CapRover checklist kept, marked superseded).
 
-This document is operator wiring for **preview**. It does **not** authorize production deploy, DNS cutover, or WordPress retirement. CyberOS: never push/deploy/merge without an explicit operator instruction. Agents must not run `vercel deploy` or `supabase` cloud CLI against real projects from this path unless Preview was explicitly authorized.
+**Production authorization (2026-07-26):** operator instructed no Preview mode — go straight to Production. Canonical record: [`docs/ops/production-go-2026-07-26.md`](ops/production-go-2026-07-26.md). Cutover gates `owner_go_decision` and `separate_deployment_instruction` are **met** for greenfield Vercel Production (Stripe deferred). This does **not** authorize WordPress DNS cutover or WP retirement.
 
-**Preview authorization:** operator **Go** on 2026-07-26 — see [`docs/ops/wave5-preview-go.md`](ops/wave5-preview-go.md). Production remains forbidden until cutover gates `owner_go_decision` and `separate_deployment_instruction` are met.
+CyberOS: agents must not invent further deploy scope (DNS/WP/royalties). Prefer Production env + Production deploy; Preview is optional/abandoned for this project.
 
 Canonical env name lists: [`app/web/.env.example`](../app/web/.env.example), [`app/web/.env.vercel.example`](../app/web/.env.vercel.example).
 
@@ -15,10 +15,10 @@ Canonical env name lists: [`app/web/.env.example`](../app/web/.env.example), [`a
 
 | Deploy kind | Gate |
 |---|---|
-| **Vercel Preview** | Local [Docker acceptance checklist](docker-acceptance-gate.md) items **1–5** and **7** green (item **6** Stripe paid path may be deferred) |
-| **Vercel Production** | Wave 4 required rows green (item 6 may stay **deferred** until Stripe is registered) **and** explicit operator go (`owner_go_decision` / `separate_deployment_instruction`) |
+| **Vercel Production** | Wave 4 required rows green (item 6 may stay **deferred** until Stripe is registered) **and** operator Production go — [`production-go-2026-07-26.md`](ops/production-go-2026-07-26.md) (**met**) |
+| **Vercel Preview** | Abandoned for this project (operator: no Preview mode). Historical note: [`wave5-preview-go.md`](ops/wave5-preview-go.md) |
 
-Do not start cloud preview until Compose smoke for items 1–5 and 7 has passed locally. Stripe registration is **not** required for Preview or for a non-payment Production Phase A.
+Stripe registration is **not** required for non-payment Production Phase A.
 
 ---
 
@@ -56,7 +56,7 @@ Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg
 2. Set **Root Directory** to `app/web` (required — the Next app is not at the repo root).
 3. Framework: Next.js. Optional local config: [`app/web/vercel.json`](../app/web/vercel.json) (`installCommand` / `buildCommand` only).
 4. Node: match `engines` in `app/web/package.json` (`24.x`). Also set **Node.js Version = 24.x** in the Vercel project Build & Deployment settings so Preview is not stuck on 22.x.
-5. Enable **Preview** deployments for PRs/branches as desired. Leave **Production** deployments disabled or protected until the Wave 4 gate is green and an operator explicitly authorizes production.
+5. Prefer **Production** deployments from `main`. Preview may be disabled (operator: no Preview mode).
 
 `output: "standalone"` in `next.config.ts` remains for the Docker/CapRover image path. Vercel uses its own Next.js build pipeline; do not deploy the CapRover Dockerfile through Vercel.
 
@@ -64,7 +64,7 @@ Prefer Supabase dashboard backups / PITR for cloud. Local Compose still uses `pg
 
 ## 3. Environment variables (names only)
 
-Set these in the Vercel project **Environment Variables** UI. Prefer **Preview**-scoped values first. See [`.env.vercel.example`](../app/web/.env.vercel.example).
+Set these in the Vercel project **Environment Variables** UI. Prefer **Production**-scoped values (Preview optional/unused). See [`.env.vercel.example`](../app/web/.env.vercel.example).
 
 | Name | Notes |
 |---|---|
@@ -90,28 +90,27 @@ Until the Stripe account is registered and test keys are available:
 
 ---
 
-## 4. Operator preview sequence (manual)
+## 4. Operator Production sequence (manual)
 
-No agent should run these against a real cloud project unless an operator explicitly asks.
+Authorized 2026-07-26 — [`production-go-2026-07-26.md`](ops/production-go-2026-07-26.md). Agents still need Vercel/Supabase credentials (MCP or CLI) to execute against the real projects.
 
-1. Confirm Docker acceptance items **1–5** and **7** locally ([OPERATIONS](../app/web/OPERATIONS.md) / [gate pointer](docker-acceptance-gate.md); `npm run smoke:docker`). Item **6** (Stripe) may stay deferred.
+1. Confirm Docker acceptance items **1–5** and **7** locally ([OPERATIONS](../app/web/OPERATIONS.md) / [gate pointer](docker-acceptance-gate.md)). Item **6** (Stripe) may stay deferred.
 2. Create Supabase project → apply migrations with direct `DATABASE_URL`.
-3. Create/link Vercel project → Root Directory `app/web` → set Preview env vars.
-4. Open a PR (or push a non-production branch) so Vercel builds a **Preview** URL — or use the Vercel dashboard **Deploy** for Preview only after operator instruction.
-5. Smoke on Preview: `/api/health` → `{"ok":true,"db":"ok"}`; login; catalog; checkout pending path (Stripe may be unset); optional admin AI playground. Skip Stripe webhook until registered.
-6. **Stop.** Do not promote to Production, attach production domains, or change WordPress DNS.
+3. Vercel project → Root Directory `app/web` → Node **24.x** → set **Production** env vars.
+4. Merge readiness work to `main` (PR #21 or equivalent) so Production builds the authorized commit — or deploy Production from that commit in the Vercel UI.
+5. Smoke on Production: `/api/health` → `{"ok":true,"db":"ok"}`; login; catalog; checkout pending path (Stripe may be unset); optional admin AI playground. Skip Stripe webhook until registered.
+6. **Stop before WordPress DNS.** Do not attach legacy WP domains or retire WordPress without a separate cutover instruction.
 
 ---
 
-## 5. Production (forbidden until gate + operator go)
+## 5. Production gates (status)
 
-Production on Vercel is **forbidden** until:
-
-1. Wave 4 required checklist rows are green with evidence (backup drill + named rollback). Item **6** (Stripe paid path) may remain deferred.
-2. Cutover gates `owner_go_decision` and `separate_deployment_instruction` are met by an **explicit operator instruction** (CyberOS).
-3. Rollback path is understood: [`docs/ops/named-rollback-plan.md`](ops/named-rollback-plan.md).
-
-This Wave 5 wiring document alone is insufficient for production.
+| Requirement | State |
+|---|---|
+| Wave 4 required rows (Stripe deferred OK) | met |
+| `owner_go_decision` / `separate_deployment_instruction` | met — [`production-go-2026-07-26.md`](ops/production-go-2026-07-26.md) |
+| Named rollback | met — [`named-rollback-plan.md`](ops/named-rollback-plan.md) |
+| WP DNS / retirement | **not** authorized |
 
 ---
 

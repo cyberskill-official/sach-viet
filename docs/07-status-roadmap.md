@@ -57,7 +57,8 @@ Full list: `docs/tasks/BACKLOG.md`.
 
 1. ~~Complete the **Docker acceptance checklist (Wave 4)**~~ — **done** (2026-07-25; Stripe item 6 deferred). See `app/web/OPERATIONS.md` / `docs/docker-acceptance-gate.md`.
 2. ~~Review and merge the rebuild / Postgres Docker branch~~ — **done** (PR #19 on `main`).
-3. **Wave 5 Vercel Preview** — operator **Go** recorded 2026-07-26 (`docs/ops/wave5-preview-go.md`). Wire Preview env + Supabase, land serverless Postgres readiness, smoke the Preview URL. Wiring doc: `docs/deploy-vercel-supabase.md`. CapRover is transitional.
-4. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
-5. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by the Preview go).
-6. **Vercel Production** still needs explicit `owner_go_decision` + `separate_deployment_instruction` (cutover plan). Preview go does **not** authorize production, DNS, or WordPress retirement.
+3. ~~Vercel Preview~~ — **superseded**. Operator 2026-07-26: no Preview; **Production** authorized — [`docs/ops/production-go-2026-07-26.md`](ops/production-go-2026-07-26.md). Cutover gates `owner_go_decision` + `separate_deployment_instruction` are **met** for greenfield Vercel + Supabase (Stripe deferred). WP DNS / cutover tasks stay `on_hold`.
+4. **Execute Production:** set Vercel Root Directory `app/web` + Node `24.x` + Production env; migrate Supabase; merge readiness PR #21 to `main`; smoke `/api/health` on the Production URL. Wiring: `docs/deploy-vercel-supabase.md`.
+5. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
+6. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by Production go).
+7. WordPress DNS / retirement still needs a **separate** cutover instruction (`TASK-CUTOVER-001` / `002`).
