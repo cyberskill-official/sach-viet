@@ -3,7 +3,10 @@
 platform: `greenfield_next_app_web`
 production_authorized: `true`
 production_authorization: [`docs/ops/production-go-2026-07-26.md`](../../../../ops/production-go-2026-07-26.md)
-executed: `false`
+executed: `true`
+executed_at: `2026-07-26T08:09:00Z`
+production_url: `https://sachviet.cyberskill.world`
+health_smoke: `GET /api/health → {"ok":true,"db":"ok"}` (smoke:production health-postgres PASS)
 live_wp_parity_claimed: `false`
 wordpress_dns_authorized: `false`
 
@@ -19,6 +22,7 @@ wordpress_dns_authorized: `false`
 Unmet / out of scope for this authorization:
 - Live WordPress DNS cutover, traffic switch, or WP retirement (`TASK-CUTOVER-001` / `TASK-CUTOVER-002` remain `on_hold`).
 - Stripe paid/webhook path stays **deferred** until Stripe registration (Wave 4 item 6). Non-payment checkout remains proven (item 5).
+- Phase B/C product tasks remain `on_hold` until a new explicit operator instruction.
 
-- Greenfield Vercel Production deploy is authorized; mark `executed: true` only after a Production URL health smoke is recorded.
-- This plan does **not** authorize DNS changes against WordPress or invent live WP parity.
+Day-2 (not blocking `executed`):
+- Load catalog via admin fixture WordPress import or commerce APIs — **never** `seed:local` against Supabase Production.
