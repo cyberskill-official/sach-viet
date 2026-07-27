@@ -13,7 +13,7 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 | Runtime fix (synckit hang) | **done (live)** | Health uses async `pg`; Vercel path uses `db-rpc-oneshot.mjs` spawnSync (deploy `dpl_CHYMbTjZ6Yk9a8CnVxEKumQvyvvg`) — land to git so next `main` deploy keeps it |
 | Smoke `/api/health` → db ok | **done** | `https://sachviet.cyberskill.world/api/health` → `{"ok":true,"db":"ok"}`; `npm run smoke:production` exit 0 (health+catalog PASS; admin-login skipped; empty catalog day-2) |
 | Cutover `executed: true` | **done** | [`cutover-plan.md`](../tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/ship/cutover-plan.md) @ 2026-07-26T08:09:00Z |
-| Day-2 catalog | **pending** | Admin commerce APIs/UI only (no WordPress) — **never** `seed:local` on Production |
+| Day-2 catalog | **done** | `TASK-ADMIN-002`: Production bootstrap env upserted + redeploy `dpl_324eRmWeSMamvwgTF24qFdyd8vqB` READY; admin login OK; created category `sach-tieng-viet`, product `sachviet-day2-demo` (+ variant), active in-stock offer; public catalog count=1; `npm run smoke:production` 4/4 PASS (2026-07-27). No secrets committed; never `seed:local` on Production. |
 | Stripe | **on_hold** | Deferred until explicit Stripe registration instruction |
 | WordPress / DNS / retirement | **N/A — no WP** | Do not pursue WP import, DNS, or retirement |
 | Phase B/C | **on_hold** | No unlock without new operator instruction |
@@ -104,7 +104,7 @@ npm run smoke:production
 
 ## Day-2 catalog (Phase A — no WordPress)
 
-After `/api/health` is green, load catalog via **admin commerce APIs/UI** (categories / products / offers).
+**Completed 2026-07-27** via admin catalog APIs (`TASK-ADMIN-002`): category + product/variant + active in-stock offer on Production; public catalog non-empty; smoke 4/4.
 
 - **No WordPress** — no fixture WP import, no live WP MySQL migration, no WP DNS.
 - **Stripe** stays deferred until an explicit registration instruction.
