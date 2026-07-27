@@ -58,12 +58,14 @@ test("Stripe checkout requires environment configuration and saves its hosted UR
   const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
   await assert.rejects(createStripeCheckoutSession(commerce, order.id, {}), /not configured/);
   let fetchOptions;
+  let fetchBody;
   const session = await createStripeCheckoutSession(
     commerce,
     order.id,
     { STRIPE_SECRET_KEY: "sk_test_example", STRIPE_SUCCESS_URL: "https://example.test/success", STRIPE_CANCEL_URL: "https://example.test/cancel" },
     async (_url, options) => {
       fetchOptions = options;
+      fetchBody = String(options?.body || "");
       return new Response(JSON.stringify({ id: "cs_test_1", url: "https://checkout.stripe.test/session" }), { status: 200 });
     },
   );
@@ -72,6 +74,8 @@ test("Stripe checkout requires environment configuration and saves its hosted UR
   assert.equal(commerce.db.prepare("SELECT payment_provider FROM orders WHERE id = ?").get(order.id).payment_provider, "stripe");
   assert.ok(fetchOptions?.signal instanceof AbortSignal);
   assert.ok(STRIPE_FETCH_TIMEOUT_MS >= 1_000);
+  assert.match(fetchBody, /unit_amount%5D=1250/);
+  assert.doesNotMatch(fetchBody, /unit_amount_decimal/);
 }));
 
 test("Stripe checkout refuses live secret keys", async () => withStores(async ({ catalog, commerce }) => {

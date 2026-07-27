@@ -128,9 +128,11 @@ export async function createStripeCheckoutSession(store, orderId, environment = 
   const items = store.db.prepare("SELECT title, unit_price_usd, quantity FROM order_items WHERE order_id = ?").all(orderId);
   const body = new URLSearchParams({ mode: "payment", success_url: successUrl, cancel_url: cancelUrl, "metadata[order_id]": order.id });
   items.forEach((item, index) => {
+    // Stripe USD payment mode allows at most 2 decimal places; our money strings are 4-dp.
+    const unitAmountCents = Number(moneyUnits(item.unit_price_usd) / 100n);
     body.set(`line_items[${index}][price_data][currency]`, order.currency.toLowerCase());
     body.set(`line_items[${index}][price_data][product_data][name]`, item.title);
-    body.set(`line_items[${index}][price_data][unit_amount_decimal]`, item.unit_price_usd);
+    body.set(`line_items[${index}][price_data][unit_amount]`, String(unitAmountCents));
     body.set(`line_items[${index}][quantity]`, String(item.quantity));
   });
   const response = await fetcher("https://api.stripe.com/v1/checkout/sessions", {
