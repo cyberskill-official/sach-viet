@@ -28,6 +28,9 @@ Supabase Production migration `payment_provider` applied (`payment_provider`, `p
 
 `bash .cyberos/cuo/gates/run-gates.sh` → GREEN (204 tests + doctor).
 
-## Explicit non-claims
+## Manual proof (2026-07-28)
 
-Not live-money ready. No `sk_live_` / `PAYPAL_MODE=live`. No Phase B/C / WP unlock.
+- Stripe: `POST /api/checkout` (provider stripe) → hosted URL; signed `checkout.session.completed` webhook → order `paid` via `GET /api/orders`.
+- PayPal: `POST /api/checkout` (provider paypal) → sandbox approve URL created (buyer capture left for operator UI if desired).
+- Deploy: `dpl_6a8ocVWP2dMpnEXrGhzpRpeVBmHu` READY on Production from feature branch.
+- Fix landed: Stripe `unit_amount` integer cents (USD rejects 4-dp `unit_amount_decimal`).
