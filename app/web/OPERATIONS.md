@@ -247,27 +247,39 @@ Do not commit `.env` files, credentials, session cookies, password hashes, or da
 
 Generate the password hash with `npm run hash-password` from `app/web` (authorized operations path). Do not place a plain-text password in configuration or source control. Do not document or commit hash values.
 
-## Stripe paid path (code readiness; optional until registered)
+## Stripe + PayPal sandbox paid path (TASK-PAYMENTS-001)
 
-**Stripe is deferred** until account registration completes. Preview/Production may omit all `STRIPE_*` vars; unpaid checkout (Wave 4 item 5) remains the commerce proof. Wave 4 item 6 (webhook → paid → outbox) stays deferred until keys exist.
+**Sandbox/test only.** Helpers refuse `sk_live_` and `PAYPAL_MODE=live`. Never commit real keys.
 
-Checkout (`POST /api/checkout`) creates a pending order, then a Stripe Checkout Session when all of these are set:
+`POST /api/checkout` accepts `{ items, provider?: "stripe" | "paypal" }` (default `stripe`). It creates a pending order, then:
 
-- `STRIPE_SECRET_KEY` (use `sk_test_…` locally and on Vercel Preview; live key only via authorized Production secrets)
-- `STRIPE_SUCCESS_URL`
-- `STRIPE_CANCEL_URL`
+**Stripe** (when configured):
 
-Webhook (`POST /api/webhooks/stripe`) requires `STRIPE_WEBHOOK_SECRET` and a valid `Stripe-Signature` header. On `checkout.session.completed` the order becomes `paid` (idempotent) and, in the same transaction, a confirmation row is queued in `order_comms_outbox`. The request then drains that queue, which sends order-confirmation email (SMTP or recording stub) plus an in-app `order.paid` notification.
+- `STRIPE_SECRET_KEY` (`sk_test_…` only)
+- `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL`
+
+Webhook (`POST /api/webhooks/stripe`) requires `STRIPE_WEBHOOK_SECRET`. On `checkout.session.completed` the order becomes `paid` (idempotent) and enqueues `order.paid` confirmation in the same transaction.
+
+**PayPal** (sandbox):
+
+- `PAYPAL_MODE=sandbox`
+- `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_RETURN_URL` / `PAYPAL_CANCEL_URL`
+- `PAYPAL_WEBHOOK_ID` (after Dashboard registration)
+
+Buyer approve → `GET /api/checkout/paypal/return?token=…` captures; webhook `POST /api/webhooks/paypal` is the durable path (`CHECKOUT.ORDER.APPROVED` / `PAYMENT.CAPTURE.COMPLETED`). Verification uses PayPal `verify-webhook-signature` with `PAYPAL_WEBHOOK_ID`.
+
+Cart CTAs: **Thanh toán Stripe** / **Thanh toán PayPal**.
 
 Only failures *before* the paid transition answer `400`. Once the payment is committed the webhook answers `200` even if delivery fails, because the confirmation is already durable; the failed entry stays `pending` with an exponential backoff and is retried by the next drain.
 
-Env names only live in `.env.example` / `.env.docker.example` / `.env.vercel.example`. **Never commit real Stripe keys.** Operator must supply Vercel (or local Compose) secrets before a real paid path works.
+Env names only live in `.env.example` / `.env.docker.example` / `.env.vercel.example`. **Never commit real Stripe or PayPal keys.**
 
 Local test-mode sketch (still not a cloud deploy):
 
-1. Put test keys and URLs in `app/.env.docker` (or host `.env`).
-2. Forward webhooks with Stripe CLI to `http://127.0.0.1:3000/api/webhooks/stripe`.
-3. Complete a Checkout Session; confirm order status `paid` and a delivery attempt row / log for confirmation email.
+1. Put test/sandbox keys and URLs in `app/.env.docker` (or host `.env`).
+2. Forward Stripe webhooks with Stripe CLI to `http://127.0.0.1:3000/api/webhooks/stripe`.
+3. Complete Checkout / PayPal sandbox buyer; confirm order status `paid` and a delivery attempt row / log for confirmation email.
 
 ## Transactional order email
 

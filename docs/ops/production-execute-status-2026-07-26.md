@@ -14,7 +14,7 @@ Tracks the checklist in [`production-go-2026-07-26.md`](production-go-2026-07-26
 | Smoke `/api/health` → db ok | **done** | `https://sachviet.cyberskill.world/api/health` → `{"ok":true,"db":"ok"}`; `npm run smoke:production` exit 0 (health+catalog PASS; admin-login skipped; empty catalog day-2) |
 | Cutover `executed: true` | **done** | [`cutover-plan.md`](../tasks/rebuild/TASK-REBUILD-023-prove-b2c-parity-and-plan-cutover/ship/cutover-plan.md) @ 2026-07-26T08:09:00Z |
 | Day-2 catalog | **done** | `TASK-ADMIN-002`: Production bootstrap env upserted + redeploy `dpl_324eRmWeSMamvwgTF24qFdyd8vqB` READY; admin login OK; created category `sach-tieng-viet`, product `sachviet-day2-demo` (+ variant), active in-stock offer; public catalog count=1; `npm run smoke:production` 4/4 PASS (2026-07-27). No secrets committed; never `seed:local` on Production. |
-| Stripe | **on_hold** | Deferred until explicit Stripe registration instruction |
+| Stripe | **done (sandbox)** | TASK-PAYMENTS-001: Stripe test-mode + PayPal sandbox on Production (`https://sachviet.cyberskill.world`). Live keys still forbidden. |
 | WordPress / DNS / retirement | **N/A — no WP** | Do not pursue WP import, DNS, or retirement |
 | Phase B/C | **on_hold** | No unlock without new operator instruction |
 

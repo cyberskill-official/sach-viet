@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   upsertProductionEnv,
+  validateSandboxPaymentEnv,
   validateWireInputs,
   withTeam,
 } from "../scripts/wire-production-env.mjs";
@@ -87,4 +88,24 @@ test("upsertProductionEnv deletes existing production key then creates", async (
     "DELETE /v9/projects/prj/env/env_old",
     "POST /v10/projects/prj/env",
   ]);
+});
+
+test("validateSandboxPaymentEnv refuses live Stripe and PayPal", () => {
+  const liveStripe = validateSandboxPaymentEnv({ STRIPE_SECRET_KEY: "sk_live_x" });
+  assert.equal(liveStripe.ok, false);
+  assert.ok(liveStripe.errors.some((e) => /sk_test_/.test(e)));
+
+  const livePayPal = validateSandboxPaymentEnv({ PAYPAL_MODE: "live" });
+  assert.equal(livePayPal.ok, false);
+  assert.ok(livePayPal.errors.some((e) => /sandbox/.test(e)));
+
+  const ok = validateSandboxPaymentEnv({
+    STRIPE_SECRET_KEY: "sk_test_x",
+    STRIPE_SUCCESS_URL: "https://example.test/ok",
+    PAYPAL_MODE: "sandbox",
+    PAYPAL_CLIENT_ID: "id",
+  });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.vars.STRIPE_SECRET_KEY, "sk_test_x");
+  assert.equal(ok.vars.PAYPAL_MODE, "sandbox");
 });

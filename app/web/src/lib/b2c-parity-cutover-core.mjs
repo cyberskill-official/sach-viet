@@ -108,8 +108,8 @@ export const B2C_CAPABILITY_CHECKLIST = Object.freeze([
   {
     id: "paypal_checkout",
     label: "PayPal hosted checkout (legacy storefront listed Stripe/PayPal)",
-    evidence_key: null,
-    status: "deferred_out_of_scope",
+    evidence_key: "paypal_sandbox_checkout",
+    status: "greenfield_proven",
   },
   {
     id: "live_wp_storefront_comparison",

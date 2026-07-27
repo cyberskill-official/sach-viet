@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-07-27T17:59:19Z",
+  "task_id": "TASK-PAYMENTS-001",
+  "from": "reviewing",
+  "to": "ready_to_test",
+  "evidence_path": "docs/tasks/payments/TASK-PAYMENTS-001-sandbox-stripe-paypal/ship/review-approval.md",
+  "evidence_sha256": "85a1e42443d1c5cb5ef9800e5a94b248b55fdb4020cd47b2fd556d9f9192c095",
+  "artifact_sha256": "00c94f96aa67345b60b0d0a96f0c8c3038fa437800f10b9b58cb337f917a85ab"
+}

@@ -5,7 +5,8 @@ Inspection evidence for TASK-REBUILD-023
 - live_wp_parity_claimed: false
 - evidence_unavailable rows: live_wp_storefront_comparison
 - source_gap: wishlist_share
-- deferred_out_of_scope: paypal_checkout
+- deferred_out_of_scope: (none)
+- greenfield_proven paypal_checkout: paypal_sandbox_checkout (TASK-PAYMENTS-001)
 - unmet gates: backup_verified, named_rollback_plan, owner_go_decision, separate_deployment_instruction
 - CUTOVER-001/002 status: on_hold (unchanged)
 - MIGRATION-001 status: on_hold (unchanged)

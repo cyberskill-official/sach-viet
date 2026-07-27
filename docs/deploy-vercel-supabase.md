@@ -72,21 +72,26 @@ Set these in the Vercel project **Environment Variables** UI. Prefer **Productio
 | `DATABASE_URL` | Supabase **pooler** URL for runtime |
 | `BOOTSTRAP_ADMIN_EMAIL` | Optional; with hash, only when user store is empty |
 | `BOOTSTRAP_ADMIN_PASSWORD_HASH` | From `npm run hash-password` (no `$` escaping needed in Vercel UI) |
-| `STRIPE_SECRET_KEY` | **Optional until Stripe is registered.** Omit for non-payment Phase A; checkout creates a pending order and returns a clear “not configured” error. When ready: Preview uses `sk_test_…` only |
-| `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Required only when Stripe secret is set |
-| `STRIPE_WEBHOOK_SECRET` | Required only when Stripe webhooks are enabled |
+| `STRIPE_SECRET_KEY` | Sandbox unlock (TASK-PAYMENTS-001): `sk_test_…` only on Production. Helpers refuse `sk_live_`. |
+| `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Required when Stripe secret is set (Production: `/ecom/orders?paid=1` and `/ecom/cart`) |
+| `STRIPE_WEBHOOK_SECRET` | Required for `POST /api/webhooks/stripe` (register test-mode endpoint on Production URL) |
+| `PAYPAL_MODE` | Must be `sandbox` (live refused) |
+| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | PayPal sandbox REST app |
+| `PAYPAL_RETURN_URL` / `PAYPAL_CANCEL_URL` | Production absolute URLs (`/api/checkout/paypal/return`, `/ecom/cart`) |
+| `PAYPAL_WEBHOOK_ID` | After registering sandbox webhook on Production URL |
 | `AI_SETTINGS_SECRET` | Min 32 characters if using admin BYOK AI |
 | `SMTP_*` / Zalo / Meili | Optional; unset → recording stubs |
 
 Never set `SEED_PASSWORD` or `DATABASE_PATH` on Vercel.
 
-### Stripe deferred
+### Stripe + PayPal sandbox (TASK-PAYMENTS-001)
 
-Until the Stripe account is registered and test keys are available:
+Wave 4 item **6** (webhook → paid → outbox) is unlocked for **test/sandbox keys only** on Production:
 
-- Leave all `STRIPE_*` vars unset on Preview/Production.
-- Rely on Wave 4 item **5** (pending checkout without Stripe) as the commerce proof.
-- Wave 4 item **6** (webhook → paid → outbox) stays **deferred**; re-open it after wiring Stripe CLI/test Checkout, then add env vars and the webhook endpoint.
+- Set `STRIPE_*` test values and `PAYPAL_*` sandbox values (env names in [`.env.vercel.example`](../app/web/.env.vercel.example)).
+- Register Stripe Dashboard (test mode) webhook → `https://sachviet.cyberskill.world/api/webhooks/stripe` for `checkout.session.completed`.
+- Register PayPal sandbox webhook → `https://sachviet.cyberskill.world/api/webhooks/paypal` for `CHECKOUT.ORDER.APPROVED` / `PAYMENT.CAPTURE.COMPLETED`.
+- Cart exposes **Thanh toán Stripe** and **Thanh toán PayPal**. Do not claim live-money readiness.
 
 ---
 

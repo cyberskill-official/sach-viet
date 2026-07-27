@@ -6,12 +6,19 @@ import { join } from "node:path";
 import test from "node:test";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
 import {
+  assertPayPalSandboxMode,
+  assertStripeTestSecret,
+  capturePayPalOrder,
   createCommerceStore,
+  createPayPalCheckoutOrder,
   createPendingOrder,
   createStripeCheckoutSession,
   listCustomerOrders,
+  normalizeCheckoutProvider,
+  processPayPalWebhook,
   processStripeWebhook,
   STRIPE_FETCH_TIMEOUT_MS,
+  verifyPayPalWebhookSignature,
   verifyStripeSignature,
 } from "../src/lib/commerce-core.mjs";
 
@@ -51,19 +58,150 @@ test("Stripe checkout requires environment configuration and saves its hosted UR
   const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
   await assert.rejects(createStripeCheckoutSession(commerce, order.id, {}), /not configured/);
   let fetchOptions;
+  let fetchBody;
   const session = await createStripeCheckoutSession(
     commerce,
     order.id,
     { STRIPE_SECRET_KEY: "sk_test_example", STRIPE_SUCCESS_URL: "https://example.test/success", STRIPE_CANCEL_URL: "https://example.test/cancel" },
     async (_url, options) => {
       fetchOptions = options;
+      fetchBody = String(options?.body || "");
       return new Response(JSON.stringify({ id: "cs_test_1", url: "https://checkout.stripe.test/session" }), { status: 200 });
     },
   );
-  assert.deepEqual(session, { id: "cs_test_1", url: "https://checkout.stripe.test/session" });
-  assert.equal(commerce.db.prepare("SELECT checkout_url FROM orders WHERE id = ?").get(order.id).checkout_url, session.url);
+  assert.deepEqual(session, { id: "cs_test_1", url: "https://checkout.stripe.test/session", provider: "stripe" });
+  assert.equal(commerce.db.prepare("SELECT checkout_url, payment_provider FROM orders WHERE id = ?").get(order.id).checkout_url, session.url);
+  assert.equal(commerce.db.prepare("SELECT payment_provider FROM orders WHERE id = ?").get(order.id).payment_provider, "stripe");
   assert.ok(fetchOptions?.signal instanceof AbortSignal);
   assert.ok(STRIPE_FETCH_TIMEOUT_MS >= 1_000);
+  assert.match(fetchBody, /unit_amount%5D=1250/);
+  assert.doesNotMatch(fetchBody, /unit_amount_decimal/);
+}));
+
+test("Stripe checkout refuses live secret keys", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = fixture(catalog);
+  const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  await assert.rejects(
+    createStripeCheckoutSession(commerce, order.id, {
+      STRIPE_SECRET_KEY: "sk_live_forbidden",
+      STRIPE_SUCCESS_URL: "https://example.test/success",
+      STRIPE_CANCEL_URL: "https://example.test/cancel",
+    }),
+    /test-mode/,
+  );
+  assert.throws(() => assertStripeTestSecret("sk_live_x"), /test-mode/);
+}));
+
+test("normalizeCheckoutProvider defaults to stripe and rejects unknown", () => {
+  assert.equal(normalizeCheckoutProvider(undefined), "stripe");
+  assert.equal(normalizeCheckoutProvider("PayPal"), "paypal");
+  assert.throws(() => normalizeCheckoutProvider("square"), /stripe or paypal/);
+});
+
+test("PayPal checkout requires sandbox config and saves approve URL", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = fixture(catalog);
+  const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  await assert.rejects(createPayPalCheckoutOrder(commerce, order.id, {}), /not configured/);
+  assert.throws(() => assertPayPalSandboxMode({ PAYPAL_MODE: "live" }), /refused|sandbox/);
+  const calls = [];
+  const session = await createPayPalCheckoutOrder(
+    commerce,
+    order.id,
+    {
+      PAYPAL_MODE: "sandbox",
+      PAYPAL_CLIENT_ID: "client",
+      PAYPAL_CLIENT_SECRET: "secret",
+      PAYPAL_RETURN_URL: "https://example.test/api/checkout/paypal/return",
+      PAYPAL_CANCEL_URL: "https://example.test/ecom/cart",
+    },
+    async (url, options) => {
+      calls.push({ url, method: options?.method });
+      if (String(url).includes("/v1/oauth2/token")) {
+        return new Response(JSON.stringify({ access_token: "tok_test" }), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          id: "PAYPAL-ORDER-1",
+          links: [{ rel: "approve", href: "https://www.sandbox.paypal.com/checkoutnow?token=PAYPAL-ORDER-1" }],
+        }),
+        { status: 201 },
+      );
+    },
+  );
+  assert.deepEqual(session, {
+    id: "PAYPAL-ORDER-1",
+    url: "https://www.sandbox.paypal.com/checkoutnow?token=PAYPAL-ORDER-1",
+    provider: "paypal",
+  });
+  const row = commerce.db.prepare("SELECT payment_provider, paypal_order_id, checkout_url FROM orders WHERE id = ?").get(order.id);
+  assert.equal(row.payment_provider, "paypal");
+  assert.equal(row.paypal_order_id, "PAYPAL-ORDER-1");
+  assert.equal(row.checkout_url, session.url);
+  assert.equal(calls.length, 2);
+}));
+
+test("PayPal capture marks pending order paid idempotently", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = fixture(catalog);
+  const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  commerce.db
+    .prepare("UPDATE orders SET payment_provider = 'paypal', paypal_order_id = ? WHERE id = ?")
+    .run("PAYPAL-ORDER-2", order.id);
+  const env = {
+    PAYPAL_MODE: "sandbox",
+    PAYPAL_CLIENT_ID: "client",
+    PAYPAL_CLIENT_SECRET: "secret",
+  };
+  const fetcher = async (url) => {
+    if (String(url).includes("/v1/oauth2/token")) {
+      return new Response(JSON.stringify({ access_token: "tok_test" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ status: "COMPLETED", id: "PAYPAL-ORDER-2" }), { status: 201 });
+  };
+  const first = await capturePayPalOrder(commerce, "PAYPAL-ORDER-2", env, fetcher);
+  assert.equal(first.updated, true);
+  assert.equal(first.paid, true);
+  assert.equal(listCustomerOrders(commerce, user)[0].status, "paid");
+  const second = await capturePayPalOrder(commerce, "PAYPAL-ORDER-2", env, fetcher);
+  assert.equal(second.updated, false);
+  assert.equal(second.paid, true);
+}));
+
+test("PayPal webhook verifies via API then captures on ORDER.APPROVED", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = fixture(catalog);
+  const order = createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  commerce.db
+    .prepare("UPDATE orders SET payment_provider = 'paypal', paypal_order_id = ? WHERE id = ?")
+    .run("PAYPAL-ORDER-3", order.id);
+  const payload = JSON.stringify({
+    event_type: "CHECKOUT.ORDER.APPROVED",
+    resource: { id: "PAYPAL-ORDER-3" },
+  });
+  const headers = {
+    "paypal-transmission-id": "tx-1",
+    "paypal-transmission-time": "2026-07-28T00:00:00Z",
+    "paypal-cert-url": "https://api.paypal.com/cert",
+    "paypal-auth-algo": "SHA256withRSA",
+    "paypal-transmission-sig": "sig",
+  };
+  const env = {
+    PAYPAL_MODE: "sandbox",
+    PAYPAL_CLIENT_ID: "client",
+    PAYPAL_CLIENT_SECRET: "secret",
+  };
+  const fetcher = async (url) => {
+    if (String(url).includes("/v1/oauth2/token")) {
+      return new Response(JSON.stringify({ access_token: "tok_test" }), { status: 200 });
+    }
+    if (String(url).includes("/v1/notifications/verify-webhook-signature")) {
+      return new Response(JSON.stringify({ verification_status: "SUCCESS" }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ status: "COMPLETED", id: "PAYPAL-ORDER-3" }), { status: 201 });
+  };
+  assert.equal(await verifyPayPalWebhookSignature(payload, headers, "WH-TEST-ID-1", env, fetcher), true);
+  const result = await processPayPalWebhook(commerce, payload, headers, "WH-TEST-ID-1", env, fetcher);
+  assert.equal(result.handled, true);
+  assert.equal(result.paid, true);
+  assert.equal(listCustomerOrders(commerce, user)[0].status, "paid");
 }));
 
 test("signed Stripe completion updates only the referenced pending order", () => withStores(({ catalog, commerce }) => {
