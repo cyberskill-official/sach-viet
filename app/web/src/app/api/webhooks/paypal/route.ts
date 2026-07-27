@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     let comms = null;
-    if (result.handled && result.orderId) {
+    if (result.handled && "orderId" in result && result.orderId) {
       try {
         comms = processOrderCommsOutbox(store, { orderId: result.orderId });
       } catch (error) {
