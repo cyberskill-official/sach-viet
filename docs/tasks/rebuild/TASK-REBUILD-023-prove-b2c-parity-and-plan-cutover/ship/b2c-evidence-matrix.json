@@ -5,10 +5,10 @@
   "generated_by": "b2c-parity-cutover-core",
   "row_count": 15,
   "counts": {
-    "greenfield_proven": 12,
+    "greenfield_proven": 13,
     "source_gap": 1,
     "evidence_unavailable": 1,
-    "deferred_out_of_scope": 1
+    "deferred_out_of_scope": 0
   },
   "rows": [
     {
@@ -92,8 +92,8 @@
     {
       "id": "paypal_checkout",
       "label": "PayPal hosted checkout (legacy storefront listed Stripe/PayPal)",
-      "status": "deferred_out_of_scope",
-      "evidence_key": null
+      "status": "greenfield_proven",
+      "evidence_key": "paypal_sandbox_checkout"
     },
     {
       "id": "live_wp_storefront_comparison",

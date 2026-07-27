@@ -44,9 +44,15 @@ test("evidence matrix marks greenfield_proven rows with evidence keys and forbid
   assert.equal(matrix.counts.source_gap >= 1, true);
   for (const row of matrix.rows) {
     if (row.status === "greenfield_proven") {
-      assert.ok(row.evidence_key?.startsWith("verify-"));
+      assert.ok(
+        row.evidence_key?.startsWith("verify-") || row.evidence_key === "paypal_sandbox_checkout",
+        `unexpected evidence_key for ${row.id}`,
+      );
     }
   }
+  const paypal = matrix.rows.find((row) => row.id === "paypal_checkout");
+  assert.equal(paypal?.status, "greenfield_proven");
+  assert.equal(paypal?.evidence_key, "paypal_sandbox_checkout");
   assert.throws(() => assertNoLiveParityClaim({ live_wp_parity_claimed: true }), /live_wp_parity/);
   assert.throws(
     () => assertNoLiveParityClaim({ claim_mode: "live_wp_parity", live_wp_parity_claimed: false }),

@@ -1,0 +1,7 @@
+{
+  "schema": "cyberos.transition@1",
+  "task_id": "TASK-PAYMENTS-001",
+  "from": "ready_to_implement",
+  "to": "reviewing",
+  "receipt_sha256": "0b6c940d3b8977be262d2fc8ed7bc765b1792dc8748d5e6c79cd54d7d3bb5267"
+}

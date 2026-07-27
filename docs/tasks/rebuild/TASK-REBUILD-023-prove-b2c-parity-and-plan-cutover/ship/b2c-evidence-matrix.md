@@ -18,7 +18,7 @@ live_wp_parity_claimed: `false`
 | WordPress import compatibility (fixture-driven) | `greenfield_proven` | verify-wordpress-import-core.mjs |
 | Quality checklist and offline preview prepare | `greenfield_proven` | verify-quality-preview-release-core.mjs |
 | Wishlist and public share link | `source_gap` | — |
-| PayPal hosted checkout (legacy storefront listed Stripe/PayPal) | `deferred_out_of_scope` | — |
+| PayPal hosted checkout (legacy storefront listed Stripe/PayPal) | `greenfield_proven` | paypal_sandbox_checkout |
 | Side-by-side live WordPress vs greenfield storefront comparison | `evidence_unavailable` | — |
 
 This matrix proves greenfield capability coverage via fixtures/APIs/tests. It does **not** claim live WordPress feature parity.

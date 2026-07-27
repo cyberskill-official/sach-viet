@@ -220,6 +220,66 @@ async function main() {
   console.log("Done. Smoke with: BASE_URL=https://<host> npm run smoke:production");
 }
 
+/**
+ * Refuse live payment credentials when wiring Production sandbox unlock.
+ * @param {Record<string, string | undefined>} paymentEnv
+ * @returns {{ ok: true, vars: Record<string, string> } | { ok: false, errors: string[] }}
+ */
+export function validateSandboxPaymentEnv(paymentEnv = {}) {
+  const errors = [];
+  const vars = {};
+
+  const stripeSecret = paymentEnv.STRIPE_SECRET_KEY;
+  if (stripeSecret) {
+    if (stripeSecret.startsWith("sk_live_")) {
+      errors.push("STRIPE_SECRET_KEY must be sk_test_… (live keys refused)");
+    } else if (!stripeSecret.startsWith("sk_test_")) {
+      errors.push("STRIPE_SECRET_KEY must start with sk_test_");
+    } else {
+      vars.STRIPE_SECRET_KEY = stripeSecret;
+    }
+  }
+  for (const key of ["STRIPE_SUCCESS_URL", "STRIPE_CANCEL_URL", "STRIPE_WEBHOOK_SECRET"]) {
+    if (paymentEnv[key]) vars[key] = paymentEnv[key];
+  }
+
+  const mode = (paymentEnv.PAYPAL_MODE || "").trim().toLowerCase();
+  if (mode === "live") {
+    errors.push("PAYPAL_MODE=live is refused; use sandbox");
+  } else if (mode && mode !== "sandbox") {
+    errors.push("PAYPAL_MODE must be sandbox when set");
+  } else if (mode === "sandbox") {
+    vars.PAYPAL_MODE = "sandbox";
+  }
+
+  for (const key of [
+    "PAYPAL_CLIENT_ID",
+    "PAYPAL_CLIENT_SECRET",
+    "PAYPAL_RETURN_URL",
+    "PAYPAL_CANCEL_URL",
+    "PAYPAL_WEBHOOK_ID",
+  ]) {
+    if (paymentEnv[key]) vars[key] = paymentEnv[key];
+  }
+
+  if (errors.length) return { ok: false, errors };
+  return { ok: true, vars };
+}
+
+/**
+ * Upsert sandbox/test payment env names onto Vercel Production.
+ * @param {(path: string, init?: object) => Promise<any>} vercel
+ * @param {string} projectId
+ * @param {Record<string, string>} vars
+ */
+export async function upsertSandboxPaymentEnv(vercel, projectId, vars) {
+  for (const [key, value] of Object.entries(vars)) {
+    if (!value) continue;
+    await upsertProductionEnv(vercel, projectId, key, value);
+    console.log(`Set Production env ${key}`);
+  }
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);

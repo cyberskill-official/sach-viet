@@ -39,4 +39,10 @@ export const MIGRATIONS = Object.freeze([
       db.exec(loadSql("002_ai_settings.sql"));
     },
   },
+  {
+    id: "003_payment_provider",
+    up(db) {
+      db.exec(loadSql("003_payment_provider.sql"));
+    },
+  },
 ]);
