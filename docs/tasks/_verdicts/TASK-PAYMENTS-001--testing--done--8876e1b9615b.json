@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-07-27T18:02:12Z",
+  "task_id": "TASK-PAYMENTS-001",
+  "from": "testing",
+  "to": "done",
+  "evidence_path": "docs/tasks/payments/TASK-PAYMENTS-001-sandbox-stripe-paypal/ship/final-acceptance.md",
+  "evidence_sha256": "8876e1b9615bfb496b87aad13a209adbc7d6f9ec71dcb4e51a2020892c93e926",
+  "artifact_sha256": "1ba32bb239df49187d3f6bd24d9a3089427fbe0044322c302671f27305384636"
+}

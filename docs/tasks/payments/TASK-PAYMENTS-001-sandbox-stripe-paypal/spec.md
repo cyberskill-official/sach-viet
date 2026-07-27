@@ -6,7 +6,7 @@ type: feature
 module: payments
 author: "@codex"
 department: engineering
-status: testing
+status: done
 priority: p0
 created_at: "2026-07-28T00:00:00+07:00"
 ai_authorship: assisted
