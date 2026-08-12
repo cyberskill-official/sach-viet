@@ -8,7 +8,7 @@ import { backupPostgresDatabase } from "../scripts/backup-postgres.mjs";
 import { restorePostgresDatabase } from "../scripts/restore-postgres.mjs";
 import { openDatabase } from "../src/lib/db.mjs";
 
-test("backupPostgresDatabase requires DATABASE_URL and invokes pg_dump -Fc", () => {
+test("backupPostgresDatabase requires DATABASE_URL and invokes pg_dump -Fc", async () => {
   assert.throws(() => backupPostgresDatabase({ databaseUrl: "" }), /DATABASE_URL/);
 
   const directory = mkdtempSync(join(tmpdir(), "sachviet-pg-backup-"));
@@ -44,7 +44,7 @@ test("backupPostgresDatabase requires DATABASE_URL and invokes pg_dump -Fc", () 
   }
 });
 
-test("restorePostgresDatabase requires --from and invokes pg_restore --clean", () => {
+test("restorePostgresDatabase requires --from and invokes pg_restore --clean", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-pg-restore-"));
   const fromPath = join(directory, "probe.dump");
   writeFileSync(fromPath, "PGDUMP");
@@ -65,7 +65,7 @@ test("restorePostgresDatabase requires --from and invokes pg_restore --clean", (
     assert.equal(seen.bin, "pg_restore");
     assert.equal(seen.args[0], "--dbname");
     assert.ok(seen.args.includes("--clean"));
-    assert.ok(seen.args.includes("--if-exists"));
+    assert.ok(seen.args.includes("--exit-on-error"));
     assert.equal(seen.args.at(-1), fromPath);
     assert.match(result.databaseUrl, /\*\*\*/);
   } finally {
@@ -73,15 +73,15 @@ test("restorePostgresDatabase requires --from and invokes pg_restore --clean", (
   }
 });
 
-test("Postgres round-trip probe: insert and select survive a session", () => {
+test("Postgres round-trip probe: insert and select survive a session", async () => {
   const dbPath = `/tmp/sachviet-backup-probe-${randomUUID()}`;
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   try {
-    db.exec("CREATE TABLE IF NOT EXISTS probe (id TEXT PRIMARY KEY, value TEXT NOT NULL)");
-    db.prepare("INSERT INTO probe (id, value) VALUES (?, ?)").run("p1", "hello");
-    const row = db.prepare("SELECT value FROM probe WHERE id = ?").get("p1");
+    await db.exec("CREATE TABLE IF NOT EXISTS probe (id TEXT PRIMARY KEY, value TEXT NOT NULL)");
+    await db.prepare("INSERT INTO probe (id, value) VALUES (?, ?)").run("p1", "hello");
+    const row = await db.prepare("SELECT value FROM probe WHERE id = ?").get("p1");
     assert.equal(row.value, "hello");
   } finally {
-    db.close();
+    await db.close();
   }
 });

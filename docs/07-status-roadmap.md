@@ -1,10 +1,14 @@
 # 07 — Current Status, Roadmap, Known Issues
 
-Snapshot: 2026-07-26. Living sources of truth: `docs/tasks/BACKLOG.md` (task status) and `docs/status/` (status site). The greenfield app lives under `app/web`.
+Snapshot: 2026-08-12. Living sources of truth: `docs/tasks/BACKLOG.md` (task status) and `docs/status/` (status site). The greenfield app lives under `app/web`.
 
 ## What is done (greenfield rebuild)
 
-`TASK-REBUILD-001` … `TASK-REBUILD-023` are **done**. The Next.js package at `app/web` ships machine-gated foundation work across:
+`TASK-REBUILD-001` … `TASK-REBUILD-023` are **done**. Phase A (greenfield Vercel + Supabase) may be live at `https://sachviet.cyberskill.world`. That is **not** a claim of real-commerce readiness: identity self-serve, transactional checkout safety, leased jobs, and portal UIs are the 2026-08-13 audit follow-up (`TASK-GOV-001` … `TASK-TEST-001`, status `implementing`). Preview is abandoned. Compose and CI use Postgres, not SQLite.
+
+WordPress DNS / live WP MySQL import stay out of scope (`TASK-CUTOVER-*` / `TASK-MIGRATION-001` remain `on_hold`).
+
+The Next.js package at `app/web` ships machine-gated foundation work across:
 
 - Platform bootstrap, identity/session, shared web foundations
 - Catalog/marketplace, storefront cart/checkout, customer support
@@ -55,10 +59,9 @@ Full list: `docs/tasks/BACKLOG.md`.
 
 ## Suggested next steps (operator-gated)
 
-1. ~~Complete the **Docker acceptance checklist (Wave 4)**~~ — **done** (2026-07-25; Stripe item 6 deferred). See `app/web/OPERATIONS.md` / `docs/docker-acceptance-gate.md`.
-2. ~~Review and merge the rebuild / Postgres Docker branch~~ — **done** (PR #19 on `main`).
-3. ~~Vercel Preview~~ — **superseded**. Operator 2026-07-26: no Preview; **Production** authorized — [`docs/ops/production-go-2026-07-26.md`](ops/production-go-2026-07-26.md). Cutover gates `owner_go_decision` + `separate_deployment_instruction` are **met** for greenfield Vercel + Supabase (Stripe deferred). WP DNS / cutover tasks stay `on_hold`.
-4. **Execute Production (critical path):** PR #21 + #22 on `main` (`6a5b726`). Build succeeded; runtime still blocked on credentials. Next human action: desktop MCP auth **or** paste secrets and run `npm run wire:production` then `npm run smoke:production` — tracker [`docs/ops/production-execute-status-2026-07-26.md`](ops/production-execute-status-2026-07-26.md). Flip cutover `executed: true` only after green `/api/health`. Day-2 catalog after that (no WP DNS). Wiring: `docs/deploy-vercel-supabase.md`.
-5. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred.
-6. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by Production go).
-7. WordPress DNS / retirement still needs a **separate** cutover instruction (`TASK-CUTOVER-001` / `002`).
+1. Complete HITL review of `TASK-GOV-001` … `TASK-TEST-001` (status `implementing`). Do not mark `ready_to_test` or `done` without verdict JSON.
+2. Optional Production freeze: deploy `COMMERCE_MUTATIONS_ENABLED=0` only with an explicit operator instruction.
+3. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred behind `DEC-ROY-001` / `DEC-PUB-001`.
+4. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by Production go).
+5. WordPress DNS / retirement still needs a **separate** cutover instruction (`TASK-CUTOVER-001` / `002`).
+6. Live Stripe/PayPal, Zalo, tax/shipping, and US-region PITR wait on named `DEC-*` records.

@@ -21,7 +21,7 @@ import {
 
 const appRoot = join(import.meta.dirname, "..");
 
-test("checklist uses only closed-set statuses and covers required B2C rows", () => {
+test("checklist uses only closed-set statuses and covers required B2C rows", async () => {
   const checklist = getB2cCapabilityChecklist();
   assert.equal(checklist.live_wp_parity_claimed, false);
   assert.equal(checklist.claim_mode, "greenfield_capability_coverage");
@@ -35,7 +35,7 @@ test("checklist uses only closed-set statuses and covers required B2C rows", () 
   assert.ok(ids.includes("wishlist_share"));
 });
 
-test("evidence matrix marks greenfield_proven rows with evidence keys and forbids live parity", () => {
+test("evidence matrix marks greenfield_proven rows with evidence keys and forbids live parity", async () => {
   const matrix = buildEvidenceMatrix();
   validateEvidenceMatrix(matrix);
   assert.equal(matrix.live_wp_parity_claimed, false);
@@ -60,7 +60,7 @@ test("evidence matrix marks greenfield_proven rows with evidence keys and forbid
   );
 });
 
-test("unknown status and incomplete matrix are rejected", () => {
+test("unknown status and incomplete matrix are rejected", async () => {
   assert.throws(() => assertClosedParityStatus("almost_parity"), /Unknown parity status/);
   assert.throws(
     () =>
@@ -76,7 +76,7 @@ test("unknown status and incomplete matrix are rejected", () => {
   assert.throws(() => validateEvidenceMatrix(incomplete), /missing required capability/);
 });
 
-test("cutover plan records unmet owner gates and does not execute", () => {
+test("cutover plan records unmet owner gates and does not execute", async () => {
   const plan = buildCutoverPlan();
   assert.equal(plan.executed, false);
   assert.equal(plan.production_authorized, false);
@@ -92,7 +92,7 @@ test("cutover plan records unmet owner gates and does not execute", () => {
   assert.ok(!plan.unmet_gates.includes("parity_evidence_packet_complete"));
 });
 
-test("prepareCutoverPlan returns plan_recorded for default path", () => {
+test("prepareCutoverPlan returns plan_recorded for default path", async () => {
   const events = [];
   const result = prepareCutoverPlan({
     log: (event, fields = {}) => events.push({ event, ...fields }),
@@ -104,7 +104,7 @@ test("prepareCutoverPlan returns plan_recorded for default path", () => {
   assert.ok(events.some((entry) => entry.event === "b2c_cutover_plan_completed"));
 });
 
-test("production target and execute flag are refused", () => {
+test("production target and execute flag are refused", async () => {
   const production = prepareCutoverPlan({ target: "production", log() {} });
   assert.equal(production.outcome, CUTOVER_PLAN_OUTCOMES.REFUSED_PRODUCTION);
   assert.equal(production.executed, false);
@@ -114,7 +114,7 @@ test("production target and execute flag are refused", () => {
   assert.equal(live.executed, false);
 });
 
-test("invalid checklist yields invalid_matrix", () => {
+test("invalid checklist yields invalid_matrix", async () => {
   const result = prepareCutoverPlan({
     checklist: {
       claim_mode: "greenfield_capability_coverage",
@@ -127,7 +127,7 @@ test("invalid checklist yields invalid_matrix", () => {
   assert.equal(result.executed, false);
 });
 
-test("markdown renderers stay non-executing and disclose no live parity", () => {
+test("markdown renderers stay non-executing and disclose no live parity", async () => {
   const matrix = buildEvidenceMatrix();
   const plan = buildCutoverPlan({ matrix });
   const matrixMd = renderEvidenceMatrixMarkdown(matrix);
@@ -138,13 +138,13 @@ test("markdown renderers stay non-executing and disclose no live parity", () => 
   assert.match(planMd, /owner_go_decision/);
 });
 
-test("default-path source forbids production cutover primitives", () => {
+test("default-path source forbids production cutover primitives", async () => {
   const source = readFileSync(join(appRoot, "src/lib/b2c-parity-cutover-core.mjs"), "utf8");
   assertNoProductionCutoverInSource(source);
   assert.throws(() => assertNoProductionCutoverInSource("await fetch('https://example')"), /production cutover/);
 });
 
-test("closed status set is frozen and complete", () => {
+test("closed status set is frozen and complete", async () => {
   assert.deepEqual([...PARITY_STATUSES], [
     "greenfield_proven",
     "source_gap",

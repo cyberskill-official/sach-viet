@@ -5,20 +5,20 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("catalog products route wires optional q through vietnamese search", () => {
+test("catalog products route wires optional q through vietnamese search", async () => {
   const listRoute = readFileSync(resolve(root, "src/app/api/catalog/products/route.ts"), "utf8");
   assert.match(listRoute, /searchPublicProducts/);
   assert.match(listRoute, /searchParams\.get\("q"\)/);
   assert.doesNotMatch(listRoute, /readSession/);
 });
 
-test("suggestions route is public and uses suggestCatalogQueries", () => {
+test("suggestions route is public and uses suggestCatalogQueries", async () => {
   const route = readFileSync(resolve(root, "src/app/api/catalog/search/suggestions/route.ts"), "utf8");
   assert.match(route, /suggestCatalogQueries/);
   assert.doesNotMatch(route, /readSession/);
 });
 
-test("public suggest source never reads raw search_logs", () => {
+test("public suggest source never reads raw search_logs", async () => {
   const core = readFileSync(resolve(root, "src/lib/vietnamese-search-core.mjs"), "utf8");
   const suggestSource = core.slice(core.indexOf("export function suggestCatalogQueries"));
   assert.ok(suggestSource.length > 0, "suggestCatalogQueries is exported");

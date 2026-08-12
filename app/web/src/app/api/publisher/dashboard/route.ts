@@ -5,14 +5,14 @@ import { createPublisherPortalStore, getPublisherDashboard } from "@/lib/publish
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const publisherId = new URL(request.url).searchParams.get("publisherId") || undefined;
-    const store = createPublisherPortalStore();
+    const store = await createPublisherPortalStore();
     try {
-      return NextResponse.json({ dashboard: getPublisherDashboard(store, session.user, { publisherId }) });
+      return NextResponse.json({ dashboard: await getPublisherDashboard(store, session.user, { publisherId }) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json(

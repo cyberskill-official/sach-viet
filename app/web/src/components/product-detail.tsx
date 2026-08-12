@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 
 type Product = {
+  id: string;
   slug: string;
   title: string;
   description: string;
@@ -17,6 +18,9 @@ export function ProductDetail({ slug }: { slug: string }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [error, setError] = useState("");
   const [added, setAdded] = useState(false);
+  const [wishState, setWishState] = useState("");
+  const [reviewState, setReviewState] = useState("");
+  const [reviewPending, setReviewPending] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -39,6 +43,55 @@ export function ProductDetail({ slug }: { slug: string }) {
     setAdded(true);
   }
 
+  async function saveWishlist() {
+    if (!product) return;
+    const response = await fetch("/api/wishlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productId: product.id }),
+    });
+    if (response.status === 401) {
+      window.location.assign(`/login?redirect=/products/${encodeURIComponent(slug)}`);
+      return;
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setWishState(body.error || "Không thể lưu yêu thích.");
+      return;
+    }
+    setWishState("Đã lưu vào yêu thích.");
+  }
+
+  async function submitReview(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!product) return;
+    setReviewPending(true);
+    setReviewState("");
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const response = await fetch("/api/support/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: product.id,
+        rating: Number(data.get("rating")),
+        body: String(data.get("body") || ""),
+      }),
+    });
+    setReviewPending(false);
+    if (response.status === 401) {
+      window.location.assign(`/login?redirect=/products/${encodeURIComponent(slug)}`);
+      return;
+    }
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setReviewState(payload.error || "Không thể gửi đánh giá.");
+      return;
+    }
+    form.reset();
+    setReviewState("Đã gửi đánh giá.");
+  }
+
   if (error) return <main className="mx-auto min-h-screen max-w-4xl px-6 py-16"><div className="cs-alert cs-alert--danger" role="alert">{error}</div><Link className="cs-button cs-button--secondary mt-5" href="/">Về trang sách</Link></main>;
   if (!product) return <main className="mx-auto min-h-screen max-w-5xl px-6 py-16"><div className="cs-skeleton h-96 rounded-3xl" /></main>;
 
@@ -57,11 +110,37 @@ export function ProductDetail({ slug }: { slug: string }) {
               {product.primaryOffer ? (
                 <div className="flex flex-wrap items-center justify-between gap-5">
                   <div><p className="text-3xl font-extrabold">{formatUsd(product.primaryOffer.priceUsd)}</p><p className="mt-1 text-sm text-muted">Còn {product.primaryOffer.stockQuantity} cuốn sẵn sàng giao</p></div>
-                  <div className="flex items-center gap-3"><button className="cs-button" onClick={add}>Thêm vào giỏ</button><Link className="cs-button cs-button--secondary" href="/ecom/cart">Xem giỏ hàng</Link></div>
+                  <div className="flex items-center gap-3">
+                    <button className="cs-button" onClick={add}>Thêm vào giỏ</button>
+                    <button className="cs-button cs-button--secondary" type="button" onClick={saveWishlist}>Yêu thích</button>
+                    <Link className="cs-button cs-button--secondary" href="/ecom/cart">Xem giỏ hàng</Link>
+                  </div>
                 </div>
               ) : <div><span className="cs-badge">Tạm hết hàng</span><p className="mt-2 text-muted">Cuốn sách này chưa có ưu đãi khả dụng.</p></div>}
               {added ? <p className="mt-4 text-sm font-semibold text-accent-strong" role="status">Đã thêm vào giỏ hàng.</p> : null}
+              {wishState ? <p className="mt-2 text-sm font-semibold text-accent-strong" role="status">{wishState}</p> : null}
             </div>
+            <form className="cs-surface-standard mt-6 grid gap-3 rounded-2xl p-6" onSubmit={submitReview}>
+              <h2 className="text-lg font-bold">Đánh giá sách</h2>
+              <label className="grid gap-2 text-sm">
+                Điểm
+                <select required name="rating" className="cs-field__control" defaultValue="5">
+                  <option value="5">5</option>
+                  <option value="4">4</option>
+                  <option value="3">3</option>
+                  <option value="2">2</option>
+                  <option value="1">1</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm">
+                Nhận xét
+                <textarea required name="body" className="cs-field__control min-h-24" maxLength={2000} />
+              </label>
+              <button className="cs-button cs-button--secondary" disabled={reviewPending} type="submit">
+                {reviewPending ? "Đang gửi…" : "Gửi đánh giá"}
+              </button>
+              {reviewState ? <p className="text-sm font-semibold text-accent-strong" role="status">{reviewState}</p> : null}
+            </form>
           </div>
         </section>
       </div>

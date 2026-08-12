@@ -5,20 +5,20 @@ import { createAuthorPortalStore, withdrawAuthorManuscriptRequest } from "@/lib/
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const { id } = await context.params;
     const body = await request.json().catch(() => ({}));
-    const store = createAuthorPortalStore();
+    const store = await createAuthorPortalStore();
     try {
       return NextResponse.json({
-        manuscriptRequest: withdrawAuthorManuscriptRequest(store, session.user, {
+        manuscriptRequest: await withdrawAuthorManuscriptRequest(store, session.user, {
           requestId: id,
           authorId: body?.authorId,
         }),
       });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json(

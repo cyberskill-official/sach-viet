@@ -8,22 +8,22 @@ import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, ha
 
 const sessionSecret = "a-session-secret-that-is-long-enough-for-the-test-suite";
 
-function fixture() {
+async function fixture() {
   const directory = mkdtempSync(resolve(tmpdir(), "sachviet-auth-test-"));
   let clock = 1_700_000_000_000;
   const events = [];
-  const store = createAuthStore({ dbPath: resolve(directory, "auth.sqlite"), now: () => clock, log: (event, fields) => events.push({ event, ...fields }) });
+  const store = await createAuthStore({ dbPath: resolve(directory, "auth.sqlite"), now: () => clock, log: (event, fields) => events.push({ event, ...fields }) });
   return {
     directory,
     store,
     events,
     advance(milliseconds) { clock += milliseconds; },
-    close() { store.close(); rmSync(directory, { force: true, recursive: true }); },
+    async close() { await store.close(); rmSync(directory, { force: true, recursive: true }); },
   };
 }
 
-function bootstrap(store, overrides = {}) {
-  return bootstrapFirstAdmin(store, {
+async function bootstrap(store, overrides = {}) {
+  return await bootstrapFirstAdmin(store, {
     BOOTSTRAP_ADMIN_EMAIL: "admin@example.test",
     BOOTSTRAP_ADMIN_PASSWORD_HASH: hashPassword("correct horse battery staple"),
     AUTH_SESSION_SECRET: sessionSecret,
@@ -31,7 +31,7 @@ function bootstrap(store, overrides = {}) {
   });
 }
 
-test("password hashes verify without exposing the password", () => {
+test("password hashes verify without exposing the password", async () => {
   const hash = hashPassword("correct horse battery staple");
   assert.equal(verifyPassword("correct horse battery staple", hash), true);
   assert.equal(verifyPassword("wrong password", hash), false);
@@ -39,82 +39,82 @@ test("password hashes verify without exposing the password", () => {
   assert.throws(() => hashPassword("short"), /at least 8/);
 });
 
-test("bootstrap requires every deployment input and creates one admin only", () => {
-  const testStore = fixture();
+test("bootstrap requires every deployment input and creates one admin only", async () => {
+  const testStore = await fixture();
   try {
-    assert.deepEqual(bootstrapFirstAdmin(testStore.store, {}), { created: false, reason: "not_configured" });
-    assert.deepEqual(bootstrap(testStore.store), { created: true, reason: "created" });
-    assert.deepEqual(bootstrap(testStore.store), { created: false, reason: "users_exist" });
-    assert.equal(testStore.store.db.prepare("SELECT COUNT(*) AS count FROM users").get().count, 1);
+    assert.deepEqual(await bootstrapFirstAdmin(testStore.store, {}), { created: false, reason: "not_configured" });
+    assert.deepEqual(await bootstrap(testStore.store), { created: true, reason: "created" });
+    assert.deepEqual(await bootstrap(testStore.store), { created: false, reason: "users_exist" });
+    assert.equal((await testStore.store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count, 1);
     assert.equal(JSON.stringify(testStore.events).includes("admin@example.test"), false);
-  } finally { testStore.close(); }
+  } finally { await testStore.close(); }
 });
 
-test("failed login is throttled per email+client and never starts a session", () => {
-  const testStore = fixture();
+test("failed login is throttled per email+client and never starts a session", async () => {
+  const testStore = await fixture();
   try {
-    bootstrap(testStore.store);
+    await bootstrap(testStore.store);
     for (let attempt = 0; attempt < 4; attempt += 1) {
       assert.equal(
-        login(testStore.store, {
+        (await login(testStore.store, {
           email: "ADMIN@example.test",
           password: "wrong password",
           sessionSecret,
           clientKey: "203.0.113.10",
-        }).reason,
+        })).reason,
         "invalid",
       );
     }
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "wrong password",
         sessionSecret,
         clientKey: "203.0.113.10",
-      }).reason,
+      })).reason,
       "throttled",
     );
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "correct horse battery staple",
         sessionSecret,
         clientKey: "203.0.113.10",
-      }).reason,
+      })).reason,
       "throttled",
     );
-    assert.equal(testStore.store.db.prepare("SELECT COUNT(*) AS count FROM sessions").get().count, 0);
+    assert.equal((await testStore.store.db.prepare("SELECT COUNT(*) AS count FROM sessions").get()).count, 0);
     // A different client key must not be locked out by the attacker.
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "correct horse battery staple",
         sessionSecret,
         clientKey: "198.51.100.20",
-      }).ok,
+      })).ok,
       true,
     );
     testStore.advance(16 * 60 * 1000);
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "correct horse battery staple",
         sessionSecret,
         clientKey: "203.0.113.10",
-      }).ok,
+      })).ok,
       true,
     );
   } finally {
-    testStore.close();
+    await testStore.close();
   }
 });
 
-test("clearLoginLock unlocks an email without waiting for the lock window", () => {
-  const testStore = fixture();
+test("clearLoginLock unlocks an email without waiting for the lock window", async () => {
+  const testStore = await fixture();
   try {
-    bootstrap(testStore.store);
+    await bootstrap(testStore.store);
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      login(testStore.store, {
+      await login(testStore.store, {
         email: "admin@example.test",
         password: "wrong password",
         sessionSecret,
@@ -122,73 +122,73 @@ test("clearLoginLock unlocks an email without waiting for the lock window", () =
       });
     }
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "correct horse battery staple",
         sessionSecret,
         clientKey: "203.0.113.10",
-      }).reason,
+      })).reason,
       "throttled",
     );
-    clearLoginLock(testStore.store, "admin@example.test");
+    await clearLoginLock(testStore.store, "admin@example.test");
     assert.equal(
-      login(testStore.store, {
+      (await login(testStore.store, {
         email: "admin@example.test",
         password: "correct horse battery staple",
         sessionSecret,
         clientKey: "203.0.113.10",
-      }).ok,
+      })).ok,
       true,
     );
   } finally {
-    testStore.close();
+    await testStore.close();
   }
 });
 
-test("successful PHPass login upgrades the stored hash to scrypt", () => {
-  const testStore = fixture();
+test("successful PHPass login upgrades the stored hash to scrypt", async () => {
+  const testStore = await fixture();
   try {
     const password = "imported-password-ok";
     const phpass = hashPhpassPassword(password, { salt: "abcdefgh" });
-    testStore.store.db
+    await testStore.store.db
       .prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
       .run("user-legacy", "legacy@example.test", phpass, "customer", testStore.store.now());
-    const result = login(testStore.store, {
+    const result = await login(testStore.store, {
       email: "legacy@example.test",
       password,
       sessionSecret,
       clientKey: "127.0.0.1",
     });
     assert.equal(result.ok, true);
-    const stored = testStore.store.db.prepare("SELECT password_hash AS hash FROM users WHERE id = ?").get("user-legacy");
+    const stored = await testStore.store.db.prepare("SELECT password_hash AS hash FROM users WHERE id = ?").get("user-legacy");
     assert.equal(stored.hash.startsWith("scrypt$"), true);
     assert.equal(verifyPassword(password, stored.hash), true);
     assert.ok(testStore.events.some((row) => row.event === "auth_password_rehashed"));
   } finally {
-    testStore.close();
+    await testStore.close();
   }
 });
 
-test("signed opaque sessions reject tampering, expire, and can be revoked", () => {
-  const testStore = fixture();
+test("signed opaque sessions reject tampering, expire, and can be revoked", async () => {
+  const testStore = await fixture();
   try {
-    bootstrap(testStore.store);
-    const result = login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret });
+    await bootstrap(testStore.store);
+    const result = await login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret });
     assert.equal(result.ok, true);
     assert.equal(result.cookie.includes("HttpOnly"), true);
     assert.equal(result.cookie.includes("SameSite=Lax"), true);
-    assert.equal(readSession(testStore.store, `${result.token}changed`, sessionSecret), null);
-    assert.equal(readSession(testStore.store, result.token, sessionSecret).user.role, "admin");
-    revokeSession(testStore.store, result.token, sessionSecret);
-    assert.equal(readSession(testStore.store, result.token, sessionSecret), null);
-    const newResult = login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret });
+    assert.equal(await readSession(testStore.store, `${result.token}changed`, sessionSecret), null);
+    assert.equal((await readSession(testStore.store, result.token, sessionSecret)).user.role, "admin");
+    await revokeSession(testStore.store, result.token, sessionSecret);
+    assert.equal(await readSession(testStore.store, result.token, sessionSecret), null);
+    const newResult = await login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret });
     testStore.advance(25 * 60 * 60 * 1000);
-    assert.equal(readSession(testStore.store, newResult.token, sessionSecret), null);
+    assert.equal(await readSession(testStore.store, newResult.token, sessionSecret), null);
     assert.equal(expiredCookie().includes("Max-Age=0"), true);
-  } finally { testStore.close(); }
+  } finally { await testStore.close(); }
 });
 
-test("documented role mapping and ownership checks remain server reusable", () => {
+test("documented role mapping and ownership checks remain server reusable", async () => {
   assert.equal(normalizeRole("super_admin"), "admin");
   assert.equal(canAccessPortal("vendor", "vendor"), true);
   assert.equal(canAccessPortal("vendor", "admin"), false);
@@ -200,7 +200,7 @@ test("documented role mapping and ownership checks remain server reusable", () =
   assert.equal(canAccessOwnedRecord({ id: "user-1", role: "admin" }, "user-2"), true);
 });
 
-test("safe redirects never leave the application origin", () => {
+test("safe redirects never leave the application origin", async () => {
   assert.equal(safeRedirect("/vendor/orders"), "/vendor/orders");
   assert.equal(safeRedirect("//example.test"), "/");
   assert.equal(safeRedirect("https://example.test"), "/");

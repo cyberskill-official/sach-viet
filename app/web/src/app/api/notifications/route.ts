@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
 import { createNotificationStore, listNotifications } from "@/lib/notification-core.mjs";
 
-function sessionFor(request: Request) {
-  return readSession(
-    getAuthStore(),
+async function sessionFor(request: Request) {
+  return await readSession(
+    await getAuthStore(),
     request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
     process.env.AUTH_SESSION_SECRET,
   );
@@ -12,13 +12,17 @@ function sessionFor(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createNotificationStore();
+    const store = await createNotificationStore();
     try {
-      return NextResponse.json(listNotifications(store, session.user));
+      const url = new URL(request.url);
+      const after = url.searchParams.get("after") ?? undefined;
+      const limitParam = url.searchParams.get("limit");
+      const limit = limitParam ? Number(limitParam) : 50;
+      return NextResponse.json(await listNotifications(store, session.user, { after, limit }));
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Notifications are unavailable." }, { status: 403 });

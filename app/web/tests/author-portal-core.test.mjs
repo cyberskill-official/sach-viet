@@ -15,11 +15,12 @@ import {
   listAuthorManuscriptRequests,
   withdrawAuthorManuscriptRequest,
 } from "../src/lib/author-portal-core.mjs";
+import { seedStoredKey } from "./helpers/stored-object.mjs";
 
-function harness() {
+async function harness() {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-author-"));
   const dbPath = join(directory, "author.sqlite");
-  const author = createAuthorPortalStore({ dbPath, log: () => {} });
+  const author = await createAuthorPortalStore({ dbPath, log: () => {} });
   return {
     directory,
     author,
@@ -30,23 +31,22 @@ function harness() {
   };
 }
 
-test("author can create list detail and withdraw own manuscript requests with status log", () => {
-  const ctx = harness();
+test("author can create list detail and withdraw own manuscript requests with status log", async () => {
+  const ctx = await harness();
   try {
-    assert.throws(
-      () => createAuthorManuscriptRequest(ctx.author, ctx.customer, { title: "X", storageKey: "private/x" }),
+    await assert.rejects(async () => await createAuthorManuscriptRequest(ctx.author, ctx.customer, { title: "X", storageKey: "private/x" }),
       /Author access/,
     );
-    assert.throws(
-      () =>
-        createAuthorManuscriptRequest(ctx.author, ctx.auth, {
+    await assert.rejects(async () =>
+        await createAuthorManuscriptRequest(ctx.author, ctx.auth, {
           title: "Manuscript",
           storageKey: "https://cdn.example/file.pdf",
         }),
       /public URL/,
     );
 
-    const created = createAuthorManuscriptRequest(ctx.author, ctx.auth, {
+    await seedStoredKey(ctx.author, "private/diaspora-poetry");
+    const created = await createAuthorManuscriptRequest(ctx.author, ctx.auth, {
       title: "Diaspora poetry",
       notes: "Vietnamese manuscript",
       storageKey: "private/diaspora-poetry",
@@ -56,62 +56,61 @@ test("author can create list detail and withdraw own manuscript requests with st
     assert.equal(created.title, "Diaspora poetry");
     assert.equal("storageKey" in created, false);
 
-    const listed = listAuthorManuscriptRequests(ctx.author, ctx.auth);
+    const listed = await listAuthorManuscriptRequests(ctx.author, ctx.auth);
     assert.equal(listed.length, 1);
     assert.equal(listed[0].id, created.id);
 
-    const detail = getAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
+    const detail = await getAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
     assert.equal(detail.id, created.id);
     assert.equal(detail.logs.length, 1);
     assert.equal(detail.logs[0].status, "submitted");
     assert.equal(detail.logs[0].actorId, ctx.auth.id);
     assert.equal("storageKey" in detail, false);
 
-    const otherList = listAuthorManuscriptRequests(ctx.author, ctx.other);
+    const otherList = await listAuthorManuscriptRequests(ctx.author, ctx.other);
     assert.equal(otherList.length, 0);
-    assert.throws(
-      () => getAuthorManuscriptRequest(ctx.author, ctx.other, { requestId: created.id }),
+    await assert.rejects(async () => await getAuthorManuscriptRequest(ctx.author, ctx.other, { requestId: created.id }),
       /another author/,
     );
-    assert.throws(
-      () => withdrawAuthorManuscriptRequest(ctx.author, ctx.other, { requestId: created.id }),
+    await assert.rejects(async () => await withdrawAuthorManuscriptRequest(ctx.author, ctx.other, { requestId: created.id }),
       /another author/,
     );
 
-    const withdrawn = withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
+    const withdrawn = await withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
     assert.equal(withdrawn.status, "withdrawn");
-    const after = getAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
+    const after = await getAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
     assert.equal(after.logs.length, 2);
     assert.equal(after.logs[1].status, "withdrawn");
-    assert.throws(
-      () => withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id }),
+    await assert.rejects(async () => await withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id }),
       /already withdrawn/,
     );
   } finally {
-    ctx.author.close();
+    await ctx.author.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });
 
-test("author dashboard returns policy-pending earnings and stages under activation gate", () => {
-  const ctx = harness();
+test("author dashboard returns policy-pending earnings and stages under activation gate", async () => {
+  const ctx = await harness();
   try {
-    createAuthorManuscriptRequest(ctx.author, ctx.auth, {
+    await seedStoredKey(ctx.author, "private/titles");
+    await seedStoredKey(ctx.author, "private/second");
+    await createAuthorManuscriptRequest(ctx.author, ctx.auth, {
       title: "Titles",
       storageKey: "private/titles",
     });
-    const created = createAuthorManuscriptRequest(ctx.author, ctx.auth, {
+    const created = await createAuthorManuscriptRequest(ctx.author, ctx.auth, {
       title: "Second",
       storageKey: "private/second",
     });
-    withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
+    await withdrawAuthorManuscriptRequest(ctx.author, ctx.auth, { requestId: created.id });
 
-    const gate = getRoyaltyActivationGate(ctx.author);
+    const gate = await getRoyaltyActivationGate(ctx.author);
     assert.equal(gate.status, "pending");
     assert.equal(gate.financialActivationAllowed, false);
     assert.ok(gate.unresolvedDecisionAreas.includes("rate_and_split"));
 
-    const dashboard = getAuthorDashboard(ctx.author, ctx.auth);
+    const dashboard = await getAuthorDashboard(ctx.author, ctx.auth);
     assert.equal(dashboard.authorId, ctx.auth.id);
     assert.equal(dashboard.nonFinancial.submittedManuscriptRequestCount, 1);
     assert.equal(dashboard.nonFinancial.withdrawnManuscriptRequestCount, 1);
@@ -121,30 +120,30 @@ test("author dashboard returns policy-pending earnings and stages under activati
     assert.equal("amountUsd" in dashboard.earnings, false);
     assert.equal("progress" in dashboard.stages, false);
 
-    assert.throws(() => getAuthorDashboard(ctx.author, ctx.customer), /Author access/);
+    await assert.rejects(async () => await getAuthorDashboard(ctx.author, ctx.customer), /Author access/);
   } finally {
-    ctx.author.close();
+    await ctx.author.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });
 
-test("financial activation paths refuse while decision-register acceptance is absent", () => {
-  const ctx = harness();
+test("financial activation paths refuse while decision-register acceptance is absent", async () => {
+  const ctx = await harness();
   try {
-    assert.throws(
+    await assert.rejects(
       () => computeAuthorEarnings(ctx.author, ctx.auth, {}),
       /activation gate pending/,
     );
-    assert.throws(
+    await assert.rejects(
       () => allocateAuthorSales(ctx.author, ctx.auth, {}),
       /activation gate pending/,
     );
-    assert.throws(
+    await assert.rejects(
       () => createAuthorPayoutInstruction(ctx.author, ctx.auth, {}),
       /activation gate pending/,
     );
   } finally {
-    ctx.author.close();
+    await ctx.author.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });

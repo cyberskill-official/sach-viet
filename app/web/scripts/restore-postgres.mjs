@@ -55,6 +55,7 @@ export function restorePostgresDatabase({
     "--if-exists",
     "--no-owner",
     "--no-acl",
+    "--exit-on-error",
     source,
   ];
   const result = run(pgRestoreBin, args, { encoding: "utf8" });
@@ -63,13 +64,9 @@ export function restorePostgresDatabase({
       `Failed to run ${pgRestoreBin}: ${result.error.message}. Install PostgreSQL client tools or use docker compose exec db pg_restore.`,
     );
   }
-  // pg_restore can exit non-zero on ignorable notices when --clean drops missing objects;
-  // treat only hard spawn failures as fatal when stderr lacks ERROR.
   if (result.status !== 0) {
     const stderr = (result.stderr || "").trim();
-    if (/ERROR:/i.test(stderr) || result.status === null) {
-      throw new Error(stderr || `${pgRestoreBin} exited with status ${result.status}`);
-    }
+    throw new Error(stderr || `${pgRestoreBin} exited with status ${result.status}`);
   }
 
   return { databaseUrl: redactUrl(databaseUrl), source, args };

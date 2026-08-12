@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
+import { requireStoredObjectKey } from "./storage-core.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 const required = (value, label) => {
@@ -38,12 +39,8 @@ function resolvePublisherId(actor, requestedPublisherId) {
   return actor.id;
 }
 
-function assertOpaqueStorageKey(storageKey) {
-  const key = required(storageKey, "Storage key");
-  if (key.startsWith("http://") || key.startsWith("https://")) {
-    throw new Error("Storage key must not be a public URL.");
-  }
-  return key;
+async function assertOpaqueStorageKey(store, storageKey) {
+  return requireStoredObjectKey(store, required(storageKey, "Storage key"));
 }
 
 /**
@@ -51,8 +48,8 @@ function assertOpaqueStorageKey(storageKey) {
  * Financial behavior requires owner-accepted decision-register rows.
  * Without an accepted activation record, every financial path is refused.
  */
-export function getRoyaltyActivationGate(store) {
-  const accepted = store.db
+export async function getRoyaltyActivationGate(store) {
+  const accepted = await store.db
     .prepare(
       `SELECT decision_area AS decisionArea, accepted_at AS acceptedAt, authority_source AS authoritySource
        FROM royalty_decision_acceptances
@@ -73,8 +70,8 @@ export function getRoyaltyActivationGate(store) {
   };
 }
 
-export function assertRoyaltyActivationGate(store, actionLabel = "Financial publisher behavior") {
-  const gate = getRoyaltyActivationGate(store);
+export async function assertRoyaltyActivationGate(store, actionLabel = "Financial publisher behavior") {
+  const gate = await getRoyaltyActivationGate(store);
   if (!gate.financialActivationAllowed) {
     throw new Error(
       `${actionLabel} is blocked until owner acceptance of royalty decision-register rows (activation gate pending).`,
@@ -103,20 +100,20 @@ function publicMarcListItem(row) {
   };
 }
 
-export function createPublisherPortalStore({
+export async function createPublisherPortalStore({
   dbPath,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-017", ...fields })),
 } = {}) {
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
-export function createPublishingRequest(store, actor, input = {}) {
+export async function createPublishingRequest(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
   const title = required(input.title, "Title");
   const notes = typeof input.notes === "string" ? input.notes.trim() : "";
-  const storageKey = assertOpaqueStorageKey(input.storageKey);
+  const storageKey = await assertOpaqueStorageKey(store, input.storageKey);
   const now = store.clock();
   const row = {
     id: identifier(),
@@ -128,7 +125,7 @@ export function createPublishingRequest(store, actor, input = {}) {
     createdAt: now,
     updatedAt: now,
   };
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO publishing_requests
         (id, publisher_id, title, notes, storage_key, status, created_at, updated_at)
@@ -143,23 +140,23 @@ export function createPublishingRequest(store, actor, input = {}) {
   return publicRequest(row);
 }
 
-export function listPublishingRequests(store, actor, input = {}) {
+export async function listPublishingRequests(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
-  return store.db
+  const rows = await store.db
     .prepare(
       `SELECT id, publisher_id AS publisherId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
        FROM publishing_requests
        WHERE publisher_id = ?
        ORDER BY updated_at DESC, id DESC`,
     )
-    .all(publisherId)
-    .map(publicRequest);
+    .all(publisherId);
+  return rows.map(publicRequest);
 }
 
-export function withdrawPublishingRequest(store, actor, input = {}) {
+export async function withdrawPublishingRequest(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
   const requestId = required(input.requestId, "Request ID");
-  const existing = store.db
+  const existing = await store.db
     .prepare(
       `SELECT id, publisher_id AS publisherId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
        FROM publishing_requests WHERE id = ?`,
@@ -169,7 +166,7 @@ export function withdrawPublishingRequest(store, actor, input = {}) {
   if (existing.publisherId !== publisherId) throw new Error("You cannot access another publisher's records.");
   if (existing.status === "withdrawn") throw new Error("Publishing request is already withdrawn.");
   const updatedAt = store.clock();
-  store.db.prepare(`UPDATE publishing_requests SET status = 'withdrawn', updated_at = ? WHERE id = ?`).run(updatedAt, requestId);
+  await store.db.prepare(`UPDATE publishing_requests SET status = 'withdrawn', updated_at = ? WHERE id = ?`).run(updatedAt, requestId);
   store.log("publishing_request_withdrawn", {
     publishingRequestId: requestId,
     publisherId,
@@ -178,14 +175,14 @@ export function withdrawPublishingRequest(store, actor, input = {}) {
   return publicRequest({ ...existing, status: "withdrawn", updatedAt });
 }
 
-export function registerPublisherMarcRecord(store, actor, input = {}) {
+export async function registerPublisherMarcRecord(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
   const productId = required(input.productId, "Product ID");
-  const product = store.db.prepare("SELECT id FROM products WHERE id = ?").get(productId);
+  const product = await store.db.prepare("SELECT id FROM products WHERE id = ?").get(productId);
   if (!product) throw new Error("Product does not exist.");
-  const storageKey = assertOpaqueStorageKey(input.storageKey);
+  const storageKey = await assertOpaqueStorageKey(store, input.storageKey);
   const updatedAt = store.clock();
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO publisher_marc_records (publisher_id, product_id, storage_key, updated_by, updated_at)
        VALUES (?, ?, ?, ?, ?)
@@ -203,28 +200,28 @@ export function registerPublisherMarcRecord(store, actor, input = {}) {
   return { publisherId, productId, updatedAt };
 }
 
-export function listPublisherMarcRecords(store, actor, input = {}) {
+export async function listPublisherMarcRecords(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
-  return store.db
+  const rows = await store.db
     .prepare(
       `SELECT publisher_id AS publisherId, product_id AS productId, updated_at AS updatedAt
        FROM publisher_marc_records
        WHERE publisher_id = ?
        ORDER BY updated_at DESC, product_id ASC`,
     )
-    .all(publisherId)
-    .map(publicMarcListItem);
+    .all(publisherId);
+  return rows.map(publicMarcListItem);
 }
 
-export function getPublisherDashboard(store, actor, input = {}) {
+export async function getPublisherDashboard(store, actor, input = {}) {
   const publisherId = resolvePublisherId(actor, input.publisherId);
-  const gate = getRoyaltyActivationGate(store);
-  const requestCount = store.db
+  const gate = await getRoyaltyActivationGate(store);
+  const requestCount = (await store.db
     .prepare(`SELECT COUNT(*) AS count FROM publishing_requests WHERE publisher_id = ? AND status = 'submitted'`)
-    .get(publisherId).count;
-  const marcCount = store.db
+    .get(publisherId)).count;
+  const marcCount = (await store.db
     .prepare(`SELECT COUNT(*) AS count FROM publisher_marc_records WHERE publisher_id = ?`)
-    .get(publisherId).count;
+    .get(publisherId)).count;
   store.log("publisher_dashboard_read", {
     publisherId,
     activationGateStatus: gate.status,
@@ -247,20 +244,20 @@ export function getPublisherDashboard(store, actor, input = {}) {
   };
 }
 
-export function computePublisherRoyalties(store, actor, input = {}) {
+export async function computePublisherRoyalties(store, actor, input = {}) {
   resolvePublisherId(actor, input.publisherId);
-  assertRoyaltyActivationGate(store, "Royalty computation");
+  await assertRoyaltyActivationGate(store, "Royalty computation");
   throw new Error("Royalty computation is not implemented without accepted decision-register calculation methods.");
 }
 
-export function allocatePublisherSales(store, actor, input = {}) {
+export async function allocatePublisherSales(store, actor, input = {}) {
   resolvePublisherId(actor, input.publisherId);
-  assertRoyaltyActivationGate(store, "Sales allocation");
+  await assertRoyaltyActivationGate(store, "Sales allocation");
   throw new Error("Sales allocation is not implemented without accepted decision-register allocation rules.");
 }
 
-export function createPublisherPayoutInstruction(store, actor, input = {}) {
+export async function createPublisherPayoutInstruction(store, actor, input = {}) {
   resolvePublisherId(actor, input.publisherId);
-  assertRoyaltyActivationGate(store, "Publisher payout");
+  await assertRoyaltyActivationGate(store, "Publisher payout");
   throw new Error("Publisher payout instructions are not implemented without accepted payment authority.");
 }

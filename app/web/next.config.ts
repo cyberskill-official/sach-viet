@@ -36,17 +36,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // Standalone is for Docker/self-host; omit on Vercel so serverless file tracing
-  // keeps synckit worker + pg layouts intact.
+  // Standalone is for Docker/self-host; omit on Vercel so serverless tracing
+  // keeps the async `pg` pool layout intact.
   ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
   poweredByHeader: false,
-  // `pg` stays external; include it (and the synckit worker) in standalone
-  // tracing so /app/node_modules/pg exists for db-worker.mjs at runtime.
   serverExternalPackages: ["pg"],
   outputFileTracingIncludes: {
     "/*": [
-      "./src/lib/db-worker.mjs",
-      "./src/lib/db-rpc-oneshot.mjs",
       "./migrations/**/*",
       "./node_modules/pg/**/*",
       "./node_modules/pg-*/**/*",
@@ -54,7 +50,6 @@ const nextConfig: NextConfig = {
       "./node_modules/pgpass/**/*",
       "./node_modules/split2/**/*",
       "./node_modules/xtend/**/*",
-      "./node_modules/synckit/**/*",
     ],
   },
   async headers() {

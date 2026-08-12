@@ -19,11 +19,11 @@ function createFixture() {
   return root;
 }
 
-test("identity verifier accepts the application boundary", () => {
+test("identity verifier accepts the application boundary", async () => {
   assert.equal(validateIdentity(rootPath).requiredFileCount, 7);
 });
 
-test("identity verifier rejects an incomplete identity boundary", () => {
+test("identity verifier rejects an incomplete identity boundary", async () => {
   const root = createFixture();
   try {
     rmSync(resolve(root, "src/proxy.ts"));
@@ -31,7 +31,7 @@ test("identity verifier rejects an incomplete identity boundary", () => {
   } finally { rmSync(root, { force: true, recursive: true }); }
 });
 
-test("identity verifier rejects missing security and deployment checks", () => {
+test("identity verifier rejects missing security and deployment checks", async () => {
   const cases = [
     { file: "src/lib/auth-core.mjs", contents: "SameSite=Lax login_attempts AUTH_SESSION_SECRET", message: /httpOnly/ },
     { file: "src/lib/auth-core.mjs", contents: "HttpOnly SameSite=Lax", message: /throttling/ },
@@ -48,7 +48,7 @@ test("identity verifier rejects missing security and deployment checks", () => {
   }
 });
 
-test("identity verifier emits a safe failure event", () => {
+test("identity verifier emits a safe failure event", async () => {
   const root = createFixture();
   const originalLog = console.log;
   const events = [];
@@ -63,7 +63,7 @@ test("identity verifier emits a safe failure event", () => {
   assert.deepEqual(events.map((event) => event.event), ["identity_verification_started", "identity_verification_failed"]);
 });
 
-test("identity verifier emits redacted lifecycle events", () => {
+test("identity verifier emits redacted lifecycle events", async () => {
   const originalLog = console.log;
   const events = [];
   console.log = (message) => events.push(JSON.parse(message));

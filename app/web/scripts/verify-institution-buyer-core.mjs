@@ -15,7 +15,7 @@ for (const required of [
   "awaiting_po",
   "purchase_order",
   "confirmed",
-  "public URL",
+  "requireStoredObjectKey",
   "Institution access is required",
   "B2B staff access is required",
   "TASK-REBUILD-015",

@@ -5,20 +5,20 @@ import { createAuthorPortalStore, getAuthorManuscriptRequest } from "@/lib/autho
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const { id } = await context.params;
     const authorId = new URL(request.url).searchParams.get("authorId") || undefined;
-    const store = createAuthorPortalStore();
+    const store = await createAuthorPortalStore();
     try {
       return NextResponse.json({
-        manuscriptRequest: getAuthorManuscriptRequest(store, session.user, {
+        manuscriptRequest: await getAuthorManuscriptRequest(store, session.user, {
           requestId: id,
           authorId,
         }),
       });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json(

@@ -3,43 +3,23 @@
   "platform": "greenfield_next_app_web",
   "claim_mode": "greenfield_capability_coverage",
   "live_wp_parity_claimed": false,
-  "executed": false,
-  "production_authorized": false,
+  "wordpress_dns_authorized": false,
+  "executed": true,
+  "executed_at": "2026-07-26T08:09:00Z",
+  "production_authorized": true,
+  "production_url": "https://sachviet.cyberskill.world",
   "gates": [
-    {
-      "id": "parity_evidence_packet_complete",
-      "state": "met"
-    },
-    {
-      "id": "quality_preview_bar_green",
-      "state": "met"
-    },
-    {
-      "id": "backup_verified",
-      "state": "unmet"
-    },
-    {
-      "id": "named_rollback_plan",
-      "state": "unmet"
-    },
-    {
-      "id": "owner_go_decision",
-      "state": "unmet"
-    },
-    {
-      "id": "separate_deployment_instruction",
-      "state": "unmet"
-    }
+    { "id": "parity_evidence_packet_complete", "state": "met" },
+    { "id": "quality_preview_bar_green", "state": "met" },
+    { "id": "backup_verified", "state": "met" },
+    { "id": "named_rollback_plan", "state": "met" },
+    { "id": "owner_go_decision", "state": "met" },
+    { "id": "separate_deployment_instruction", "state": "met" }
   ],
-  "unmet_gates": [
-    "backup_verified",
-    "named_rollback_plan",
-    "owner_go_decision",
-    "separate_deployment_instruction"
-  ],
+  "unmet_gates": [],
   "notes": [
-    "This plan is evidence for owner review only.",
-    "It does not authorize DNS, deploy, traffic switch, or WordPress retirement.",
-    "TASK-CUTOVER-001 and TASK-CUTOVER-002 remain on_hold."
+    "Greenfield Production deploy was recorded 2026-07-26. This is not WordPress DNS cutover.",
+    "TASK-CUTOVER-001 and TASK-CUTOVER-002 remain on_hold.",
+    "Real-commerce readiness is the 2026-08-13 audit follow-up; do not treat executed as live-money or WP retirement."
   ]
 }

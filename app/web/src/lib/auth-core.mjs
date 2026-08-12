@@ -130,41 +130,41 @@ export function ensureAuthLegacyColumns() {}
  */
 export function ensureLoginAttemptsSchema() {}
 
-export function createAuthStore({ dbPath, databaseUrl, now = defaultNow, log = defaultLog } = {}) {
-  const db = openDatabase(dbPath, { databaseUrl });
+export async function createAuthStore({ dbPath, databaseUrl, now = defaultNow, log = defaultLog } = {}) {
+  const db = await openDatabase(dbPath, { databaseUrl });
   return { db, now, log, close: () => db.close() };
 }
 
-export function getAuthStore() {
+export async function getAuthStore() {
   const url = process.env.DATABASE_URL || undefined;
   if (!cachedStore || cachedStore.url !== url) {
-    cachedStore?.store.close();
-    cachedStore = { url, store: createAuthStore({ databaseUrl: url }) };
+    if (cachedStore) await cachedStore.store.close();
+    cachedStore = { url, store: await createAuthStore({ databaseUrl: url }) };
   }
   return cachedStore.store;
 }
 
-export function resetAuthStoreForTests() {
-  cachedStore?.store.close();
+export async function resetAuthStoreForTests() {
+  if (cachedStore) await cachedStore.store.close();
   cachedStore = undefined;
 }
 
-export function bootstrapFirstAdmin(store, environment = process.env) {
+export async function bootstrapFirstAdmin(store, environment = process.env) {
   const email = normalizeEmail(environment.BOOTSTRAP_ADMIN_EMAIL);
   const passwordHash = environment.BOOTSTRAP_ADMIN_PASSWORD_HASH;
   const sessionSecret = environment.AUTH_SESSION_SECRET;
   if (!email || !passwordHash || !sessionSecret) return { created: false, reason: "not_configured" };
   requireSessionSecret(sessionSecret);
-  const count = store.db.prepare("SELECT COUNT(*) AS count FROM users").get().count;
+  const count = (await store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count;
   if (count > 0) return { created: false, reason: "users_exist" };
-  store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
+  await store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
     .run(randomBytes(16).toString("hex"), email, passwordHash, "admin", store.now());
   store.log("auth_bootstrap_completed", { result: "created" });
   return { created: true, reason: "created" };
 }
 
-function lockState(store, email, clientKey) {
-  const attempt = store.db
+async function lockState(store, email, clientKey) {
+  const attempt = await store.db
     .prepare("SELECT failures, window_started_at, locked_until FROM login_attempts WHERE email = ? AND client_key = ?")
     .get(email, clientKey);
   if (!attempt || attempt.locked_until <= store.now()) return null;
@@ -176,15 +176,15 @@ function progressiveDelayMs(failures) {
   return LOGIN_PROGRESSIVE_DELAYS_MS[index];
 }
 
-function recordFailure(store, email, clientKey) {
-  const current = store.db
+async function recordFailure(store, email, clientKey) {
+  const current = await store.db
     .prepare("SELECT failures, window_started_at FROM login_attempts WHERE email = ? AND client_key = ?")
     .get(email, clientKey);
   const at = store.now();
   const failures = !current || at - current.window_started_at > LOGIN_WINDOW_MS ? 1 : current.failures + 1;
   const windowStartedAt = !current || at - current.window_started_at > LOGIN_WINDOW_MS ? at : current.window_started_at;
   const lockedUntil = failures >= MAX_LOGIN_FAILURES ? at + LOGIN_LOCK_MS : 0;
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO login_attempts (email, client_key, failures, window_started_at, locked_until) VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(email, client_key) DO UPDATE SET
@@ -200,40 +200,40 @@ function recordFailure(store, email, clientKey) {
   };
 }
 
-function clearFailures(store, email, clientKey) {
+async function clearFailures(store, email, clientKey) {
   if (clientKey) {
-    store.db.prepare("DELETE FROM login_attempts WHERE email = ? AND client_key = ?").run(email, clientKey);
+    await store.db.prepare("DELETE FROM login_attempts WHERE email = ? AND client_key = ?").run(email, clientKey);
     return;
   }
-  store.db.prepare("DELETE FROM login_attempts WHERE email = ?").run(email);
+  await store.db.prepare("DELETE FROM login_attempts WHERE email = ?").run(email);
 }
 
 /** Operator/admin unlock path: clears lockout rows for an email (all clients, or one). */
-export function clearLoginLock(store, email, { clientKey } = {}) {
+export async function clearLoginLock(store, email, { clientKey } = {}) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) throw new Error("A valid email is required to clear a login lock.");
   if (clientKey !== undefined) {
-    clearFailures(store, normalizedEmail, normalizeClientKey(clientKey));
+    await clearFailures(store, normalizedEmail, normalizeClientKey(clientKey));
   } else {
-    clearFailures(store, normalizedEmail);
+    await clearFailures(store, normalizedEmail);
   }
   store.log("auth_login_lock_cleared", { result: "accepted" });
   return { cleared: true };
 }
 
-function upgradePhpassHashIfNeeded(store, user, password) {
+async function upgradePhpassHashIfNeeded(store, user, password) {
   if (!isPhpassHash(user.password_hash)) return false;
   const upgraded = hashPassword(password);
-  store.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(upgraded, user.id);
+  await store.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(upgraded, user.id);
   store.log("auth_password_rehashed", { result: "upgraded", from: "phpass" });
   return true;
 }
 
-export function createSessionCookie(store, user, sessionSecret) {
+export async function createSessionCookie(store, user, sessionSecret) {
   const secret = requireSessionSecret(sessionSecret);
   const id = randomBytes(32).toString("base64url");
   const expiresAt = store.now() + SESSION_DURATION_MS;
-  store.db.prepare("INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
+  await store.db.prepare("INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
     .run(id, user.id, expiresAt, store.now());
   const signature = createHmac("sha256", secret).update(id).digest("base64url");
   const token = `${id}.${signature}`;
@@ -250,7 +250,7 @@ export function expiredCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
-export function readSession(store, token, sessionSecret) {
+export async function readSession(store, token, sessionSecret) {
   if (typeof token !== "string") return null;
   const [id, signature] = token.split(".");
   if (!id || !signature) return null;
@@ -259,34 +259,34 @@ export function readSession(store, token, sessionSecret) {
     store.log("auth_session_rejected", { reason: "signature", result: "rejected" });
     return null;
   }
-  const session = store.db.prepare(`SELECT sessions.id, sessions.expires_at, users.id AS user_id, users.email, users.role
+  const session = await store.db.prepare(`SELECT sessions.id, sessions.expires_at, users.id AS user_id, users.email, users.role
     FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.id = ?`).get(id);
   if (!session) return null;
   if (session.expires_at <= store.now()) {
-    store.db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
+    await store.db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
     store.log("auth_session_rejected", { reason: "expired", result: "rejected" });
     return null;
   }
   return { id, user: { id: session.user_id, email: session.email, role: session.role }, expiresAt: session.expires_at };
 }
 
-export function revokeSession(store, token, sessionSecret) {
-  const session = readSession(store, token, sessionSecret);
-  if (session) store.db.prepare("DELETE FROM sessions WHERE id = ?").run(session.id);
+export async function revokeSession(store, token, sessionSecret) {
+  const session = await readSession(store, token, sessionSecret);
+  if (session) await store.db.prepare("DELETE FROM sessions WHERE id = ?").run(session.id);
   store.log("auth_logout_completed", { result: session ? "revoked" : "noop" });
 }
 
-export function login(store, { email, password, sessionSecret, clientKey }) {
+export async function login(store, { email, password, sessionSecret, clientKey }) {
   const normalizedEmail = normalizeEmail(email);
   const normalizedClientKey = normalizeClientKey(clientKey);
   if (!normalizedEmail || typeof password !== "string") return { ok: false, reason: "invalid" };
-  if (lockState(store, normalizedEmail, normalizedClientKey)) {
+  if (await lockState(store, normalizedEmail, normalizedClientKey)) {
     store.log("auth_login_throttled", { result: "rejected" });
     return { ok: false, reason: "throttled", retryAfterMs: LOGIN_LOCK_MS };
   }
-  const user = store.db.prepare("SELECT id, email, password_hash, role FROM users WHERE email = ?").get(normalizedEmail);
+  const user = await store.db.prepare("SELECT id, email, password_hash, role, email_verified_at FROM users WHERE email = ?").get(normalizedEmail);
   if (!user || !isKnownRole(user.role) || !verifyPassword(password, user.password_hash)) {
-    const failure = recordFailure(store, normalizedEmail, normalizedClientKey);
+    const failure = await recordFailure(store, normalizedEmail, normalizedClientKey);
     store.log(failure.locked ? "auth_login_throttled" : "auth_login_rejected", {
       reason: failure.locked ? "threshold" : "credentials",
       result: "rejected",
@@ -297,15 +297,119 @@ export function login(store, { email, password, sessionSecret, clientKey }) {
       retryAfterMs: failure.retryAfterMs,
     };
   }
-  clearFailures(store, normalizedEmail, normalizedClientKey);
-  upgradePhpassHashIfNeeded(store, user, password);
-  const session = createSessionCookie(store, user, sessionSecret);
+  if (!isEmailVerified(user.email_verified_at)) {
+    store.log("auth_login_rejected", { reason: "unverified", result: "rejected" });
+    return { ok: false, reason: "unverified" };
+  }
+  await clearFailures(store, normalizedEmail, normalizedClientKey);
+  await upgradePhpassHashIfNeeded(store, user, password);
+  const session = await createSessionCookie(store, user, sessionSecret);
   store.log("auth_login_succeeded", { role: user.role, result: "accepted" });
   return { ok: true, user: { id: user.id, email: user.email, role: user.role }, ...session };
 }
 
 export function safeRedirect(value) {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
+/** HMAC-only check for Edge/proxy. Does not load the session row or expiry. */
+export function verifySessionTokenSignature(token, sessionSecret) {
+  if (typeof token !== "string" || typeof sessionSecret !== "string") return false;
+  try {
+    const [id, signature] = token.split(".");
+    if (!id || !signature) return false;
+    const expected = createHmac("sha256", requireSessionSecret(sessionSecret)).update(id).digest("base64url");
+    return constantTimeEqual(signature, expected);
+  } catch {
+    return false;
+  }
+}
+
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_TTL_MS = 60 * 60 * 1000;
+
+function hashSecretToken(token) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function newSecretToken() {
+  return randomBytes(32).toString("base64url");
+}
+
+/** NULL = legacy (treated verified). 0 = pending verification. >0 = verified at epoch ms. */
+export function isEmailVerified(emailVerifiedAt) {
+  return emailVerifiedAt == null || Number(emailVerifiedAt) > 0;
+}
+
+export async function registerCustomer(store, { email, password }) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) throw new Error("A valid email is required.");
+  const passwordHash = hashPassword(password);
+  const existing = await store.db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+  if (existing) throw new Error("An account with this email already exists.");
+  const id = randomBytes(16).toString("hex");
+  const verifyToken = newSecretToken();
+  await store.db
+    .prepare(
+      `INSERT INTO users (id, email, password_hash, role, created_at, email_verified_at, email_verify_token, email_verify_expires_at)
+       VALUES (?, ?, ?, 'customer', ?, 0, ?, ?)`,
+    )
+    .run(id, normalizedEmail, passwordHash, store.now(), hashSecretToken(verifyToken), store.now() + VERIFY_TTL_MS);
+  store.log("auth_register_completed", { result: "accepted" });
+  return { user: { id, email: normalizedEmail, role: "customer" }, verifyToken };
+}
+
+export async function verifyEmail(store, token) {
+  if (typeof token !== "string" || token.length < 16) throw new Error("Verification token is invalid.");
+  const hashed = hashSecretToken(token);
+  const user = await store.db
+    .prepare("SELECT id, email, role, email_verify_expires_at FROM users WHERE email_verify_token = ?")
+    .get(hashed);
+  if (!user) throw new Error("Verification token is invalid.");
+  if (Number(user.email_verify_expires_at) < store.now()) throw new Error("Verification token has expired.");
+  await store.db
+    .prepare(
+      "UPDATE users SET email_verified_at = ?, email_verify_token = NULL, email_verify_expires_at = NULL WHERE id = ?",
+    )
+    .run(store.now(), user.id);
+  store.log("auth_email_verified", { result: "accepted" });
+  return { user: { id: user.id, email: user.email, role: user.role } };
+}
+
+export async function requestPasswordReset(store, email) {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return { accepted: true };
+  const user = await store.db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
+  if (!user) return { accepted: true };
+  const resetToken = newSecretToken();
+  await store.db
+    .prepare("UPDATE users SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?")
+    .run(hashSecretToken(resetToken), store.now() + RESET_TTL_MS, user.id);
+  store.log("auth_password_reset_requested", { result: "accepted" });
+  return { accepted: true, resetToken };
+}
+
+export async function resetPassword(store, { token, password, sessionSecret }) {
+  if (typeof token !== "string" || token.length < 16) throw new Error("Reset token is invalid.");
+  const hashed = hashSecretToken(token);
+  const user = await store.db
+    .prepare("SELECT id, email, role, password_reset_expires_at FROM users WHERE password_reset_token = ?")
+    .get(hashed);
+  if (!user) throw new Error("Reset token is invalid.");
+  if (Number(user.password_reset_expires_at) < store.now()) throw new Error("Reset token has expired.");
+  const passwordHash = hashPassword(password);
+  await store.db
+    .prepare(
+      "UPDATE users SET password_hash = ?, password_reset_token = NULL, password_reset_expires_at = NULL WHERE id = ?",
+    )
+    .run(passwordHash, user.id);
+  await store.db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+  store.log("auth_password_reset_completed", { result: "accepted" });
+  if (sessionSecret) {
+    const session = await createSessionCookie(store, user, sessionSecret);
+    return { user: { id: user.id, email: user.email, role: user.role }, ...session };
+  }
+  return { user: { id: user.id, email: user.email, role: user.role } };
 }
 
 export { COOKIE_NAME, LOGIN_LOCK_MS, LOGIN_PROGRESSIVE_DELAYS_MS, MAX_LOGIN_FAILURES, SESSION_DURATION_MS };

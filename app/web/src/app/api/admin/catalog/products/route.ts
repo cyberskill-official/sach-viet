@@ -5,14 +5,14 @@ import { createAdminCatalogStore, createAdminProduct, listAdminProducts } from "
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const category = new URL(request.url).searchParams.get("category") ?? undefined;
-    const store = createAdminCatalogStore();
+    const store = await createAdminCatalogStore();
     try {
-      return NextResponse.json({ products: listAdminProducts(store, session.user, { category }) });
+      return NextResponse.json({ products: await listAdminProducts(store, session.user, { category }) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Products are unavailable." }, { status: 403 });
@@ -22,15 +22,15 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const body = await request.json().catch(() => null);
     if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid product request." }, { status: 400 });
-    const store = createAdminCatalogStore();
+    const store = await createAdminCatalogStore();
     try {
-      return NextResponse.json(createAdminProduct(store, session.user, body), { status: 201 });
+      return NextResponse.json(await createAdminProduct(store, session.user, body), { status: 201 });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Product creation failed.";

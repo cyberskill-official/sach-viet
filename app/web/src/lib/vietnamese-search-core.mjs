@@ -178,13 +178,13 @@ export function getSearchBackendStatus({ env = process.env } = {}) {
   };
 }
 
-function recordSearchLog(store, { queryNormalized, resultCount, backendMode }) {
+async function recordSearchLog(store, { queryNormalized, resultCount, backendMode }) {
   ensureSearchSchema(store);
-  store.db
+  await store.db
     .prepare("DELETE FROM search_logs WHERE created_at < ?")
     .run(store.now() - SEARCH_LOG_RETENTION_MS);
   const id = identifier();
-  store.db
+  await store.db
     .prepare(
       "INSERT INTO search_logs (id, query_normalized, result_count, backend_mode, created_at) VALUES (?, ?, ?, ?, ?)",
     )
@@ -198,9 +198,9 @@ function recordSearchLog(store, { queryNormalized, resultCount, backendMode }) {
   return id;
 }
 
-export function listSearchLogs(store, { limit = 50 } = {}) {
+export async function listSearchLogs(store, { limit = 50 } = {}) {
   ensureSearchSchema(store);
-  return store.db
+  return await store.db
     .prepare(
       "SELECT id, query_normalized AS queryNormalized, result_count AS resultCount, backend_mode AS backendMode, created_at AS createdAt FROM search_logs ORDER BY created_at DESC, id DESC LIMIT ?",
     )
@@ -211,19 +211,19 @@ export function listSearchLogs(store, { limit = 50 } = {}) {
  * Search public catalog products. Empty/whitespace `q` returns existing list/category behavior.
  * `q` is truncated to MAX_SEARCH_QUERY_LENGTH before ranking to bound CPU cost.
  * @param {import("./catalog-core.mjs").CatalogStore | { db: unknown, now: Function, log?: Function, close?: Function }} store
- * @param {{ q?: string | null, category?: string, limit?: number, backend?: { mode: string, search: Function } }} [options]
+ * @param {{ q?: string | null, category?: string, limit?: number, after?: string, backend?: { mode: string, search: Function } }} [options]
  * @returns {unknown[]}
  */
-export function searchPublicProducts(store, options = {}) {
-  const { q, category, limit = 24, backend } = options;
-  const products = listPublicProducts(store, { category });
+export async function searchPublicProducts(store, options = {}) {
+  const { q, category, limit = 24, after, backend } = options;
   const query = capSearchQuery(q);
-  if (!query) return products;
+  if (!query) return await listPublicProducts(store, { category, limit, after });
 
   const resolved = backend || resolveSearchBackend({ log: store.log });
   const cappedLimit = Math.min(Math.max(Number(limit) || 24, 1), 100);
+  const products = await listPublicProducts(store, { category });
   const ranked = resolved.search({ documents: products, query, limit: cappedLimit });
-  recordSearchLog(store, {
+  await recordSearchLog(store, {
     queryNormalized: normalizeVietnameseText(query),
     resultCount: ranked.length,
     backendMode: resolved.mode,
@@ -239,7 +239,7 @@ export function searchPublicProducts(store, options = {}) {
  * @param {{ q?: string | null, limit?: number }} [options]
  * @returns {string[]}
  */
-export function suggestCatalogQueries(store, options = {}) {
+export async function suggestCatalogQueries(store, options = {}) {
   const { q, limit = 8 } = options;
   const query = capSearchQuery(q);
   if (!query) return [];
@@ -247,7 +247,7 @@ export function suggestCatalogQueries(store, options = {}) {
   if (!normalized) return [];
   const cappedLimit = Math.min(Math.max(Number(limit) || 8, 1), 20);
 
-  const fromTitles = listPublicProducts(store)
+  const fromTitles = (await listPublicProducts(store))
     .map((product) => normalizeVietnameseText(product.title))
     .filter((title) => title.startsWith(normalized) || title.includes(` ${normalized}`));
 

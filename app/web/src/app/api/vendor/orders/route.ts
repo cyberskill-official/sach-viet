@@ -5,10 +5,10 @@ import { createVendorCommerceStore, listVendorIncomingOrders } from "@/lib/vendo
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const vendorId = new URL(request.url).searchParams.get("vendorId") || undefined;
-    const store = createVendorCommerceStore();
-    try { return NextResponse.json({ orders: listVendorIncomingOrders(store, session.user, { vendorId }) }); } finally { store.close(); }
+    const store = await createVendorCommerceStore();
+    try { return NextResponse.json({ orders: await listVendorIncomingOrders(store, session.user, { vendorId }) }); } finally { await store.close(); }
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Vendor orders are unavailable." }, { status: 403 }); }
 }

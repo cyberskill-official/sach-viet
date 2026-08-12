@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("employee and retail routes use signed sessions and server-side repository calls", () => {
+test("employee and retail routes use signed sessions and server-side repository calls", async () => {
   const dashboard = readFileSync(resolve(root, "src/app/api/employee/dashboard/route.ts"), "utf8");
   const homeSections = readFileSync(resolve(root, "src/app/api/employee/home-sections/route.ts"), "utf8");
   const retailOrders = readFileSync(resolve(root, "src/app/api/retail/orders/route.ts"), "utf8");

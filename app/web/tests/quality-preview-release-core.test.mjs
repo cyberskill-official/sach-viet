@@ -15,7 +15,7 @@ import {
 
 const appRoot = join(import.meta.dirname, "..");
 
-test("quality checklist enumerates lint test verify build and cyberos gates", () => {
+test("quality checklist enumerates lint test verify build and cyberos gates", async () => {
   const checklist = getQualityChecklist();
   assert.deepEqual(
     checklist.checks.map((check) => check.id),
@@ -24,13 +24,13 @@ test("quality checklist enumerates lint test verify build and cyberos gates", ()
   assert.ok(checklist.checks.some((check) => check.command.includes("run-gates.sh")));
 });
 
-test("preview packaging validation accepts the greenfield app/web package", () => {
+test("preview packaging validation accepts the greenfield app/web package", async () => {
   const packaging = validatePreviewPackaging(appRoot);
   assert.equal(packaging.schemaVersion, 2);
   assert.equal(packaging.standalone, true);
 });
 
-test("credential absence yields prepared_local without deploy", () => {
+test("credential absence yields prepared_local without deploy", async () => {
   const events = [];
   const result = preparePreviewRelease({
     rootPath: appRoot,
@@ -43,7 +43,7 @@ test("credential absence yields prepared_local without deploy", () => {
   assert.ok(events.some((entry) => entry.event === "preview_release_prepare_completed"));
 });
 
-test("production target is refused even when credentials appear present", () => {
+test("production target is refused even when credentials appear present", async () => {
   const result = preparePreviewRelease({
     rootPath: appRoot,
     target: "production",
@@ -54,7 +54,7 @@ test("production target is refused even when credentials appear present", () => 
   assert.equal(result.deployed, false);
 });
 
-test("authorizeRemote without operator path is refused", () => {
+test("authorizeRemote without operator path is refused", async () => {
   const result = preparePreviewRelease({
     rootPath: appRoot,
     authorizeRemote: true,
@@ -65,7 +65,7 @@ test("authorizeRemote without operator path is refused", () => {
   assert.equal(result.deployed, false);
 });
 
-test("invalid packaging returns packaging_invalid", () => {
+test("invalid packaging returns packaging_invalid", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-preview-"));
   try {
     mkdirSync(join(directory, "nested"), { recursive: true });
@@ -82,20 +82,20 @@ test("invalid packaging returns packaging_invalid", () => {
   }
 });
 
-test("default-path source forbids network deploy primitives", () => {
+test("default-path source forbids network deploy primitives", async () => {
   const source = readFileSync(join(appRoot, "src/lib/quality-preview-release-core.mjs"), "utf8");
   assert.equal(assertNoNetworkDeployInSource(source), true);
   assert.throws(() => assertNoNetworkDeployInSource('await fetch("https://captain.server.sachviet.us")'));
   assert.throws(() => assertNoNetworkDeployInSource(null));
 });
 
-test("credential detection accepts CapRover or Captain env names", () => {
+test("credential detection accepts CapRover or Captain env names", async () => {
   assert.deepEqual(detectPreviewCredentials({}), { present: false, source: null });
   assert.equal(detectPreviewCredentials({ CAPROVER_APP_TOKEN: " token " }).source, "CAPROVER_APP_TOKEN");
   assert.equal(detectPreviewCredentials({ CAPTAIN_APP_TOKEN: "alt" }).source, "CAPTAIN_APP_TOKEN");
 });
 
-test("validatePreviewPackaging rejects broken packaging contracts", () => {
+test("validatePreviewPackaging rejects broken packaging contracts", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-preview-bad-"));
   try {
     for (const file of ["package.json", "Dockerfile", "captain-definition", "OPERATIONS.md", "next.config.ts"]) {
@@ -150,7 +150,7 @@ test("validatePreviewPackaging rejects broken packaging contracts", () => {
   }
 });
 
-test("unsupported prepare target throws before packaging work", () => {
+test("unsupported prepare target throws before packaging work", async () => {
   assert.throws(
     () =>
       preparePreviewRelease({
@@ -163,6 +163,6 @@ test("unsupported prepare target throws before packaging work", () => {
   );
 });
 
-test("prepare without rootPath throws", () => {
+test("prepare without rootPath throws", async () => {
   assert.throws(() => preparePreviewRelease({ log() {} }), /rootPath is required/);
 });

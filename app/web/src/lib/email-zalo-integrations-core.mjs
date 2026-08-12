@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import { normalizeRole } from "./access.mjs";
+import { submitSmtpMessage } from "./smtp-submitter.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 
@@ -70,24 +71,29 @@ export function createSmtpEmailTransport({
   }
   return {
     mode: "smtp",
-    send(message) {
+    async send(message) {
       if (!message.recipient) {
         return { outcome: "skipped", reason: "missing_recipient" };
       }
-      // Vendor-agnostic seam: deployments may inject a sync submitter for any SMTP relay.
-      // Default greenfield path records locally without a paid SaaS SDK or network I/O.
-      if (typeof submit === "function") {
-        const result = submit({
+      const submitter =
+        typeof submit === "function"
+          ? submit
+          : password && process.env.NODE_ENV === "production"
+            ? submitSmtpMessage
+            : null;
+      if (typeof submitter === "function") {
+        const result = await submitter({
           host,
           port: Number(port || 587),
           user: user || undefined,
-          passwordConfigured: Boolean(password),
+          password,
           from,
+          to: message.recipient,
           toHash: redactRecipient(message.recipient),
           subject: message.title,
           text: `${message.body}\n${message.deeplinkPath}`,
         });
-        const outcome = result?.outcome === "failed" ? "failed" : "sent";
+        const outcome = result?.outcome === "failed" ? "failed" : result?.outcome === "recorded" ? "recorded" : "sent";
         log?.("email_transport_smtp_submitted", {
           result: outcome,
           channel: "email",
@@ -172,7 +178,7 @@ export function createZaloOaHttpTransport({
   };
 }
 
-export function resolveEmailTransport(env = process.env, { log } = {}) {
+export function resolveEmailTransport(env = process.env, { log, submit } = {}) {
   if (env.SMTP_HOST && env.SMTP_FROM) {
     try {
       return createSmtpEmailTransport({
@@ -181,6 +187,7 @@ export function resolveEmailTransport(env = process.env, { log } = {}) {
         user: env.SMTP_USER,
         password: env.SMTP_PASSWORD,
         from: env.SMTP_FROM,
+        submit,
         log,
       });
     } catch {
@@ -208,25 +215,25 @@ export function resolveZaloTransport(env = process.env, { log } = {}) {
 /** No-op: notification_delivery_attempts schema is applied by the initial migration. */
 export function ensureExternalDeliverySchema() {}
 
-function isExternalChannelEnabled(store, userId, channel) {
-  const row = store.db
+async function isExternalChannelEnabled(store, userId, channel) {
+  const row = await store.db
     .prepare("SELECT is_enabled AS isEnabled FROM user_channels WHERE user_id = ? AND channel = ?")
     .get(userId, channel);
   return row ? row.isEnabled === 1 : false;
 }
 
-function lookupUserEmail(store, userId) {
+async function lookupUserEmail(store, userId) {
   try {
-    const row = store.db.prepare("SELECT email FROM users WHERE id = ?").get(userId);
+    const row = await store.db.prepare("SELECT email FROM users WHERE id = ?").get(userId);
     return typeof row?.email === "string" ? row.email : null;
   } catch {
     return null;
   }
 }
 
-function lookupZaloEndpoint(store, userId) {
+async function lookupZaloEndpoint(store, userId) {
   try {
-    const row = store.db
+    const row = await store.db
       .prepare("SELECT endpoint FROM user_channel_endpoints WHERE user_id = ? AND channel = 'zalo'")
       .get(userId);
     return typeof row?.endpoint === "string" ? row.endpoint : null;
@@ -235,7 +242,7 @@ function lookupZaloEndpoint(store, userId) {
   }
 }
 
-function recordAttempt(store, { notificationId, channel, outcome, reason = null, recipientHash = null }) {
+async function recordAttempt(store, { notificationId, channel, outcome, reason = null, recipientHash = null }) {
   const attempt = {
     id: identifier(),
     notificationId,
@@ -245,7 +252,7 @@ function recordAttempt(store, { notificationId, channel, outcome, reason = null,
     recipientHash,
     createdAt: store.clock(),
   };
-  store.db
+  await store.db
     .prepare(
       `
     INSERT INTO notification_delivery_attempts
@@ -273,7 +280,7 @@ function recordAttempt(store, { notificationId, channel, outcome, reason = null,
   return attempt;
 }
 
-export function dispatchExternalNotificationChannels(
+export async function dispatchExternalNotificationChannels(
   store,
   notification,
   {
@@ -295,9 +302,9 @@ export function dispatchExternalNotificationChannels(
   };
 
   for (const channel of EXTERNAL_CHANNELS) {
-    if (!isExternalChannelEnabled(store, notification.userId, channel)) {
+    if (!await isExternalChannelEnabled(store, notification.userId, channel)) {
       attempts.push(
-        recordAttempt(store, {
+        await recordAttempt(store, {
           notificationId: notification.id,
           channel,
           outcome: "skipped",
@@ -307,12 +314,15 @@ export function dispatchExternalNotificationChannels(
       continue;
     }
 
-    const recipient = channel === "email" ? resolveEmail(store, notification.userId) : resolveZalo(store, notification.userId);
+    const recipient =
+      channel === "email"
+        ? await resolveEmail(store, notification.userId)
+        : await resolveZalo(store, notification.userId);
     const transport = channel === "email" ? emailTransport : zaloTransport;
-    const result = transport.send({ ...payload, recipient });
+    const result = await transport.send({ ...payload, recipient });
     const outcome = result?.outcome || "failed";
     attempts.push(
-      recordAttempt(store, {
+      await recordAttempt(store, {
         notificationId: notification.id,
         channel,
         outcome,
@@ -324,13 +334,13 @@ export function dispatchExternalNotificationChannels(
   return attempts;
 }
 
-export function listDeliveryAttempts(store, user, notificationId) {
+export async function listDeliveryAttempts(store, user, notificationId) {
   requireUser(user);
   ensureExternalDeliverySchema(store);
   const id = required(notificationId, "Notification ID");
-  const owned = store.db.prepare("SELECT id, user_id AS userId FROM notifications WHERE id = ?").get(id);
+  const owned = await store.db.prepare("SELECT id, user_id AS userId FROM notifications WHERE id = ?").get(id);
   if (!owned || owned.userId !== user.id) throw new Error("Notification access is denied.");
-  return store.db
+  return await store.db
     .prepare(
       `
     SELECT id, notification_id AS notificationId, channel, outcome, reason,

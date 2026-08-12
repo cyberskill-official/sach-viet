@@ -8,19 +8,19 @@ const { dbPath, schema, writerId, iterations } = workerData;
 
 // Use explicit schema + skipMigrations so the worker does not race on CREATE SCHEMA
 // against the main-thread setup connection (which keeps the schema alive).
-const db = openDatabase(dbPath, { schema, skipMigrations: true });
+const db = await openDatabase(dbPath, { schema, skipMigrations: true });
 const insert = db.prepare("INSERT INTO concurrency_probe (id, writer, iteration) VALUES (?, ?, ?)");
 
 for (let iteration = 0; iteration < iterations; iteration += 1) {
-  beginImmediateWithRetry(db);
+  await beginImmediateWithRetry(db);
   try {
-    insert.run(`${writerId}-${iteration}`, writerId, iteration);
-    db.exec("COMMIT");
+    await insert.run(`${writerId}-${iteration}`, writerId, iteration);
+    await db.exec("COMMIT");
   } catch (error) {
-    db.exec("ROLLBACK");
+    await db.exec("ROLLBACK");
     throw error;
   }
 }
 
-db.close();
+await db.close();
 parentPort.postMessage({ writerId, completed: iterations });

@@ -7,7 +7,7 @@ import {
   withTeam,
 } from "../scripts/wire-production-env.mjs";
 
-test("validateWireInputs fails closed without VERCEL_TOKEN", () => {
+test("validateWireInputs fails closed without VERCEL_TOKEN", async () => {
   const result = validateWireInputs({
     DATABASE_URL: "postgres://pooler",
     DATABASE_URL_DIRECT: "postgres://direct",
@@ -17,7 +17,7 @@ test("validateWireInputs fails closed without VERCEL_TOKEN", () => {
   assert.ok(result.errors.some((e) => /VERCEL_TOKEN/.test(e)));
 });
 
-test("validateWireInputs fails closed when AUTH_SESSION_SECRET is short", () => {
+test("validateWireInputs fails closed when AUTH_SESSION_SECRET is short", async () => {
   const result = validateWireInputs({
     VERCEL_TOKEN: "tok",
     DATABASE_URL: "postgres://pooler",
@@ -28,7 +28,7 @@ test("validateWireInputs fails closed when AUTH_SESSION_SECRET is short", () => 
   assert.ok(result.errors.some((e) => /AUTH_SESSION_SECRET/.test(e)));
 });
 
-test("validateWireInputs requires DATABASE_URL_DIRECT unless SKIP_MIGRATE=1", () => {
+test("validateWireInputs requires DATABASE_URL_DIRECT unless SKIP_MIGRATE=1", async () => {
   const missing = validateWireInputs({
     VERCEL_TOKEN: "tok",
     DATABASE_URL: "postgres://pooler",
@@ -47,7 +47,7 @@ test("validateWireInputs requires DATABASE_URL_DIRECT unless SKIP_MIGRATE=1", ()
   assert.equal(skipped.config.skipMigrate, true);
 });
 
-test("validateWireInputs accepts a complete env", () => {
+test("validateWireInputs accepts a complete env", async () => {
   const result = validateWireInputs({
     VERCEL_TOKEN: "tok",
     DATABASE_URL: "postgres://pooler",
@@ -60,7 +60,7 @@ test("validateWireInputs accepts a complete env", () => {
   assert.equal(result.config.pooler, "postgres://pooler");
 });
 
-test("withTeam appends teamId query param", () => {
+test("withTeam appends teamId query param", async () => {
   assert.equal(withTeam("/v9/projects/p/env", ""), "/v9/projects/p/env");
   assert.equal(withTeam("/v9/projects/p/env", "team_1"), "/v9/projects/p/env?teamId=team_1");
   assert.equal(withTeam("/v9/projects/p/env?limit=1", "team_1"), "/v9/projects/p/env?limit=1&teamId=team_1");
@@ -90,7 +90,7 @@ test("upsertProductionEnv deletes existing production key then creates", async (
   ]);
 });
 
-test("validateSandboxPaymentEnv refuses live Stripe and PayPal", () => {
+test("validateSandboxPaymentEnv refuses live Stripe and PayPal", async () => {
   const liveStripe = validateSandboxPaymentEnv({ STRIPE_SECRET_KEY: "sk_live_x" });
   assert.equal(liveStripe.ok, false);
   assert.ok(liveStripe.errors.some((e) => /sk_test_/.test(e)));

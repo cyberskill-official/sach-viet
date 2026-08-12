@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("admin commerce routes use signed sessions and server-side queue operations", () => {
+test("admin commerce routes use signed sessions and server-side queue operations", async () => {
   const dashboard = readFileSync(resolve(root, "src/app/api/admin/commerce/dashboard/route.ts"), "utf8");
   const applications = readFileSync(resolve(root, "src/app/api/admin/vendor-applications/route.ts"), "utf8");
   const resolution = readFileSync(resolve(root, "src/app/api/admin/vendor-applications/[id]/route.ts"), "utf8");

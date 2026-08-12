@@ -29,20 +29,26 @@ function loadSql(name) {
 export const MIGRATIONS = Object.freeze([
   {
     id: "001_initial_schema",
-    up(db) {
-      db.exec(loadSql("001_initial_schema.sql"));
+    async up(db) {
+      await db.exec(loadSql("001_initial_schema.sql"));
     },
   },
   {
     id: "002_ai_settings",
-    up(db) {
-      db.exec(loadSql("002_ai_settings.sql"));
+    async up(db) {
+      await db.exec(loadSql("002_ai_settings.sql"));
     },
   },
   {
     id: "003_payment_provider",
-    up(db) {
-      db.exec(loadSql("003_payment_provider.sql"));
+    async up(db) {
+      await db.exec(loadSql("003_payment_provider.sql"));
+    },
+  },
+  {
+    id: "004_identity_jobs_payments",
+    async up(db) {
+      await db.exec(loadSql("004_identity_jobs_payments.sql"));
     },
   },
 ]);

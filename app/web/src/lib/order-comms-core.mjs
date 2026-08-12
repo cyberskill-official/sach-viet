@@ -21,26 +21,26 @@ function redactRecipient(value) {
   return createHash("sha256").update(value.trim().toLowerCase()).digest("hex").slice(0, 16);
 }
 
-function lookupUserEmail(store, userId) {
+async function lookupUserEmail(store, userId) {
   try {
-    const row = store.db.prepare("SELECT email FROM users WHERE id = ?").get(userId);
+    const row = await store.db.prepare("SELECT email FROM users WHERE id = ?").get(userId);
     return typeof row?.email === "string" ? row.email : null;
   } catch {
     return null;
   }
 }
 
-function ensureNotificationTables(store) {
+async function ensureNotificationTables(store) {
   const now = store.clock();
-  store.db
+  await store.db
     .prepare(
       "INSERT INTO notification_event_types (key, description, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
     )
     .run("order.paid", "order paid", now);
 }
 
-function loadPaidOrder(store, orderId) {
-  return store.db
+async function loadPaidOrder(store, orderId) {
+  return await store.db
     .prepare(
       `SELECT id, user_id AS userId, status, currency, subtotal_usd AS subtotalUsd
        FROM orders WHERE id = ?`,
@@ -48,9 +48,9 @@ function loadPaidOrder(store, orderId) {
     .get(orderId);
 }
 
-function recordEmailAttempt(store, { notificationId, outcome, reason = null, recipientHash = null }) {
+async function recordEmailAttempt(store, { notificationId, outcome, reason = null, recipientHash = null }) {
   ensureExternalDeliverySchema(store);
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO notification_delivery_attempts
         (id, notification_id, channel, outcome, reason, recipient_hash, created_at)
@@ -63,7 +63,7 @@ function recordEmailAttempt(store, { notificationId, outcome, reason = null, rec
  * After a successful paid transition: in-app `order.paid` notification plus transactional email.
  * Email always attempts (ignores user email-channel preference). SMTP when configured; else recording stub.
  */
-export function dispatchOrderPaidConfirmation(
+export async function dispatchOrderPaidConfirmation(
   store,
   orderId,
   {
@@ -72,7 +72,7 @@ export function dispatchOrderPaidConfirmation(
     resolveEmail = lookupUserEmail,
   } = {},
 ) {
-  const order = loadPaidOrder(store, orderId);
+  const order = await loadPaidOrder(store, orderId);
   if (!order) {
     store.log?.("order_confirmation_skipped", { result: "skipped", reason: "order_missing", order_id: orderId });
     return { emailed: false, notified: false, reason: "order_missing" };
@@ -86,11 +86,11 @@ export function dispatchOrderPaidConfirmation(
   const body = `Đơn hàng ${order.id} đã thanh toán thành công. Tổng: ${order.subtotalUsd} ${order.currency}.`;
   const deeplinkPath = `/ecom/orders/${order.id}`;
 
-  ensureNotificationTables(store);
+  await ensureNotificationTables(store);
   let notified = false;
   let notificationId = order.id;
   try {
-    const notification = createNotification(store, { id: order.userId, role: "customer" }, {
+    const notification = await createNotification(store, { id: order.userId, role: "customer" }, {
       userId: order.userId,
       eventType: "order.paid",
       title,
@@ -107,9 +107,9 @@ export function dispatchOrderPaidConfirmation(
     });
   }
 
-  const recipient = resolveEmail(store, order.userId);
+  const recipient = await resolveEmail(store, order.userId);
   if (!recipient) {
-    recordEmailAttempt(store, {
+    await recordEmailAttempt(store, {
       notificationId,
       outcome: "skipped",
       reason: "missing_recipient",
@@ -122,7 +122,7 @@ export function dispatchOrderPaidConfirmation(
     return { emailed: false, notified, reason: "missing_recipient", transportMode: emailTransport.mode };
   }
 
-  const result = emailTransport.send({
+  const result = await emailTransport.send({
     notificationId,
     title,
     body,
@@ -131,7 +131,7 @@ export function dispatchOrderPaidConfirmation(
     recipient,
   });
   const outcome = result?.outcome || "failed";
-  recordEmailAttempt(store, {
+  await recordEmailAttempt(store, {
     notificationId,
     outcome,
     reason: result?.reason || null,
@@ -163,25 +163,25 @@ const TERMINAL_DISPATCH_REASONS = new Set(["order_missing", "not_paid"]);
  * Stripe webhook or later as a retry sweep: the queue state, not the webhook result, decides what
  * still needs delivering, so an order whose first dispatch failed is picked up on replay.
  */
-export function processOrderCommsOutbox(
+export async function processOrderCommsOutbox(
   store,
   { orderId = null, limit = 10, dispatch = dispatchOrderPaidConfirmation, dispatchOptions = {} } = {},
 ) {
   ensureOrderCommsOutboxSchema(store);
-  const claimed = claimDueOrderComms(store, { orderId, limit });
+  const claimed = await claimDueOrderComms(store, { orderId, limit });
   const summary = { claimed: claimed.length, delivered: 0, retryScheduled: 0, abandoned: 0 };
 
   for (const entry of claimed) {
     let result = null;
     let failureReason = null;
     try {
-      result = dispatch(store, entry.orderId, dispatchOptions);
+      result = await dispatch(store, entry.orderId, dispatchOptions);
     } catch (error) {
       failureReason = error instanceof Error ? error.message : "dispatch_threw";
     }
 
     if (!failureReason && result?.outcome === "sent") {
-      markOrderCommsDelivered(store, entry.id);
+      await markOrderCommsDelivered(store, entry.id);
       summary.delivered += 1;
       store.log?.("order_comms_outbox_delivered", {
         result: "accepted",
@@ -200,10 +200,10 @@ export function processOrderCommsOutbox(
       result?.outcome ||
       "not_emailed";
     if (!failureReason && TERMINAL_DISPATCH_REASONS.has(reason)) {
-      markOrderCommsAbandoned(store, entry.id, reason);
+      await markOrderCommsAbandoned(store, entry.id, reason);
       summary.abandoned += 1;
     } else {
-      const outcome = markOrderCommsFailed(store, entry.id, reason);
+      const outcome = await markOrderCommsFailed(store, entry.id, reason);
       if (outcome.status === "abandoned") summary.abandoned += 1;
       else summary.retryScheduled += 1;
     }

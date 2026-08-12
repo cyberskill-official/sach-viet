@@ -10,20 +10,23 @@ import { pathToFileURL } from "node:url";
 import { openDatabase, resolveDatabaseUrl } from "../src/lib/db.mjs";
 import { listAppliedMigrations } from "../src/lib/migrate.mjs";
 
-export function runMigrate(environment = process.env) {
+export async function runMigrate(environment = process.env) {
   const databaseUrl = resolveDatabaseUrl(environment.DATABASE_URL);
-  const db = openDatabase(undefined, { databaseUrl });
+  const db = await openDatabase(undefined, { databaseUrl });
   try {
-    const applied = listAppliedMigrations(db);
+    const applied = await listAppliedMigrations(db);
     console.log(`DATABASE_URL target ready (${applied.length} migration(s) recorded).`);
     for (const row of applied) console.log(`  - ${row.id} @ ${row.appliedAt}`);
     return applied;
   } finally {
-    db.close();
+    await db.close();
   }
 }
 
 const invokedPath = process.argv[1];
 if (invokedPath && import.meta.url === pathToFileURL(resolve(invokedPath)).href) {
-  runMigrate();
+  runMigrate().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
 }

@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("public catalog routes use the catalog repository without an auth requirement", () => {
+test("public catalog routes use the catalog repository without an auth requirement", async () => {
   const listRoute = readFileSync(resolve(root, "src/app/api/catalog/products/route.ts"), "utf8");
   const detailRoute = readFileSync(resolve(root, "src/app/api/catalog/products/[slug]/route.ts"), "utf8");
   assert.match(listRoute, /searchPublicProducts/);
@@ -13,7 +13,7 @@ test("public catalog routes use the catalog repository without an auth requireme
   assert.doesNotMatch(listRoute, /readSession/);
 });
 
-test("vendor offer route reads the signed session before writing an offer", () => {
+test("vendor offer route reads the signed session before writing an offer", async () => {
   const route = readFileSync(resolve(root, "src/app/api/vendor/offers/route.ts"), "utf8");
   assert.match(route, /readSession/);
   assert.match(route, /writeVendorOffer/);

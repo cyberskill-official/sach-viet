@@ -6,7 +6,7 @@ type: improvement
 module: security
 author: "@codex"
 department: engineering
-status: on_hold
+status: closed
 entered_via: audit
 priority: p1
 created_at: "2026-07-23T04:18:00Z"
@@ -88,3 +88,8 @@ Discovery must identify the source route set and callers, or record them unavail
 - Tools used: Codex assisted with converting handoff documentation and approved defaults into this task. <!-- authority: human-confirmed -->
 - Scope: The task does not invent route methods, namespaces, callers, HMAC implementation details, replacement operations, or access policies that the source does not establish. <!-- authority: llm-explicit -->
 - Human review: An operator must review the task before implementation begins. <!-- authority: human-edited -->
+
+
+## Closure
+
+Closed as superseded by `TASK-SEC-002` (CSRF, vendor-offer RBAC, AI allowlist) and `TASK-GOV-001`. No HMAC `/admin/maintenance/*` routes exist in this repository. <!-- authority: llm-explicit -->

@@ -16,37 +16,37 @@ import {
   updateVendorNotificationPreferences,
 } from "../src/lib/notification-core.mjs";
 
-function fixture(run) {
+async function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-notification-"));
   const dbPath = join(directory, "ops.sqlite");
   const events = [];
-  const store = createNotificationStore({
+  const store = await createNotificationStore({
     dbPath,
     clock: () => 4000,
     log: (event, fields = {}) => events.push({ event, ...fields }),
   });
   try {
-    return run({ store, events });
+    return await run({ store, events });
   } finally {
-    store.close();
+    await store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-test("event registry seeds at least ten source-grounded trigger keys", () =>
-  fixture(({ store }) => {
+test("event registry seeds at least ten source-grounded trigger keys", async () =>
+  fixture(async ({ store }) => {
     assert.ok(NOTIFICATION_EVENT_TYPES.length >= 10);
-    const types = listEventTypes(store, { id: "customer", role: "customer" });
+    const types = await listEventTypes(store, { id: "customer", role: "customer" });
     assert.equal(types.length, NOTIFICATION_EVENT_TYPES.length);
     assert.ok(types.some((row) => row.key === "order.paid"));
-    assert.throws(() => listEventTypes(store, null), /Authentication/);
+    await assert.rejects(async () => await listEventTypes(store, null), /Authentication/);
   }));
 
-test("signed-in owner receives preference-gated notifications with badge and mark-read", () =>
-  fixture(({ store, events }) => {
+test("signed-in owner receives preference-gated notifications with badge and mark-read", async () =>
+  fixture(async ({ store, events }) => {
     const customer = { id: "customer", role: "customer" };
     const other = { id: "other", role: "customer" };
-    const created = createNotification(store, customer, {
+    const created = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "Order paid",
@@ -57,31 +57,31 @@ test("signed-in owner receives preference-gated notifications with badge and mar
     assert.equal(Object.hasOwn(created, "email"), false);
     assert.equal(Object.hasOwn(created, "sessionToken"), false);
 
-    const listed = listNotifications(store, customer);
+    const listed = await listNotifications(store, customer);
     assert.equal(listed.unreadCount, 1);
     assert.equal(listed.notifications.length, 1);
     assert.equal(listed.notifications[0].deeplinkPath, "/ecom/orders/1");
 
-    const otherList = listNotifications(store, other);
+    const otherList = await listNotifications(store, other);
     assert.equal(otherList.notifications.length, 0);
     assert.equal(otherList.unreadCount, 0);
-    assert.throws(() => markNotificationRead(store, other, created.id), /Notification access/);
+    await assert.rejects(async () => await markNotificationRead(store, other, created.id), /Notification access/);
 
-    const read = markNotificationRead(store, customer, created.id);
+    const read = await markNotificationRead(store, customer, created.id);
     assert.equal(read.isRead, true);
-    assert.equal(listNotifications(store, customer).unreadCount, 0);
+    assert.equal((await listNotifications(store, customer)).unreadCount, 0);
     assert.ok(events.some((row) => row.event === "notification_created"));
     assert.ok(events.some((row) => row.event === "notification_marked_read"));
   }));
 
-test("user preferences and in_app channel gate notification creation", () =>
-  fixture(({ store, events }) => {
+test("user preferences and in_app channel gate notification creation", async () =>
+  fixture(async ({ store, events }) => {
     const customer = { id: "customer", role: "customer" };
-    updateUserNotificationPreferences(store, customer, {
+    await updateUserNotificationPreferences(store, customer, {
       preferences: [{ eventType: "order.paid", inAppEnabled: false }],
     });
     assert.equal(
-      createNotification(store, customer, {
+      await createNotification(store, customer, {
         userId: customer.id,
         eventType: "order.paid",
         title: "Skipped",
@@ -92,12 +92,12 @@ test("user preferences and in_app channel gate notification creation", () =>
     );
     assert.ok(events.some((row) => row.event === "notification_skipped"));
 
-    updateUserNotificationPreferences(store, customer, {
+    await updateUserNotificationPreferences(store, customer, {
       preferences: [{ eventType: "order.paid", inAppEnabled: true }],
       inAppChannelEnabled: false,
     });
     assert.equal(
-      createNotification(store, customer, {
+      await createNotification(store, customer, {
         userId: customer.id,
         eventType: "support.ticket_created",
         title: "Ticket",
@@ -106,17 +106,16 @@ test("user preferences and in_app channel gate notification creation", () =>
       }),
       null,
     );
-    const prefs = getUserNotificationPreferences(store, customer);
+    const prefs = await getUserNotificationPreferences(store, customer);
     assert.equal(prefs.channels[0].channel, "in_app");
     assert.equal(prefs.channels[0].isEnabled, false);
   }));
 
-test("unknown event types and absolute deeplinks are rejected", () =>
-  fixture(({ store }) => {
+test("unknown event types and absolute deeplinks are rejected", async () =>
+  fixture(async ({ store }) => {
     const customer = { id: "customer", role: "customer" };
-    assert.throws(
-      () =>
-        createNotification(store, customer, {
+    await assert.rejects(async () =>
+        await createNotification(store, customer, {
           userId: customer.id,
           eventType: "email.blast",
           title: "Nope",
@@ -125,9 +124,8 @@ test("unknown event types and absolute deeplinks are rejected", () =>
         }),
       /Unknown notification event type/,
     );
-    assert.throws(
-      () =>
-        createNotification(store, customer, {
+    await assert.rejects(async () =>
+        await createNotification(store, customer, {
           userId: customer.id,
           eventType: "order.paid",
           title: "Nope",
@@ -138,17 +136,46 @@ test("unknown event types and absolute deeplinks are rejected", () =>
     );
   }));
 
-test("vendor preferences require vendor or admin and default to enabled", () =>
-  fixture(({ store }) => {
+test("vendor preferences require vendor or admin and default to enabled", async () =>
+  fixture(async ({ store }) => {
     const vendor = { id: "vendor", role: "vendor" };
     const customer = { id: "customer", role: "customer" };
-    assert.throws(() => getVendorNotificationPreferences(store, customer), /Vendor access/);
-    const defaults = getVendorNotificationPreferences(store, vendor);
+    await assert.rejects(async () => await getVendorNotificationPreferences(store, customer), /Vendor access/);
+    const defaults = await getVendorNotificationPreferences(store, vendor);
     assert.equal(defaults.preferences.length, NOTIFICATION_EVENT_TYPES.length);
     assert.equal(defaults.preferences.every((row) => row.inAppEnabled === true), true);
-    const updated = updateVendorNotificationPreferences(store, vendor, {
+    const updated = await updateVendorNotificationPreferences(store, vendor, {
       preferences: [{ eventType: "payout.created", inAppEnabled: false }],
     });
     const payout = updated.preferences.find((row) => row.eventType === "payout.created");
     assert.equal(payout.inAppEnabled, false);
+  }));
+
+test("notification list pages with an after cursor", async () =>
+  fixture(async ({ store }) => {
+    const customer = { id: "customer", role: "customer" };
+    const first = await createNotification(store, customer, {
+      userId: customer.id,
+      eventType: "order.paid",
+      title: "First",
+      body: "One",
+      deeplinkPath: "/ecom/orders/1",
+    });
+    const second = await createNotification(store, customer, {
+      userId: customer.id,
+      eventType: "order.paid",
+      title: "Second",
+      body: "Two",
+      deeplinkPath: "/ecom/orders/2",
+    });
+    const page = await listNotifications(store, customer, { limit: 1 });
+    assert.equal(page.notifications.length, 1);
+    const next = await listNotifications(store, customer, { limit: 1, after: page.notifications[0].id });
+    assert.equal(next.notifications.length, 1);
+    assert.notEqual(next.notifications[0].id, page.notifications[0].id);
+    assert.deepEqual(
+      [page.notifications[0].id, next.notifications[0].id].sort(),
+      [first.id, second.id].sort(),
+    );
+    assert.equal(next.unreadCount, 2);
   }));

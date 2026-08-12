@@ -44,6 +44,13 @@ export const SEED_USERS = Object.freeze([
   { key: "vendorPhuongNam", email: "phuong-nam.seed@sachviet.test", role: "vendor" },
   { key: "customer", email: "khach-hang.seed@sachviet.test", role: "customer" },
   { key: "applicant", email: "ung-vien.seed@sachviet.test", role: "customer" },
+  { key: "employee", email: "nhan-vien.seed@sachviet.test", role: "employee" },
+  { key: "retail", email: "ban-le.seed@sachviet.test", role: "employee_b2c" },
+  { key: "b2b", email: "b2b.seed@sachviet.test", role: "employee_b2b" },
+  { key: "librarian", email: "thu-vien.seed@sachviet.test", role: "school_librarian" },
+  { key: "publisher", email: "nxb.seed@sachviet.test", role: "publisher" },
+  { key: "author", email: "tac-gia.seed@sachviet.test", role: "author" },
+  { key: "supplier", email: "ncc.seed@sachviet.test", role: "employee_supplier" },
 ]);
 
 export const SEED_PRODUCTS = Object.freeze([
@@ -154,30 +161,30 @@ export const SEED_PRODUCTS = Object.freeze([
   },
 ]);
 
-function upsertUser(auth, { email, role }, passwordHash) {
+async function upsertUser(auth, { email, role }, passwordHash) {
   const normalized = normalizeEmail(email);
   if (!normalized) throw new Error(`Seed user email is invalid: ${email}`);
-  const existing = auth.db.prepare("SELECT id, role FROM users WHERE email = ?").get(normalized);
+  const existing = await auth.db.prepare("SELECT id, role FROM users WHERE email = ?").get(normalized);
   if (existing) {
-    auth.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, existing.id);
+    await auth.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, existing.id);
     return { id: existing.id, email: normalized, role: existing.role, created: false };
   }
   const id = seedIdentifier("user", normalized);
-  auth.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
+  await auth.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
     .run(id, normalized, passwordHash, role, auth.now());
   return { id, email: normalized, role, created: true };
 }
 
-function upsertCategory(catalog, definition) {
-  const existing = catalog.db.prepare("SELECT id FROM categories WHERE slug = ?").get(definition.slug);
+async function upsertCategory(catalog, definition) {
+  const existing = await catalog.db.prepare("SELECT id FROM categories WHERE slug = ?").get(definition.slug);
   if (existing) return { id: existing.id, created: false };
-  return { id: createCategory(catalog, definition).id, created: true };
+  return { id: (await createCategory(catalog, definition)).id, created: true };
 }
 
-function upsertProduct(catalog, definition, categoryId) {
-  const existing = catalog.db.prepare("SELECT id FROM products WHERE slug = ?").get(definition.slug);
+async function upsertProduct(catalog, definition, categoryId) {
+  const existing = await catalog.db.prepare("SELECT id FROM products WHERE slug = ?").get(definition.slug);
   if (!existing) {
-    const product = createProduct(catalog, {
+    const product = await createProduct(catalog, {
       categoryId,
       slug: definition.slug,
       title: definition.title,
@@ -185,27 +192,27 @@ function upsertProduct(catalog, definition, categoryId) {
     });
     return { id: product.id, created: true };
   }
-  catalog.db.prepare("UPDATE products SET category_id = ?, title = ?, description = ?, updated_at = ? WHERE id = ?")
+  await catalog.db.prepare("UPDATE products SET category_id = ?, title = ?, description = ?, updated_at = ? WHERE id = ?")
     .run(categoryId, definition.title, definition.description, catalog.now(), existing.id);
   return { id: existing.id, created: false };
 }
 
-function upsertVariant(catalog, productId, variant) {
-  const existing = catalog.db.prepare("SELECT id FROM product_variants WHERE sku = ?").get(variant.sku);
+async function upsertVariant(catalog, productId, variant) {
+  const existing = await catalog.db.prepare("SELECT id FROM product_variants WHERE sku = ?").get(variant.sku);
   if (existing) return { id: existing.id, created: false };
-  return { id: createProductVariant(catalog, { productId, ...variant }).id, created: true };
+  return { id: (await createProductVariant(catalog, { productId, ...variant })).id, created: true };
 }
 
-function upsertMedia(catalog, productId, url, altText) {
-  const existing = catalog.db.prepare("SELECT id FROM product_media WHERE product_id = ? AND url = ?").get(productId, url);
+async function upsertMedia(catalog, productId, url, altText) {
+  const existing = await catalog.db.prepare("SELECT id FROM product_media WHERE product_id = ? AND url = ?").get(productId, url);
   if (existing) return { id: existing.id, created: false };
-  return { id: addProductMedia(catalog, { productId, url, altText }).id, created: true };
+  return { id: (await addProductMedia(catalog, { productId, url, altText })).id, created: true };
 }
 
-function seedCatalog(catalog, vendors, counters) {
+async function seedCatalog(catalog, vendors, counters) {
   const categories = new Map();
   for (const definition of SEED_CATEGORIES) {
-    const category = upsertCategory(catalog, definition);
+    const category = await upsertCategory(catalog, definition);
     if (category.created) counters.categories += 1;
     categories.set(definition.slug, category.id);
   }
@@ -213,21 +220,21 @@ function seedCatalog(catalog, vendors, counters) {
   for (const definition of SEED_PRODUCTS) {
     const categoryId = categories.get(definition.categorySlug);
     if (!categoryId) throw new Error(`Seed product ${definition.slug} references an unknown category.`);
-    const product = upsertProduct(catalog, definition, categoryId);
+    const product = await upsertProduct(catalog, definition, categoryId);
     if (product.created) counters.products += 1;
-    if (upsertMedia(catalog, product.id, `https://cdn.example.test/covers/${definition.slug}.jpg`, definition.title).created) {
+    if ((await upsertMedia(catalog, product.id, `https://cdn.example.test/covers/${definition.slug}.jpg`, definition.title)).created) {
       counters.media += 1;
     }
     for (const variant of definition.variants) {
-      if (upsertVariant(catalog, product.id, variant).created) counters.variants += 1;
+      if ((await upsertVariant(catalog, product.id, variant)).created) counters.variants += 1;
     }
     const offerIds = [];
     for (const offer of definition.offers) {
       const vendor = vendors.get(offer.vendor);
       if (!vendor) throw new Error(`Seed offer for ${definition.slug} references an unknown vendor.`);
       const offerId = seedIdentifier("offer", `${definition.slug}:${offer.vendor}`);
-      const isNew = !catalog.db.prepare("SELECT id FROM vendor_offers WHERE id = ?").get(offerId);
-      const written = writeVendorOffer(catalog, { id: vendor.id, role: "vendor" }, {
+      const isNew = !await catalog.db.prepare("SELECT id FROM vendor_offers WHERE id = ?").get(offerId);
+      const written = await writeVendorOffer(catalog, { id: vendor.id, role: "vendor" }, {
         id: offerId,
         productId: product.id,
         vendorId: vendor.id,
@@ -244,24 +251,24 @@ function seedCatalog(catalog, vendors, counters) {
   return offersByProduct;
 }
 
-function seedOrders(commerce, customer, catalogIndex, counters) {
-  const existing = commerce.db.prepare("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?").get(customer.id);
+async function seedOrders(commerce, customer, catalogIndex, counters) {
+  const existing = await commerce.db.prepare("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?").get(customer.id);
   if (existing.count > 0) return { paidOrderId: null, pendingOrderId: null };
-  const paidOrder = createPendingOrder(commerce, customer, [
-    { vendorOfferId: catalogIndex.get("truyen-kieu").offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 1 },
-    { vendorOfferId: catalogIndex.get("hoang-tu-be").offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 2, giftWrap: true },
+  const paidOrder = await createPendingOrder(commerce, customer, [
+    { vendorOfferId: (catalogIndex.get("truyen-kieu")).offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 1 },
+    { vendorOfferId: (catalogIndex.get("hoang-tu-be")).offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 2, giftWrap: true },
   ]);
-  commerce.db.prepare("UPDATE orders SET status = 'paid', updated_at = ? WHERE id = ?").run(commerce.clock(), paidOrder.id);
-  const pendingOrder = createPendingOrder(commerce, customer, [
-    { vendorOfferId: catalogIndex.get("dac-nhan-tam").offers.find((offer) => offer.vendorKey === "vendorPhuongNam").id, quantity: 1, plasticCover: true },
+  await commerce.db.prepare("UPDATE orders SET status = 'paid', updated_at = ? WHERE id = ?").run(commerce.clock(), paidOrder.id);
+  const pendingOrder = await createPendingOrder(commerce, customer, [
+    { vendorOfferId: (catalogIndex.get("dac-nhan-tam")).offers.find((offer) => offer.vendorKey === "vendorPhuongNam").id, quantity: 1, plasticCover: true },
   ]);
   counters.orders += 2;
   return { paidOrderId: paidOrder.id, pendingOrderId: pendingOrder.id };
 }
 
-function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
+async function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
   if (!orderId) return null;
-  const lines = vendorCommerce.db.prepare(`
+  const lines = await vendorCommerce.db.prepare(`
     SELECT order_items.id AS orderItemId, order_items.unit_price_usd AS unitPriceUsd, order_items.quantity
     FROM order_items
     JOIN vendor_offers ON vendor_offers.id = order_items.vendor_offer_id
@@ -270,7 +277,7 @@ function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
   `).all(orderId, vendor.id);
   if (!lines.length) return null;
   const amountUsd = moneyString(lines.reduce((sum, line) => sum + moneyUnits(line.unitPriceUsd) * BigInt(line.quantity), 0n));
-  const payout = createVendorPayout(vendorCommerce, admin, {
+  const payout = await createVendorPayout(vendorCommerce, admin, {
     vendorId: vendor.id,
     amountUsd,
     orderItemIds: lines.map((line) => line.orderItemId),
@@ -279,13 +286,13 @@ function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
   return payout;
 }
 
-function seedNotifications(notifications, actor, messages, counters) {
+async function seedNotifications(notifications, actor, messages, counters) {
   for (const message of messages) {
-    const existing = notifications.db
+    const existing = await notifications.db
       .prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND event_type = ?")
       .get(message.userId, message.eventType);
     if (existing.count > 0) continue;
-    if (createNotification(notifications, actor, message)) counters.notifications += 1;
+    if (await createNotification(notifications, actor, message)) counters.notifications += 1;
   }
 }
 
@@ -296,7 +303,7 @@ function seedNotifications(notifications, actor, messages, counters) {
  *
  * Prefer DATABASE_URL. Pass dbPath only for schema-isolated test environments.
  */
-export function seedLocalData({
+export async function seedLocalData({
   databaseUrl,
   dbPath,
   password = generateSeedPassword(),
@@ -311,13 +318,13 @@ export function seedLocalData({
     ? { dbPath, databaseUrl: resolvedUrl, log }
     : { databaseUrl: resolvedUrl || process.env.DATABASE_URL, log };
   const connectionTarget = dbPath || resolvedUrl || process.env.DATABASE_URL;
-  const auth = createAuthStore({ ...storeOptions, now: clock });
-  const catalog = createCatalogStore({ ...storeOptions, now: clock });
-  const commerce = createCommerceStore({ ...storeOptions, clock });
-  const adminCommerce = createAdminCommerceStore({ ...storeOptions, clock });
-  const vendorCommerce = createVendorCommerceStore({ ...storeOptions, clock });
-  const notifications = createNotificationStore({ ...storeOptions, clock });
-  const support = createSupportStore({ ...storeOptions, clock });
+  const auth = await createAuthStore({ ...storeOptions, now: clock });
+  const catalog = await createCatalogStore({ ...storeOptions, now: clock });
+  const commerce = await createCommerceStore({ ...storeOptions, clock });
+  const adminCommerce = await createAdminCommerceStore({ ...storeOptions, clock });
+  const vendorCommerce = await createVendorCommerceStore({ ...storeOptions, clock });
+  const notifications = await createNotificationStore({ ...storeOptions, clock });
+  const support = await createSupportStore({ ...storeOptions, clock });
   const counters = {
     users: 0, categories: 0, products: 0, variants: 0, media: 0, offers: 0,
     orders: 0, payouts: 0, vendorApplications: 0, notifications: 0, reviews: 0, tickets: 0,
@@ -325,46 +332,46 @@ export function seedLocalData({
 
   try {
     // Runs before any seed user exists so an operator-configured bootstrap admin is preserved.
-    const bootstrap = bootstrapFirstAdmin(auth, env);
+    const bootstrap = await bootstrapFirstAdmin(auth, env);
     const passwordHash = hashPassword(password);
     const users = new Map();
     for (const definition of SEED_USERS) {
-      const user = upsertUser(auth, definition, passwordHash);
+      const user = await upsertUser(auth, definition, passwordHash);
       if (user.created) counters.users += 1;
       users.set(definition.key, user);
     }
 
-    const catalogIndex = seedCatalog(catalog, users, counters);
+    const catalogIndex = await seedCatalog(catalog, users, counters);
     const admin = users.get("admin");
     const customer = users.get("customer");
     const applicant = users.get("applicant");
     const vendorAn = users.get("vendorAn");
 
-    const orders = seedOrders(commerce, customer, catalogIndex, counters);
-    const payout = seedPayout(vendorCommerce, admin, vendorAn, orders.paidOrderId, counters);
+    const orders = await seedOrders(commerce, customer, catalogIndex, counters);
+    const payout = await seedPayout(vendorCommerce, admin, vendorAn, orders.paidOrderId, counters);
 
-    const hasApplication = adminCommerce.db.prepare("SELECT COUNT(*) AS count FROM vendor_applications WHERE user_id = ?").get(applicant.id);
+    const hasApplication = await adminCommerce.db.prepare("SELECT COUNT(*) AS count FROM vendor_applications WHERE user_id = ?").get(applicant.id);
     if (hasApplication.count === 0) {
-      submitVendorApplication(adminCommerce, { id: applicant.id, role: "customer" });
+      await submitVendorApplication(adminCommerce, { id: applicant.id, role: "customer" });
       counters.vendorApplications += 1;
     }
 
-    seedNotifications(notifications, admin, [
+    await seedNotifications(notifications, admin, [
       { userId: customer.id, eventType: "order.paid", title: "Đơn hàng đã thanh toán", body: "Đơn hàng mẫu của bạn đã được ghi nhận là đã thanh toán.", deeplinkPath: "/ecom/orders" },
       { userId: vendorAn.id, eventType: "payout.created", title: "Đã tạo khoản thanh toán", body: "Một khoản thanh toán mẫu đã được tạo cho gian hàng của bạn.", deeplinkPath: "/vendor" },
       { userId: admin.id, eventType: "vendor.application_submitted", title: "Đơn đăng ký nhà bán mới", body: "Một khách hàng mẫu đã gửi đơn đăng ký nhà bán.", deeplinkPath: "/admin#vendors" },
     ], counters);
 
-    if (support.db.prepare("SELECT COUNT(*) AS count FROM product_reviews WHERE user_id = ?").get(customer.id).count === 0) {
-      createReview(support, customer, {
-        productId: catalogIndex.get("truyen-kieu").productId,
+    if ((await support.db.prepare("SELECT COUNT(*) AS count FROM product_reviews WHERE user_id = ?").get(customer.id)).count === 0) {
+      await createReview(support, customer, {
+        productId: (catalogIndex.get("truyen-kieu")).productId,
         rating: 5,
         body: "Bản chú giải dễ đọc, giao hàng nhanh.",
       });
       counters.reviews += 1;
     }
-    if (support.db.prepare("SELECT COUNT(*) AS count FROM support_tickets WHERE user_id = ?").get(customer.id).count === 0) {
-      createTicket(support, customer, { subject: "Hỏi về thời gian giao hàng" });
+    if ((await support.db.prepare("SELECT COUNT(*) AS count FROM support_tickets WHERE user_id = ?").get(customer.id)).count === 0) {
+      await createTicket(support, customer, { subject: "Hỏi về thời gian giao hàng" });
       counters.tickets += 1;
     }
 
@@ -372,18 +379,18 @@ export function seedLocalData({
       databaseUrl: connectionTarget,
       password,
       bootstrapAdmin: bootstrap.reason,
-      accounts: SEED_USERS.map((definition) => ({ email: users.get(definition.key).email, role: users.get(definition.key).role })),
+      accounts: SEED_USERS.map((definition) => ({ email: (users.get(definition.key)).email, role: (users.get(definition.key)).role })),
       created: counters,
       orders,
       payoutId: payout?.id ?? null,
       totals: {
-        products: catalog.db.prepare("SELECT COUNT(*) AS count FROM products").get().count,
-        offers: catalog.db.prepare("SELECT COUNT(*) AS count FROM vendor_offers").get().count,
-        orders: commerce.db.prepare("SELECT COUNT(*) AS count FROM orders").get().count,
-        users: auth.db.prepare("SELECT COUNT(*) AS count FROM users").get().count,
+        products: (await catalog.db.prepare("SELECT COUNT(*) AS count FROM products").get()).count,
+        offers: (await catalog.db.prepare("SELECT COUNT(*) AS count FROM vendor_offers").get()).count,
+        orders: (await commerce.db.prepare("SELECT COUNT(*) AS count FROM orders").get()).count,
+        users: (await auth.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count,
       },
     };
   } finally {
-    for (const store of [support, notifications, vendorCommerce, adminCommerce, commerce, catalog, auth]) store.close();
+    for (const store of [support, notifications, vendorCommerce, adminCommerce, commerce, catalog, auth]) await store.close();
   }
 }

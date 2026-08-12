@@ -4,7 +4,7 @@
 
 Use the package checks in `web/OPERATIONS.md`. Production packaging is defined by `web/Dockerfile` and `web/captain-definition`.
 
-For a production-like local run (Compose, port 3000, SQLite volume, bootstrap admin), see **Local Docker (production-like)** in `web/OPERATIONS.md`. Verified path from `app/`:
+For a production-like local run (Compose, port 3000, **Postgres**, bootstrap admin), see **Local Docker (production-like)** in `web/OPERATIONS.md`. Verified path from `app/`:
 
 ```bash
 cp .env.docker.example .env.docker   # first time only; fill AUTH_* / BOOTSTRAP_* (escape `$` in hashes as `$$`)

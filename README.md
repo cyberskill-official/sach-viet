@@ -5,11 +5,11 @@ SachViet is a private greenfield rebuild of a Vietnamese-book marketplace for re
 ## Current repository truth
 
 - The active application is `app/web`: Next.js 16, React 19, TypeScript, and **Postgres** (local Docker + CI; Vercel + Supabase is the production target). CapRover/SQLite is transitional only.
-- The live WordPress store and any production environment are outside this repository's verified state. This README does not claim production readiness, deployment, or cutover.
+- The live WordPress store and any production environment are outside this repository's verified state. This README does not claim real-commerce readiness or WordPress DNS cutover.
 - Current scope, deferrals, and readiness: `docs/07-status-roadmap.md`.
 - Local, container, preview-preparation, and deployment-safety guidance: `app/web/OPERATIONS.md`.
-- **Docker acceptance gate (Wave 4):** `docs/docker-acceptance-gate.md` — **Vercel production deploy is forbidden** until the OPERATIONS checklist is 100% green; preview only after local items 1–7 pass.
-- **Vercel + Supabase preview wiring (Wave 5):** `docs/deploy-vercel-supabase.md` — Preview only after the gate; no production without explicit operator go. CapRover is transitional.
+- **Docker acceptance gate (Wave 4):** `docs/docker-acceptance-gate.md`. Greenfield Vercel Production was authorized 2026-07-26; Preview is abandoned. WP DNS still needs a separate cutover instruction. This audit follow-up does not deploy Production.
+- **Vercel + Supabase wiring:** `docs/deploy-vercel-supabase.md`. CapRover is transitional.
 - Historical handoff documents `docs/01-vision.md` through `docs/06-tech-stack.md` are archived context. Their Nuxt/Laravel topology and production claims are not the current implementation.
 
 ## Development

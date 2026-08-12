@@ -27,11 +27,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Postgres helper + canonical SQL migrations (opened at boot / health / stores).
 # registry.mjs + *.sql must ship with standalone so openDatabase can apply schema.
 COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db-worker.mjs ./src/lib/db-worker.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db.mjs ./src/lib/db.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/migrate.mjs ./src/lib/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib/sqlite.mjs ./src/lib/sqlite.mjs
-# synckit worker resolves `pg` / `synckit` (+ transitive) at runtime.
+# `pg` may be omitted from Next standalone tracing; copy it for runtime queries.
 COPY --from=dependencies /app/node_modules /tmp/node_modules
 COPY --from=builder /app/scripts/copy-worker-runtime-deps.mjs /tmp/copy-worker-runtime-deps.mjs
 RUN node /tmp/copy-worker-runtime-deps.mjs /tmp/node_modules /app/node_modules \

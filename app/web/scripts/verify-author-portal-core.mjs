@@ -15,7 +15,7 @@ for (const required of [
   "assertRoyaltyActivationGate",
   "policyPending",
   "Author access is required",
-  "public URL",
+  "requireStoredObjectKey",
   "TASK-REBUILD-018",
 ]) {
   if (!source.includes(required)) throw new Error(`Author portal core is missing ${required}.`);

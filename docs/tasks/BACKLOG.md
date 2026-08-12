@@ -11,6 +11,14 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 ## ready_to_implement
 
 - (none yet - add rows as `- [ready_to_implement] TASK-001-slug - title`; append `(improvement)` for hardening tasks)
+- [implementing] TASK-GOV-001-audit-queue-docs-and-kill-switch - Author audit task queue, honest docs, and commerce kill-switch (improvement)
+- [implementing] TASK-DATA-001-async-pg-transactions - Replace spawnSync DB adapter with async pg transactions (improvement)
+- [implementing] TASK-ID-001-register-verify-reset - Customer register, email verify, and password reset
+- [implementing] TASK-SEC-002-csrf-rbac-ai-allowlist - CSRF origin checks, vendor-offer RBAC, and AI URL allowlist (improvement)
+- [implementing] TASK-COM-001-idempotent-checkout-and-payment-ledger - Idempotent checkout, stock reservation, and payment event ledger
+- [implementing] TASK-JOB-001-leased-outbox-smtp-notifications - Leased outbox, real email submitter, and durable notifications (improvement)
+- [implementing] TASK-UI-001-portals-wishlist-storage-seed - Wire portals, wishlist, private storage, and multi-role seed
+- [implementing] TASK-TEST-001-http-suites-and-hard-smoke - HTTP handler tests and hard production smoke gate (improvement)
 - [on_hold] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
 - [done] TASK-ADMIN-002-admin-catalog-writes - Add admin catalog write APIs and thin dashboard UI
 - [done] TASK-AUTH-001-align-role-guards - Align frontend and API role guards (improvement)
@@ -58,7 +66,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 - [on_hold] TASK-RETAIL-001-add-order-processing-actions - Add retail order-processing actions
 - [on_hold] TASK-RETAIL-002-add-returns-workflow - Add the returns workflow
 - [done] TASK-ROYALTY-001-model-royalties-and-earnings - Model royalties and earnings
-- [on_hold] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (improvement)
+- [closed] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (improvement)
 - [on_hold] TASK-SUPPLIER-001-resolve-portal-scope - Resolve and implement the supplier portal scope
 - [on_hold] TASK-VENDOR-001-verify-vendor-fulfillment - Verify vendor fulfillment and tracking behavior (improvement)
 - [on_hold] TASK-VENDOR-002-add-dashboard-analytics - Add vendor dashboard analytics with real API data
@@ -66,7 +74,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 ## in flight
 
-- (implementing / reviewing / testing tasks appear here)
+- [implementing] TASK-GOV-001, TASK-DATA-001, TASK-ID-001, TASK-SEC-002, TASK-COM-001, TASK-JOB-001, TASK-UI-001, TASK-TEST-001 — 2026-08-13 audit implementation (HITL not yet requested)
 
 ## done
 
@@ -76,7 +84,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 - (deferred or killed tasks)
 - [on_hold] TASK-CUTOVER-002-execute-wordpress-cutover - Execute the approved WordPress cutover
-- [closed] TASK-B2B-001-add-quote-click-through - Add B2B quote-kanban click-through
+- [closed] TASK-SECURITY-001-retire-maintenance-endpoints - Retire exposed maintenance debug endpoints (superseded by TASK-SEC-002 / TASK-GOV-001)
 - [closed] TASK-B2B-003-manage-contracts-and-pos - Manage B2B contracts and purchase-order artifacts
 - [closed] TASK-EMAIL-001-enable-transactional-email - Enable transactional email flows
 - [closed] TASK-EMPLOYEE-002-add-real-dashboard-kpis - Replace mocked employee dashboard KPIs with real data

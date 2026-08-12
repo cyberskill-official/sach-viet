@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { beginImmediateWithRetry, openDatabase, tableExists } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
+import { requireStoredObjectKey } from "./storage-core.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
 const id = () => randomBytes(16).toString("hex");
@@ -23,20 +24,20 @@ function staffActor(user) {
   return role;
 }
 
-function membership(store, userId) {
-  return store.db.prepare("SELECT organization_id AS organizationId FROM organization_members WHERE user_id = ?").get(userId) || null;
+async function membership(store, userId) {
+  return await store.db.prepare("SELECT organization_id AS organizationId FROM organization_members WHERE user_id = ?").get(userId) || null;
 }
 
-function requireOrganizationForActor(store, user) {
+async function requireOrganizationForActor(store, user) {
   const role = institutionActor(user);
   if (role === "admin") return null;
-  const row = membership(store, user.id);
+  const row = await membership(store, user.id);
   if (!row) throw new Error("Institution membership is required.");
   return row.organizationId;
 }
 
-function resolveOrganizationId(store, actor, inputOrganizationId) {
-  const actorOrg = requireOrganizationForActor(store, actor);
+async function resolveOrganizationId(store, actor, inputOrganizationId) {
+  const actorOrg = await requireOrganizationForActor(store, actor);
   if (actorOrg) {
     if (inputOrganizationId && inputOrganizationId !== actorOrg) {
       throw new Error("Budget access is denied.");
@@ -46,11 +47,8 @@ function resolveOrganizationId(store, actor, inputOrganizationId) {
   return required(inputOrganizationId, "Organization ID");
 }
 
-function assertOpaqueStorageKey(storageKey) {
-  if (storageKey.startsWith("http://") || storageKey.startsWith("https://")) {
-    throw new Error("Storage key must not be a public URL.");
-  }
-  return storageKey;
+async function assertOpaqueStorageKey(store, storageKey) {
+  return requireStoredObjectKey(store, required(storageKey, "Storage key"));
 }
 
 function publicBudget(row) {
@@ -78,24 +76,24 @@ function publicMarcDetail(row) {
   };
 }
 
-export function createInstitutionBuyerStore({
+export async function createInstitutionBuyerStore({
   dbPath,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-015", ...fields })),
 } = {}) {
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
-export function upsertInstitutionBudget(store, actor, input) {
+export async function upsertInstitutionBudget(store, actor, input) {
   institutionActor(actor);
-  const organizationId = resolveOrganizationId(store, actor, input?.organizationId);
-  if (!store.db.prepare("SELECT 1 FROM organizations WHERE id = ?").get(organizationId)) {
+  const organizationId = await resolveOrganizationId(store, actor, input?.organizationId);
+  if (!await store.db.prepare("SELECT 1 FROM organizations WHERE id = ?").get(organizationId)) {
     throw new Error("Organization does not exist.");
   }
   const amountUsd = normalizeMoney(input?.amountUsd);
   const updatedAt = store.clock();
-  store.db.prepare(`
+  await store.db.prepare(`
     INSERT INTO institution_budgets (organization_id, amount_usd, currency, updated_by, updated_at)
     VALUES (?, ?, 'USD', ?, ?)
     ON CONFLICT(organization_id) DO UPDATE SET
@@ -107,13 +105,13 @@ export function upsertInstitutionBudget(store, actor, input) {
     result: "accepted",
     organization_id: organizationId,
   });
-  return getInstitutionBudget(store, actor, { organizationId });
+  return await getInstitutionBudget(store, actor, { organizationId });
 }
 
-export function getInstitutionBudget(store, actor, input = {}) {
+export async function getInstitutionBudget(store, actor, input = {}) {
   institutionActor(actor);
-  const organizationId = resolveOrganizationId(store, actor, input?.organizationId);
-  const row = store.db.prepare(`
+  const organizationId = await resolveOrganizationId(store, actor, input?.organizationId);
+  const row = await store.db.prepare(`
     SELECT organization_id AS organizationId, amount_usd AS amountUsd, currency,
            updated_by AS updatedBy, updated_at AS updatedAt
     FROM institution_budgets WHERE organization_id = ?
@@ -122,43 +120,43 @@ export function getInstitutionBudget(store, actor, input = {}) {
   return publicBudget(row);
 }
 
-export function submitInstitutionPurchaseOrder(store, actor, input) {
+export async function submitInstitutionPurchaseOrder(store, actor, input) {
   institutionActor(actor);
   const orderId = required(input?.orderId, "Order ID");
   const referenceNumber = required(input?.referenceNumber, "Reference number");
-  const storageKey = assertOpaqueStorageKey(required(input?.storageKey, "Storage key"));
-  const order = store.db.prepare(`
+  const order = await store.db.prepare(`
     SELECT id, organization_id AS organizationId, status
     FROM b2b_orders WHERE id = ?
   `).get(orderId);
   if (!order) throw new Error("Order does not exist.");
-  const actorOrg = requireOrganizationForActor(store, actor);
+  const actorOrg = await requireOrganizationForActor(store, actor);
   if (actorOrg && actorOrg !== order.organizationId) throw new Error("Order access is denied.");
   if (order.status !== "awaiting_po") throw new Error("Purchase orders can only be submitted for awaiting_po orders.");
+  const storageKey = await assertOpaqueStorageKey(store, required(input?.storageKey, "Storage key"));
 
   const artifactId = id();
   const createdAt = store.clock();
-  beginImmediateWithRetry(store.db);
+  await beginImmediateWithRetry(store.db);
   try {
-    store.db.prepare(`
+    await store.db.prepare(`
       INSERT INTO b2b_artifacts (id, order_id, kind, reference_number, storage_key, created_by, created_at)
       VALUES (?, ?, 'purchase_order', ?, ?, ?, ?)
     `).run(artifactId, orderId, referenceNumber, storageKey, actor.id, createdAt);
-    store.db.prepare("UPDATE b2b_orders SET updated_at = ? WHERE id = ?").run(createdAt, orderId);
-    store.db.exec("COMMIT");
+    await store.db.prepare("UPDATE b2b_orders SET updated_at = ? WHERE id = ?").run(createdAt, orderId);
+    await store.db.exec("COMMIT");
   } catch (error) {
-    store.db.exec("ROLLBACK");
+    await store.db.exec("ROLLBACK");
     throw error;
   }
 
-  const status = store.db.prepare("SELECT status FROM b2b_orders WHERE id = ?").get(orderId).status;
+  const status = (await store.db.prepare("SELECT status FROM b2b_orders WHERE id = ?").get(orderId)).status;
   store.log("institution_purchase_order_submitted", {
     result: "accepted",
     order_id: orderId,
     artifact_id: artifactId,
   });
 
-  const artifacts = store.db.prepare(`
+  const artifacts = await store.db.prepare(`
     SELECT id, order_id AS orderId, kind, reference_number AS referenceNumber, created_at AS createdAt
     FROM b2b_artifacts WHERE order_id = ? ORDER BY created_at ASC, id ASC
   `).all(orderId);
@@ -171,17 +169,17 @@ export function submitInstitutionPurchaseOrder(store, actor, input) {
   };
 }
 
-export function registerInstitutionMarcRecord(store, actor, input) {
+export async function registerInstitutionMarcRecord(store, actor, input) {
   staffActor(actor);
   const productId = required(input?.productId, "Product ID");
-  const storageKey = assertOpaqueStorageKey(required(input?.storageKey, "Storage key"));
-  if (tableExists(store.db, "products")) {
-    if (!store.db.prepare("SELECT 1 FROM products WHERE id = ? LIMIT 1").get(productId)) {
+  if (await tableExists(store.db, "products")) {
+    if (!await store.db.prepare("SELECT 1 FROM products WHERE id = ? LIMIT 1").get(productId)) {
       throw new Error("Product does not exist.");
     }
   }
+  const storageKey = await assertOpaqueStorageKey(store, required(input?.storageKey, "Storage key"));
   const updatedAt = store.clock();
-  store.db.prepare(`
+  await store.db.prepare(`
     INSERT INTO institution_marc_records (product_id, storage_key, updated_by, updated_at)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(product_id) DO UPDATE SET
@@ -196,32 +194,32 @@ export function registerInstitutionMarcRecord(store, actor, input) {
   return publicMarcDetail({ productId, storageKey, updatedAt });
 }
 
-function entitledProductIds(store, organizationId) {
+async function entitledProductIds(store, organizationId) {
   if (organizationId) {
-    return store.db.prepare(`
+    return (await store.db.prepare(`
       SELECT DISTINCT items.product_id AS productId
       FROM b2b_order_items items
       JOIN b2b_orders orders ON orders.id = items.order_id
       WHERE orders.organization_id = ? AND orders.status = 'confirmed'
       ORDER BY items.product_id ASC
-    `).all(organizationId).map((row) => row.productId);
+    `).all(organizationId)).map((row) => row.productId);
   }
-  return store.db.prepare(`
+  return (await store.db.prepare(`
     SELECT DISTINCT items.product_id AS productId
     FROM b2b_order_items items
     JOIN b2b_orders orders ON orders.id = items.order_id
     WHERE orders.status = 'confirmed'
     ORDER BY items.product_id ASC
-  `).all().map((row) => row.productId);
+  `).all()).map((row) => row.productId);
 }
 
-export function listInstitutionMarcRecords(store, actor) {
+export async function listInstitutionMarcRecords(store, actor) {
   institutionActor(actor);
-  const actorOrg = requireOrganizationForActor(store, actor);
-  const productIds = entitledProductIds(store, actorOrg);
+  const actorOrg = await requireOrganizationForActor(store, actor);
+  const productIds = await entitledProductIds(store, actorOrg);
   if (productIds.length === 0) return [];
   const placeholders = productIds.map(() => "?").join(", ");
-  const rows = store.db.prepare(`
+  const rows = await store.db.prepare(`
     SELECT product_id AS productId, updated_at AS updatedAt
     FROM institution_marc_records
     WHERE product_id IN (${placeholders})
@@ -230,13 +228,13 @@ export function listInstitutionMarcRecords(store, actor) {
   return rows.map(publicMarcListItem);
 }
 
-export function getInstitutionMarcRecord(store, actor, productIdInput) {
+export async function getInstitutionMarcRecord(store, actor, productIdInput) {
   institutionActor(actor);
   const productId = required(productIdInput, "Product ID");
-  const actorOrg = requireOrganizationForActor(store, actor);
-  const entitled = new Set(entitledProductIds(store, actorOrg));
+  const actorOrg = await requireOrganizationForActor(store, actor);
+  const entitled = new Set(await entitledProductIds(store, actorOrg));
   if (!entitled.has(productId)) throw new Error("MARC access is denied.");
-  const row = store.db.prepare(`
+  const row = await store.db.prepare(`
     SELECT product_id AS productId, storage_key AS storageKey, updated_at AS updatedAt
     FROM institution_marc_records WHERE product_id = ?
   `).get(productId);

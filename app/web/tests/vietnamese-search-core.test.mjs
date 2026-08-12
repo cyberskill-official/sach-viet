@@ -22,30 +22,30 @@ import {
   suggestCatalogQueries,
 } from "../src/lib/vietnamese-search-core.mjs";
 
-function fixture(run) {
+async function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-search-"));
   const dbPath = join(directory, "catalog.sqlite");
   const events = [];
-  const store = createCatalogStore({
+  const store = await createCatalogStore({
     dbPath,
     now: () => 9000,
     log: (event, fields = {}) => events.push({ event, ...fields }),
   });
   try {
-    createCategory(store, { slug: "sach", name: "Sách Việt" });
-    const productA = createProduct(store, {
+    await createCategory(store, { slug: "sach", name: "Sách Việt" });
+    const productA = await createProduct(store, {
       categorySlug: "sach",
       slug: "tieng-viet-co-ban",
       title: "Tiếng Việt Cơ Bản",
       description: "Sách học tiếng Việt cho người mới.",
     });
-    const productB = createProduct(store, {
+    const productB = await createProduct(store, {
       categorySlug: "sach",
       slug: "lich-su-viet-nam",
       title: "Lịch Sử Việt Nam",
       description: "Tóm tắt lịch sử.",
     });
-    const productC = createProduct(store, {
+    const productC = await createProduct(store, {
       categorySlug: "sach",
       slug: "english-grammar",
       title: "English Grammar",
@@ -53,124 +53,124 @@ function fixture(run) {
     });
     const vendor = { id: "vendor-1", role: "vendor" };
     for (const product of [productA, productB, productC]) {
-      writeVendorOffer(store, vendor, {
+      await writeVendorOffer(store, vendor, {
         productId: product.id,
         vendorId: vendor.id,
         priceUsd: "12.00",
         stockQuantity: 3,
       });
     }
-    return run({ store, events, productA, productB, productC });
+    return await run({ store, events, productA, productB, productC });
   } finally {
-    store.close();
+    await store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-test("normalizeVietnameseText folds diacritics and đ", () => {
+test("normalizeVietnameseText folds diacritics and đ", async () => {
   assert.equal(normalizeVietnameseText("Tiếng Việt"), "tieng viet");
   assert.equal(normalizeVietnameseText("Sách"), "sach");
   assert.equal(normalizeVietnameseText("Đường"), "duong");
 });
 
-test("diacritic-insensitive query finds accented titles and logs analytics", () =>
-  fixture(({ store, events, productA }) => {
-    const results = searchPublicProducts(store, { q: "tieng viet" });
+test("diacritic-insensitive query finds accented titles and logs analytics", async () =>
+  fixture(async ({ store, events, productA }) => {
+    const results = await searchPublicProducts(store, { q: "tieng viet" });
     assert.equal(results[0].id, productA.id);
     assert.ok(results.some((row) => row.slug === "tieng-viet-co-ban"));
-    const logs = listSearchLogs(store);
+    const logs = await listSearchLogs(store);
     assert.equal(logs[0].queryNormalized, "tieng viet");
     assert.equal(logs[0].backendMode, "local");
     assert.ok(logs[0].resultCount >= 1);
     assert.ok(events.some((row) => row.event === "vietnamese_search_logged"));
   }));
 
-test("light typo tolerance matches short title tokens", () =>
-  fixture(({ store, productB }) => {
-    const results = searchPublicProducts(store, { q: "lich su viet" });
+test("light typo tolerance matches short title tokens", async () =>
+  fixture(async ({ store, productB }) => {
+    const results = await searchPublicProducts(store, { q: "lich su viet" });
     assert.ok(results.some((row) => row.id === productB.id));
-    const typo = searchPublicProducts(store, { q: "lichxu" });
+    const typo = await searchPublicProducts(store, { q: "lichxu" });
     assert.ok(typo.some((row) => row.slug === "lich-su-viet-nam") || typo.length >= 0);
     // Single-char typo on a short token should still score "lich"
-    const near = searchPublicProducts(store, { q: "lich" });
+    const near = await searchPublicProducts(store, { q: "lich" });
     assert.ok(near.some((row) => row.id === productB.id));
   }));
 
-test("empty q preserves category list behavior without search logs", () =>
-  fixture(({ store }) => {
-    const all = searchPublicProducts(store, {});
+test("empty q preserves category list behavior without search logs", async () =>
+  fixture(async ({ store }) => {
+    const all = await searchPublicProducts(store, {});
     assert.equal(all.length, 3);
-    const filtered = searchPublicProducts(store, { category: "sach", q: "   " });
+    const filtered = await searchPublicProducts(store, { category: "sach", q: "   " });
     assert.equal(filtered.length, 3);
-    assert.equal(listSearchLogs(store).length, 0);
+    assert.equal((await listSearchLogs(store)).length, 0);
   }));
 
-test("suggestions come from catalog titles only, never from logged queries", () =>
-  fixture(({ store }) => {
-    searchPublicProducts(store, { q: "tieng viet" });
-    searchPublicProducts(store, { q: "tieng viet john.doe@example.com" });
-    assert.ok(listSearchLogs(store).length >= 2, "searches remain logged for analytics");
+test("suggestions come from catalog titles only, never from logged queries", async () =>
+  fixture(async ({ store }) => {
+    await searchPublicProducts(store, { q: "tieng viet" });
+    await searchPublicProducts(store, { q: "tieng viet john.doe@example.com" });
+    assert.ok((await listSearchLogs(store)).length >= 2, "searches remain logged for analytics");
 
-    const suggestions = suggestCatalogQueries(store, { q: "tieng" });
+    const suggestions = await suggestCatalogQueries(store, { q: "tieng" });
     assert.ok(suggestions.includes("tieng viet co ban"), "title-derived suggestion present");
     assert.ok(!suggestions.includes("tieng viet"), "raw logged query is not re-exposed");
     assert.ok(
       suggestions.every((row) => !row.includes("example com")),
       "PII-bearing logged query is not re-exposed",
     );
-    assert.deepEqual(suggestCatalogQueries(store, { q: "" }), []);
+    assert.deepEqual(await suggestCatalogQueries(store, { q: "" }), []);
   }));
 
-test("public search and suggestion queries are capped in length", () =>
-  fixture(({ store }) => {
+test("public search and suggestion queries are capped in length", async () =>
+  fixture(async ({ store }) => {
     const oversized = `tieng ${"x".repeat(10_000)}`;
-    const results = searchPublicProducts(store, { q: oversized });
+    const results = await searchPublicProducts(store, { q: oversized });
     assert.ok(Array.isArray(results));
-    const logs = listSearchLogs(store);
+    const logs = await listSearchLogs(store);
     assert.equal(logs.length, 1);
     assert.ok(logs[0].queryNormalized.length <= MAX_SEARCH_QUERY_LENGTH);
 
-    const suggestions = suggestCatalogQueries(store, { q: `tieng${"y".repeat(10_000)}` });
+    const suggestions = await suggestCatalogQueries(store, { q: `tieng${"y".repeat(10_000)}` });
     assert.ok(Array.isArray(suggestions));
   }));
 
-test("search logs older than the retention window are pruned on write", () => {
+test("search logs older than the retention window are pruned on write", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-search-ttl-"));
   let clock = 1_000;
-  const store = createCatalogStore({ dbPath: join(directory, "catalog.sqlite"), now: () => clock, log: () => {} });
+  const store = await createCatalogStore({ dbPath: join(directory, "catalog.sqlite"), now: () => clock, log: () => {} });
   try {
-    createCategory(store, { slug: "sach", name: "Sách Việt" });
-    const product = createProduct(store, {
+    await createCategory(store, { slug: "sach", name: "Sách Việt" });
+    const product = await createProduct(store, {
       categorySlug: "sach",
       slug: "tieng-viet-co-ban",
       title: "Tiếng Việt Cơ Bản",
       description: "Sách học tiếng Việt.",
     });
-    writeVendorOffer(store, { id: "vendor-1", role: "vendor" }, {
+    await writeVendorOffer(store, { id: "vendor-1", role: "vendor" }, {
       productId: product.id,
       vendorId: "vendor-1",
       priceUsd: "12.00",
       stockQuantity: 3,
     });
 
-    searchPublicProducts(store, { q: "tieng viet" });
-    assert.equal(listSearchLogs(store).length, 1);
+    await searchPublicProducts(store, { q: "tieng viet" });
+    assert.equal((await listSearchLogs(store)).length, 1);
 
     clock += SEARCH_LOG_RETENTION_MS + 1;
-    searchPublicProducts(store, { q: "lich su" });
-    const logs = listSearchLogs(store);
+    await searchPublicProducts(store, { q: "lich su" });
+    const logs = await listSearchLogs(store);
     assert.equal(logs.length, 1);
     assert.equal(logs[0].queryNormalized, "lich su");
   } finally {
-    store.close();
+    await store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 });
 
-test("local backend is default and Meilisearch seam is env-gated without network", () => {
+test("local backend is default and Meilisearch seam is env-gated without network", async () => {
   assert.equal(resolveSearchBackend({ env: {} }).mode, "local");
   assert.equal(getSearchBackendStatus({ env: {} }).searchBackend, "local");
-  assert.throws(() => createMeilisearchSearchBackend({ host: "" }), /Meilisearch backend requires/);
+  await assert.rejects(async () => createMeilisearchSearchBackend({ host: "" }), /Meilisearch backend requires/);
 
   const backend = createMeilisearchSearchBackend({ host: "http://meili.local", submit: null });
   assert.equal(backend.mode, "meilisearch");
@@ -192,7 +192,7 @@ test("local backend is default and Meilisearch seam is env-gated without network
   assert.equal(getSearchBackendStatus({ env: { MEILI_HOST: "http://meili.local", MEILI_API_KEY: "x" } }).meilisearchCredentialPresence, true);
 });
 
-test("local backend never depends on paid SaaS SDK symbols", () => {
+test("local backend never depends on paid SaaS SDK symbols", async () => {
   const source = createLocalVietnameseSearchBackend().mode;
   assert.equal(source, "local");
 });

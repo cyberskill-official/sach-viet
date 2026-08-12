@@ -53,14 +53,14 @@ function captureLogs(action) {
   return messages.map((message) => JSON.parse(message));
 }
 
-test("the Next.js foundation has its required build boundary", () => {
+test("the Next.js foundation has its required build boundary", async () => {
   const result = validateFoundation(rootPath);
 
   assert.equal(result.name, "sachviet-web");
   assert.match(result.nextVersion, /^16\./);
 });
 
-test("the verification command emits safe lifecycle events", () => {
+test("the verification command emits safe lifecycle events", async () => {
   const events = captureLogs(() => runFoundationVerification(rootPath));
 
   assert.deepEqual(events.map((event) => event.event), ["foundation_verification_started", "foundation_verification_completed"]);
@@ -68,11 +68,11 @@ test("the verification command emits safe lifecycle events", () => {
   assert.equal(events[1].application, "sachviet-web");
 });
 
-test("the verifier rejects missing required files", () => {
+test("the verifier rejects missing required files", async () => {
   assertValidationError((_, fixtureRoot) => rmSync(resolve(fixtureRoot, "Dockerfile")), "Missing foundation files");
 });
 
-test("the verification command emits a safe failure event", () => {
+test("the verification command emits a safe failure event", async () => {
   const { fixtureParent, fixtureRoot } = createFixture();
 
   try {
@@ -96,7 +96,7 @@ test("the verification command emits a safe failure event", () => {
   }
 });
 
-test("the verifier rejects unsupported package metadata", () => {
+test("the verifier rejects unsupported package metadata", async () => {
   assertValidationError((_, fixtureRoot) => writeFileSync(resolve(fixtureRoot, "package.json"), JSON.stringify({
     name: "wrong-name",
     dependencies: { next: "15.5.0" },
@@ -114,7 +114,7 @@ test("the verifier rejects unsupported package metadata", () => {
   })), "verification command");
 });
 
-test("the verifier rejects missing packaging and architecture boundaries", () => {
+test("the verifier rejects missing packaging and architecture boundaries", async () => {
   assertValidationError((_, fixtureRoot) => writeFileSync(resolve(fixtureRoot, "next.config.ts"), "export default {};"), "standalone server output");
   assertValidationError((_, fixtureRoot) => writeFileSync(resolve(fixtureRoot, "src/app/page.tsx"), "no marker"), "expected marker");
   assertValidationError((_, fixtureRoot) => writeFileSync(resolve(fixtureRoot, "captain-definition"), JSON.stringify({ schemaVersion: 1 })), "CapRover schema");

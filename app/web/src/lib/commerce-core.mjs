@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { enqueueOrderComms, ensureOrderCommsOutboxSchema } from "./order-comms-outbox-core.mjs";
 import { beginImmediateWithRetry, openDatabase } from "./db.mjs";
 
@@ -74,8 +74,8 @@ function defaultCommerceLog(event, fields = {}) {
   else console.info(line);
 }
 
-export function createCommerceStore({ dbPath, clock = now, log = defaultCommerceLog } = {}) {
-  const db = openDatabase(dbPath);
+export async function createCommerceStore({ dbPath, clock = now, log = defaultCommerceLog } = {}) {
+  const db = await openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
@@ -88,32 +88,65 @@ export function normalizeCartItem(item) {
   return { vendorOfferId: required(item?.vendorOfferId, "Vendor offer ID"), quantity, plasticCover: item.plasticCover === true, giftWrap: item.giftWrap === true };
 }
 
-export function createPendingOrder(store, user, items) {
+export async function createPendingOrder(store, user, items) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
   if (!Array.isArray(items) || items.length === 0) throw new Error("Cart cannot be empty.");
   const normalizedItems = items.map(normalizeCartItem);
   const order = { id: identifier(), userId: user.id, currency: "USD", subtotalUsd: 0n };
-  const snapshots = normalizedItems.map((item) => {
-    const offer = store.db.prepare(`SELECT vendor_offers.id, vendor_offers.product_id, vendor_offers.price_usd, products.title
-      FROM vendor_offers JOIN products ON products.id = vendor_offers.product_id
-      WHERE vendor_offers.id = ? AND vendor_offers.is_active = 1 AND vendor_offers.stock_quantity > 0`).get(item.vendorOfferId);
-    if (!offer) throw new Error("One cart offer is no longer available.");
-    order.subtotalUsd += moneyUnits(offer.price_usd) * BigInt(item.quantity);
-    return { ...item, offer };
-  });
   const timestamp = store.clock();
-  beginImmediateWithRetry(store.db);
+  await beginImmediateWithRetry(store.db);
   try {
-    store.db.prepare("INSERT INTO orders (id, user_id, status, currency, subtotal_usd, created_at, updated_at) VALUES (?, ?, 'pending_payment', ?, ?, ?, ?)")
+    const snapshots = [];
+    for (const item of normalizedItems) {
+      const offer = await store.db
+        .prepare(
+          `SELECT vendor_offers.id, vendor_offers.product_id, vendor_offers.price_usd, vendor_offers.stock_quantity, products.title
+           FROM vendor_offers JOIN products ON products.id = vendor_offers.product_id
+           WHERE vendor_offers.id = ? AND vendor_offers.is_active = 1`,
+        )
+        .get(item.vendorOfferId);
+      if (!offer) throw new Error("One cart offer is no longer available.");
+      if (Number(offer.stock_quantity) < item.quantity) throw new Error("One cart offer is no longer available.");
+      const reserved = await store.db
+        .prepare(
+          "UPDATE vendor_offers SET stock_quantity = stock_quantity - ?, updated_at = ? WHERE id = ? AND is_active = 1 AND stock_quantity >= ?",
+        )
+        .run(item.quantity, timestamp, offer.id, item.quantity);
+      if (reserved.changes !== 1) throw new Error("One cart offer is no longer available.");
+      order.subtotalUsd += moneyUnits(offer.price_usd) * BigInt(item.quantity);
+      snapshots.push({ ...item, offer });
+    }
+    await store.db
+      .prepare(
+        "INSERT INTO orders (id, user_id, status, currency, subtotal_usd, created_at, updated_at) VALUES (?, ?, 'pending_payment', ?, ?, ?, ?)",
+      )
       .run(order.id, order.userId, order.currency, moneyString(order.subtotalUsd), timestamp, timestamp);
-    const insert = store.db.prepare("INSERT INTO order_items (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    for (const item of snapshots) insert.run(identifier(), order.id, item.offer.product_id, item.offer.id, item.offer.title, item.offer.price_usd, item.quantity, item.plasticCover ? 1 : 0, item.giftWrap ? 1 : 0);
-    store.db.exec("COMMIT");
+    const insert = store.db.prepare(
+      "INSERT INTO order_items (id, order_id, product_id, vendor_offer_id, title, unit_price_usd, quantity, plastic_cover, gift_wrap) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    );
+    for (const item of snapshots) {
+      await insert.run(
+        identifier(),
+        order.id,
+        item.offer.product_id,
+        item.offer.id,
+        item.offer.title,
+        item.offer.price_usd,
+        item.quantity,
+        item.plasticCover ? 1 : 0,
+        item.giftWrap ? 1 : 0,
+      );
+    }
+    await store.db.exec("COMMIT");
   } catch (error) {
-    store.db.exec("ROLLBACK");
+    try {
+      await store.db.exec("ROLLBACK");
+    } catch {
+      // ignore
+    }
     throw error;
   }
-  store.log("checkout_order_created", { result: "accepted", order_id: order.id, item_count: snapshots.length });
+  store.log("checkout_order_created", { result: "accepted", order_id: order.id, item_count: normalizedItems.length });
   return { id: order.id, currency: order.currency, subtotalUsd: moneyString(order.subtotalUsd), status: "pending_payment" };
 }
 
@@ -123,9 +156,9 @@ export async function createStripeCheckoutSession(store, orderId, environment = 
   const cancelUrl = environment.STRIPE_CANCEL_URL;
   if (!secret || !successUrl || !cancelUrl) throw new Error("Stripe checkout is not configured.");
   assertStripeTestSecret(secret);
-  const order = store.db.prepare("SELECT id, user_id, subtotal_usd, currency FROM orders WHERE id = ?").get(orderId);
+  const order = await store.db.prepare("SELECT id, user_id, subtotal_usd, currency FROM orders WHERE id = ?").get(orderId);
   if (!order) throw new Error("Order does not exist.");
-  const items = store.db.prepare("SELECT title, unit_price_usd, quantity FROM order_items WHERE order_id = ?").all(orderId);
+  const items = await store.db.prepare("SELECT title, unit_price_usd, quantity FROM order_items WHERE order_id = ?").all(orderId);
   const body = new URLSearchParams({ mode: "payment", success_url: successUrl, cancel_url: cancelUrl, "metadata[order_id]": order.id });
   items.forEach((item, index) => {
     // Stripe USD payment mode allows at most 2 decimal places; our money strings are 4-dp.
@@ -143,7 +176,7 @@ export async function createStripeCheckoutSession(store, orderId, environment = 
   });
   const session = await response.json();
   if (!response.ok || !session.id || !session.url) throw new Error("Stripe checkout session could not be created.");
-  store.db.prepare(
+  await store.db.prepare(
     "UPDATE orders SET payment_provider = 'stripe', stripe_session_id = ?, checkout_url = ?, updated_at = ? WHERE id = ?",
   ).run(session.id, session.url, store.clock(), order.id);
   store.log("checkout_session_created", { result: "accepted", order_id: order.id, provider: "stripe" });
@@ -190,7 +223,7 @@ export async function createPayPalCheckoutOrder(store, orderId, environment = pr
   if (!clientId || !clientSecret || !returnUrl || !cancelUrl) {
     throw new Error("PayPal checkout is not configured.");
   }
-  const order = store.db.prepare("SELECT id, user_id, subtotal_usd, currency FROM orders WHERE id = ?").get(orderId);
+  const order = await store.db.prepare("SELECT id, user_id, subtotal_usd, currency FROM orders WHERE id = ?").get(orderId);
   if (!order) throw new Error("Order does not exist.");
   const accessToken = await createPayPalAccessToken(environment, fetcher);
   const amount = String(order.subtotal_usd).replace(/0+$/, "").replace(/\.$/, "") || order.subtotal_usd;
@@ -227,7 +260,7 @@ export async function createPayPalCheckoutOrder(store, orderId, environment = pr
     ? paypalOrder.links.find((link) => link.rel === "approve" && typeof link.href === "string")
     : null;
   if (!approve?.href) throw new Error("PayPal checkout order is missing an approve link.");
-  store.db.prepare(
+  await store.db.prepare(
     "UPDATE orders SET payment_provider = 'paypal', paypal_order_id = ?, checkout_url = ?, updated_at = ? WHERE id = ?",
   ).run(paypalOrder.id, approve.href, store.clock(), order.id);
   store.log("checkout_session_created", {
@@ -245,31 +278,31 @@ export async function createPayPalCheckoutOrder(store, orderId, environment = pr
  * @param {string} orderId
  * @param {{ paypalOrderId?: string | null }} [refs]
  */
-function markOrderPaidWithOutbox(store, orderId, refs = {}) {
+async function markOrderPaidWithOutbox(store, orderId, refs = {}) {
   ensureOrderCommsOutboxSchema(store);
-  beginImmediateWithRetry(store.db);
+  await beginImmediateWithRetry(store.db);
   let updated = false;
   let paid = false;
   let enqueued = false;
   try {
     if (refs.paypalOrderId) {
       updated =
-        store.db
+        (await store.db
           .prepare(
             "UPDATE orders SET status = 'paid', paypal_order_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'",
           )
-          .run(refs.paypalOrderId, store.clock(), orderId).changes === 1;
+          .run(refs.paypalOrderId, store.clock(), orderId)).changes === 1;
     } else {
       updated =
-        store.db
+        (await store.db
           .prepare("UPDATE orders SET status = 'paid', updated_at = ? WHERE id = ? AND status = 'pending_payment'")
-          .run(store.clock(), orderId).changes === 1;
+          .run(store.clock(), orderId)).changes === 1;
     }
-    paid = store.db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId)?.status === "paid";
-    if (paid) enqueued = enqueueOrderComms(store, orderId, { kind: "order.paid" }).enqueued;
-    store.db.exec("COMMIT");
+    paid = (await store.db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId))?.status === "paid";
+    if (paid) enqueued = (await enqueueOrderComms(store, orderId, { kind: "order.paid" })).enqueued;
+    await store.db.exec("COMMIT");
   } catch (error) {
-    store.db.exec("ROLLBACK");
+    await store.db.exec("ROLLBACK");
     throw error;
   }
   return { updated, paid, enqueued, orderId };
@@ -285,7 +318,7 @@ function markOrderPaidWithOutbox(store, orderId, refs = {}) {
 export async function capturePayPalOrder(store, paypalOrderId, environment = process.env, fetcher = fetch) {
   assertPayPalSandboxMode(environment);
   const token = required(paypalOrderId, "PayPal order ID");
-  const local = store.db
+  const local = await store.db
     .prepare("SELECT id, status, paypal_order_id FROM orders WHERE paypal_order_id = ?")
     .get(token);
   if (!local) throw new Error("PayPal order is not linked to a local order.");
@@ -314,7 +347,7 @@ export async function capturePayPalOrder(store, paypalOrderId, environment = pro
   if (!alreadyCaptured && capture.status && capture.status !== "COMPLETED") {
     throw new Error("PayPal order capture did not complete.");
   }
-  const result = markOrderPaidWithOutbox(store, local.id, { paypalOrderId: token });
+  const result = await markOrderPaidWithOutbox(store, local.id, { paypalOrderId: token });
   store.log("checkout_payment_completed", {
     result: result.updated ? "accepted" : "ignored",
     order_id: local.id,
@@ -406,6 +439,8 @@ export async function processPayPalWebhook(
   if (!valid) throw new Error("PayPal webhook signature is invalid.");
   const event = JSON.parse(payload);
   const eventType = event.event_type || event.eventType;
+  const eventId = typeof event.id === "string" && event.id ? event.id : `${eventType}:${Date.now()}`;
+  await recordPaymentEvent(store, { provider: "paypal", providerEventId: eventId, payload });
   if (eventType !== "CHECKOUT.ORDER.APPROVED" && eventType !== "PAYMENT.CAPTURE.COMPLETED") {
     return { handled: false };
   }
@@ -418,58 +453,98 @@ export async function processPayPalWebhook(
         null;
   // CAPTURE.COMPLETED may only carry custom_id as the local order id.
   if (eventType === "PAYMENT.CAPTURE.COMPLETED" && !paypalOrderId && resource.custom_id) {
-    const local = store.db.prepare("SELECT id, paypal_order_id, status FROM orders WHERE id = ?").get(resource.custom_id);
+    const local = await store.db.prepare("SELECT id, paypal_order_id, status FROM orders WHERE id = ?").get(resource.custom_id);
     if (!local?.paypal_order_id) throw new Error("PayPal capture event has no order reference.");
     if (local.status === "paid") {
       return { handled: true, updated: false, paid: true, enqueued: false, orderId: local.id };
     }
-    return capturePayPalOrder(store, local.paypal_order_id, environment, fetcher);
+    return await capturePayPalOrder(store, local.paypal_order_id, environment, fetcher);
   }
   if (!paypalOrderId) throw new Error("PayPal event has no order reference.");
-  return capturePayPalOrder(store, paypalOrderId, environment, fetcher);
+  return await capturePayPalOrder(store, paypalOrderId, environment, fetcher);
 }
 
 /** Exported for docs/tests — live API host must never be selected under sandbox unlock. */
 export const PAYPAL_API_HOSTS = Object.freeze({ sandbox: PAYPAL_SANDBOX_API, live: PAYPAL_LIVE_API });
 
-export function verifyStripeSignature(payload, signature, secret) {
+export function verifyStripeSignature(payload, signature, secret, { now = Date.now(), toleranceSec = 300 } = {}) {
   if (typeof signature !== "string" || typeof secret !== "string" || secret.length < 16) return false;
   const fields = Object.fromEntries(signature.split(",").map((part) => part.split("=", 2)));
   if (!fields.t || !fields.v1) return false;
+  const ts = Number(fields.t);
+  if (!Number.isFinite(ts) || Math.abs(now / 1000 - ts) > toleranceSec) return false;
   const expected = createHmac("sha256", secret).update(`${fields.t}.${payload}`).digest("hex");
   const received = Buffer.from(fields.v1, "hex");
   const actual = Buffer.from(expected, "hex");
   return received.length === actual.length && timingSafeEqual(received, actual);
 }
 
-export function processStripeWebhook(store, payload, signature, webhookSecret) {
+export async function recordPaymentEvent(store, { provider, providerEventId, orderId = null, payload = "" }) {
+  const payloadHash = createHash("sha256").update(typeof payload === "string" ? payload : JSON.stringify(payload || "")).digest("hex");
+  const inserted = await store.db
+    .prepare(
+      `INSERT INTO payment_events (id, provider, provider_event_id, order_id, payload_hash, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT (provider, provider_event_id) DO NOTHING`,
+    )
+    .run(identifier(), provider, providerEventId, orderId, payloadHash, store.clock());
+  return { recorded: inserted.changes === 1, payloadHash };
+}
+
+export async function processStripeWebhook(store, payload, signature, webhookSecret) {
   if (!verifyStripeSignature(payload, signature, webhookSecret)) throw new Error("Stripe webhook signature is invalid.");
   const event = JSON.parse(payload);
   if (event.type !== "checkout.session.completed") return { handled: false };
   const session = event.data?.object;
   const orderId = session?.metadata?.order_id;
   if (!orderId || !session.id) throw new Error("Stripe event has no order reference.");
+  const eventId = typeof event.id === "string" && event.id ? event.id : session.id;
   ensureOrderCommsOutboxSchema(store);
-  // The paid transition and the confirmation-comms enqueue commit together, so a crash or a
-  // failed dispatch can never leave an order paid with no durable record that it owes an email.
-  beginImmediateWithRetry(store.db);
+  await beginImmediateWithRetry(store.db);
   let updated = false;
   let paid = false;
   let enqueued = false;
   try {
-    updated = store.db.prepare("UPDATE orders SET status = 'paid', stripe_session_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'").run(session.id, store.clock(), orderId).changes === 1;
-    paid = store.db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId)?.status === "paid";
-    if (paid) enqueued = enqueueOrderComms(store, orderId, { kind: "order.paid" }).enqueued;
-    store.db.exec("COMMIT");
+    const order = await store.db.prepare("SELECT id, status, currency, subtotal_usd FROM orders WHERE id = ?").get(orderId);
+    if (!order) throw new Error("Stripe event has no order reference.");
+    if (session.amount_total != null) {
+      const expectedCents = Number(moneyUnits(order.subtotal_usd) / 100n);
+      if (Number(session.amount_total) !== expectedCents) throw new Error("Stripe event amount does not match the order.");
+    }
+    if (session.currency && String(session.currency).toLowerCase() !== String(order.currency).toLowerCase()) {
+      throw new Error("Stripe event currency does not match the order.");
+    }
+    await recordPaymentEvent(store, { provider: "stripe", providerEventId: eventId, orderId, payload });
+    updated = (await store.db.prepare("UPDATE orders SET status = 'paid', stripe_session_id = ?, updated_at = ? WHERE id = ? AND status = 'pending_payment'").run(session.id, store.clock(), orderId)).changes === 1;
+    paid = (await store.db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId))?.status === "paid";
+    if (paid) enqueued = (await enqueueOrderComms(store, orderId, { kind: "order.paid" })).enqueued;
+    await store.db.exec("COMMIT");
   } catch (error) {
-    store.db.exec("ROLLBACK");
+    await store.db.exec("ROLLBACK");
     throw error;
   }
   store.log("checkout_payment_completed", { result: updated ? "accepted" : "ignored", order_id: orderId, provider: "stripe", paid, comms_enqueued: enqueued });
   return { handled: true, updated, paid, enqueued, orderId };
 }
 
-export function listCustomerOrders(store, user) {
+export async function listCustomerOrders(store, user, { after, limit } = {}) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
-  return store.db.prepare("SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt FROM orders WHERE user_id = ? ORDER BY created_at DESC, id DESC").all(user.id);
+  const clauses = ["user_id = ?"];
+  const params = [user.id];
+  if (after) {
+    const cursor = await store.db
+      .prepare("SELECT created_at AS createdAt, id FROM orders WHERE id = ? AND user_id = ?")
+      .get(after, user.id);
+    if (cursor) {
+      clauses.push("(created_at, id) < (?, ?)");
+      params.push(cursor.createdAt, cursor.id);
+    }
+  }
+  const capped = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : null;
+  let sql = `SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt FROM orders WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC, id DESC`;
+  if (capped) {
+    sql += " LIMIT ?";
+    params.push(capped);
+  }
+  return await store.db.prepare(sql).all(...params);
 }

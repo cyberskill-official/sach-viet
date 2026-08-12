@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
 import { createB2bQuoteStore, listInstitutionQuotes, requestQuoteFromSelectionList } from "@/lib/b2b-quote-core.mjs";
 
-function sessionFor(request: Request) {
-  return readSession(getAuthStore(), request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
+async function sessionFor(request: Request) {
+  return await readSession(await getAuthStore(), request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
 }
 
 export async function GET(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createB2bQuoteStore();
+    const store = await createB2bQuoteStore();
     try {
-      return NextResponse.json({ quotes: listInstitutionQuotes(store, session.user) });
+      return NextResponse.json({ quotes: await listInstitutionQuotes(store, session.user) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Quotes are unavailable." }, { status: 403 });
@@ -23,13 +23,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createB2bQuoteStore();
+    const store = await createB2bQuoteStore();
     try {
-      return NextResponse.json({ quote: requestQuoteFromSelectionList(store, session.user, await request.json()) }, { status: 201 });
+      return NextResponse.json({ quote: await requestQuoteFromSelectionList(store, session.user, await request.json()) }, { status: 201 });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Quote request failed." }, { status: 400 });

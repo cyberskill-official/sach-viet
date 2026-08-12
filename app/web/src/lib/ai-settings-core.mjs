@@ -40,6 +40,37 @@ export const AI_PROVIDER_HINTS = Object.freeze([
 export const DEFAULT_CHAT_TIMEOUT_MS = 30_000;
 export const DEFAULT_CHAT_MAX_TOKENS = 512;
 
+export function allowedAiBaseUrls(environment = process.env) {
+  const extra = String(environment.AI_ALLOWED_BASE_URLS || "")
+    .split(",")
+    .map((value) => value.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  return new Set([...AI_PROVIDER_HINTS.map((hint) => hint.baseUrl.replace(/\/+$/, "")), ...extra]);
+}
+
+export function assertAllowedAiBaseUrl(baseUrl, environment = process.env) {
+  let parsed;
+  try {
+    parsed = new URL(required(baseUrl, "Base URL"));
+  } catch {
+    throw new Error("AI base URL is invalid.");
+  }
+  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1" && parsed.hostname !== "host.docker.internal") {
+    throw new Error("AI base URL must be https or a local Ollama host.");
+  }
+  const normalized = `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, "");
+  if (!allowedAiBaseUrls(environment).has(normalized)) {
+    throw new Error("AI base URL is not on the allowlist.");
+  }
+  return normalized;
+}
+
+export function assertAiChatEnabled(environment = process.env) {
+  if (environment.NODE_ENV === "production" && environment.AI_CHAT_ENABLED !== "1") {
+    throw new Error("Admin AI chat is retired on Production.");
+  }
+}
+
 const ENCRYPTION_SALT = "sachviet-ai-settings-v1";
 
 function required(value, label) {
@@ -115,19 +146,19 @@ function maskApiKey(plaintext) {
 /**
  * @param {{ dbPath?: string, databaseUrl?: string, clock?: () => number, log?: Function, settingsSecret?: string }} [options]
  */
-export function createAiSettingsStore({
+export async function createAiSettingsStore({
   dbPath,
   databaseUrl,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "WAVE3-BYOK-AI", ...fields })),
   settingsSecret = process.env.AI_SETTINGS_SECRET,
 } = {}) {
-  const db = openDatabase(dbPath, { databaseUrl });
+  const db = await openDatabase(dbPath, { databaseUrl });
   return { db, clock, log, settingsSecret, close: () => db.close() };
 }
 
-function readRow(store) {
-  return store.db
+async function readRow(store) {
+  return await store.db
     .prepare(
       `SELECT id, base_url AS "baseUrl", model, api_key_ciphertext AS "apiKeyCiphertext",
               updated_at AS "updatedAt", updated_by AS "updatedBy"
@@ -138,13 +169,13 @@ function readRow(store) {
 
 /**
  * Public admin view — never returns the raw API key.
- * @param {ReturnType<typeof createAiSettingsStore>} store
+ * @param {Awaited<ReturnType<typeof createAiSettingsStore>>} store
  * @param {{ id: string, role: string }} actor
  */
-export function getAiSettings(store, actor) {
+export async function getAiSettings(store, actor) {
   adminOnly(actor);
   const encryptionReady = isAiSettingsSecretConfigured(store.settingsSecret);
-  const row = readRow(store);
+  const row = await readRow(store);
   let apiKeyConfigured = false;
   let apiKeyLast4 = null;
   if (row?.apiKeyCiphertext && encryptionReady) {
@@ -177,14 +208,14 @@ export function getAiSettings(store, actor) {
 /**
  * Upsert BYOK settings. Omit `apiKey` to leave the stored key unchanged.
  * Pass empty string `apiKey: ""` to clear the key.
- * @param {ReturnType<typeof createAiSettingsStore>} store
+ * @param {Awaited<ReturnType<typeof createAiSettingsStore>>} store
  * @param {{ id: string, role: string }} actor
  * @param {{ baseUrl?: string, model?: string, apiKey?: string }} input
  */
-export function updateAiSettings(store, actor, input = {}) {
+export async function updateAiSettings(store, actor, input = {}) {
   adminOnly(actor);
-  const existing = readRow(store);
-  const baseUrl = required(input.baseUrl ?? existing?.baseUrl ?? DEFAULT_AI_BASE_URL, "Base URL");
+  const existing = await readRow(store);
+  const baseUrl = assertAllowedAiBaseUrl(input.baseUrl ?? existing?.baseUrl ?? DEFAULT_AI_BASE_URL);
   const model = required(input.model ?? existing?.model ?? DEFAULT_AI_MODEL, "Model");
 
   let ciphertext = existing?.apiKeyCiphertext ?? null;
@@ -198,7 +229,7 @@ export function updateAiSettings(store, actor, input = {}) {
   }
 
   const updatedAt = store.clock();
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO ai_settings (id, base_url, model, api_key_ciphertext, updated_at, updated_by)
        VALUES (?, ?, ?, ?, ?, ?)
@@ -223,18 +254,18 @@ export function updateAiSettings(store, actor, input = {}) {
     })(),
   });
 
-  return getAiSettings(store, actor);
+  return await getAiSettings(store, actor);
 }
 
 /**
  * Resolve decrypted credentials for chat. Fails closed when unset.
- * @param {ReturnType<typeof createAiSettingsStore>} store
+ * @param {Awaited<ReturnType<typeof createAiSettingsStore>>} store
  * @param {{ id: string, role: string }} actor
  */
-export function resolveAiChatConfig(store, actor) {
+export async function resolveAiChatConfig(store, actor) {
   adminOnly(actor);
   requireAiSettingsSecret(store.settingsSecret);
-  const row = readRow(store);
+  const row = await readRow(store);
   if (!row?.apiKeyCiphertext) {
     throw new Error("AI API key is not configured. Save a BYOK key in admin AI settings.");
   }
@@ -338,12 +369,14 @@ export async function createChatCompletion({
 
 /**
  * Admin playground chat — loads BYOK config and calls the provider.
- * @param {ReturnType<typeof createAiSettingsStore>} store
+ * @param {Awaited<ReturnType<typeof createAiSettingsStore>>} store
  * @param {{ id: string, role: string }} actor
  * @param {{ message?: string, messages?: Array<{ role: string, content: string }>, fetchImpl?: typeof fetch, timeoutMs?: number, maxTokens?: number }} input
  */
 export async function adminAiChat(store, actor, input = {}) {
-  const config = resolveAiChatConfig(store, actor);
+  assertAiChatEnabled(input.env || process.env);
+  const config = await resolveAiChatConfig(store, actor);
+  assertAllowedAiBaseUrl(config.baseUrl, input.env || process.env);
   let messages = input.messages;
   if (!messages?.length) {
     const message = required(input.message, "Message");

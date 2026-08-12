@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("wordpress import admin routes exist and gate through session + core helpers", () => {
+test("wordpress import admin routes exist and gate through session + core helpers", async () => {
   const statusRoute = readFileSync(resolve(root, "src/app/api/admin/wordpress-import/status/route.ts"), "utf8");
   const applyRoute = readFileSync(resolve(root, "src/app/api/admin/wordpress-import/apply/route.ts"), "utf8");
   assert.match(statusRoute, /getWordpressImportStatus/);

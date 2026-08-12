@@ -64,11 +64,11 @@ export function resetLiveNotificationBusForTests() {
   subscribers.clear();
 }
 
-export function listNotificationsAfterCursor(store, user, cursor) {
+export async function listNotificationsAfterCursor(store, user, cursor) {
   if (!user?.id) throw new Error("Authentication is required.");
   const decoded = decodeNotificationCursor(cursor);
   const rows = decoded
-    ? store.db
+    ? await store.db
         .prepare(
           `
       SELECT id, user_id AS userId, event_type AS eventType, title, body, deeplink_path AS deeplinkPath,
@@ -80,7 +80,7 @@ export function listNotificationsAfterCursor(store, user, cursor) {
     `,
         )
         .all(user.id, decoded.createdAt, decoded.createdAt, decoded.id)
-    : store.db
+    : await store.db
         .prepare(
           `
       SELECT id, user_id AS userId, event_type AS eventType, title, body, deeplink_path AS deeplinkPath,
@@ -104,14 +104,14 @@ export function listNotificationsAfterCursor(store, user, cursor) {
   }));
 }
 
-export function unreadCountForUser(store, userId) {
-  const unread = store.db.prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0").get(userId);
+export async function unreadCountForUser(store, userId) {
+  const unread = await store.db.prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0").get(userId);
   return Number(unread?.count || 0);
 }
 
-export function publishNotificationCreated(store, notification) {
+export async function publishNotificationCreated(store, notification) {
   if (!notification?.userId || !notification?.id) return null;
-  const payload = buildLiveNotificationPayload(notification, unreadCountForUser(store, notification.userId));
+  const payload = buildLiveNotificationPayload(notification, await unreadCountForUser(store, notification.userId));
   publishLiveNotification(notification.userId, payload);
   store.log?.("live_notification_published", {
     result: "accepted",
@@ -140,6 +140,7 @@ export function createOwnerNotificationSseStream({
   cursor = null,
   signal,
   heartbeatMs = 15000,
+  pollMs = 2000,
   now = () => Date.now(),
   onClose,
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-011", ...fields })),
@@ -149,18 +150,20 @@ export function createOwnerNotificationSseStream({
   let closeLiveStream = () => {};
 
   return new ReadableStream({
-    start(controller) {
+    async start(controller) {
       const encoder = new TextEncoder();
       const enqueue = (frame) => controller.enqueue(encoder.encode(frame));
       let closed = false;
       let unsubscribe = () => {};
       let heartbeat = null;
+      let poll = null;
 
       const close = (reason = "closed") => {
         if (closed) return;
         closed = true;
         unsubscribe();
         if (heartbeat) clearInterval(heartbeat);
+        if (poll) clearInterval(poll);
         try {
           controller.close();
         } catch {
@@ -185,13 +188,13 @@ export function createOwnerNotificationSseStream({
 
       try {
         const replay = decodedCursor
-          ? listNotificationsAfterCursor(store, user, `${decodedCursor.createdAt}:${decodedCursor.id}`)
+          ? await listNotificationsAfterCursor(store, user, `${decodedCursor.createdAt}:${decodedCursor.id}`)
           : [];
         for (const notification of replay) {
           enqueue(
             formatSseFrame(
               "notification",
-              buildLiveNotificationPayload(notification, unreadCountForUser(store, user.id)),
+              buildLiveNotificationPayload(notification, await unreadCountForUser(store, user.id)),
             ),
           );
         }
@@ -207,6 +210,27 @@ export function createOwnerNotificationSseStream({
           if (closed) return;
           enqueue(formatSseFrame("notification", payload));
         });
+
+        let lastCursor = replay.length
+          ? { createdAt: replay[replay.length - 1].createdAt, id: replay[replay.length - 1].id }
+          : decodedCursor || { createdAt: now(), id: "-" };
+        poll = setInterval(() => {
+          if (closed) return;
+          void listNotificationsAfterCursor(store, user, `${lastCursor.createdAt}:${lastCursor.id}`)
+            .then(async (rows) => {
+              for (const notification of rows) {
+                if (closed) return;
+                enqueue(
+                  formatSseFrame(
+                    "notification",
+                    buildLiveNotificationPayload(notification, await unreadCountForUser(store, user.id)),
+                  ),
+                );
+                lastCursor = { createdAt: notification.createdAt, id: notification.id };
+              }
+            })
+            .catch(() => {});
+        }, pollMs);
 
         heartbeat = setInterval(() => {
           if (closed) return;
