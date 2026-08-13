@@ -48,12 +48,13 @@ export function recordCheck(results, check, log = console.log) {
 }
 
 /**
- * Hard-fail ids for process exit (admin-login skip is soft).
- * @param {{ ok: boolean, id: string }[]} results
+ * Hard-fail ids for process exit. Skipped required checks fail the gate.
+ * @param {{ ok: boolean, id: string, detail?: string }[]} results
  */
 export function hardFailureIds(results) {
+  const required = new Set(["health-postgres", "catalog-list", "admin-login", "checkout-pending-path"]);
   return results
-    .filter((r) => !r.ok && (r.id === "health-postgres" || r.id === "catalog-list"))
+    .filter((r) => required.has(r.id) && (!r.ok || /Skipped/i.test(r.detail || "")))
     .map((r) => r.id);
 }
 
@@ -193,18 +194,20 @@ export async function runProductionSmoke(options) {
     );
   }
 
-  if (products.length === 0) {
-    recordCheck(
-      results,
-      {
-        id: "checkout-pending-path",
-        ok: true,
-        detail:
-          "Deferred — empty catalog (fixture/admin load is a separate operator step; health+catalog APIs ok)",
-      },
-      log,
-    );
-  }
+  const checkout = await fetchJson("/api/checkout", {
+    method: "POST",
+    body: JSON.stringify({ items: [], provider: "stripe" }),
+  });
+  const checkoutOk = checkout.response.status === 401 || checkout.response.status === 400 || checkout.response.status === 503;
+  recordCheck(
+    results,
+    {
+      id: "checkout-pending-path",
+      ok: checkoutOk,
+      detail: `HTTP ${checkout.response.status} (unauthenticated checkout must fail closed)`,
+    },
+    log,
+  );
 
   const hard = hardFailureIds(results);
   log("");

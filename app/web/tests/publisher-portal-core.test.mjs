@@ -17,14 +17,15 @@ import {
   registerPublisherMarcRecord,
   withdrawPublishingRequest,
 } from "../src/lib/publisher-portal-core.mjs";
+import { seedStoredKey } from "./helpers/stored-object.mjs";
 
-function harness() {
+async function harness() {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-publisher-"));
   const dbPath = join(directory, "publisher.sqlite");
-  const catalog = createCatalogStore({ dbPath, log: () => {} });
-  const publisher = createPublisherPortalStore({ dbPath, log: () => {} });
-  createCategory(catalog, { slug: "books", name: "Books" });
-  const product = createProduct(catalog, { categorySlug: "books", slug: "book-one", title: "Book One" });
+  const catalog = await createCatalogStore({ dbPath, log: () => {} });
+  const publisher = await createPublisherPortalStore({ dbPath, log: () => {} });
+  await createCategory(catalog, { slug: "books", name: "Books" });
+  const product = await createProduct(catalog, { categorySlug: "books", slug: "book-one", title: "Book One" });
   return {
     directory,
     catalog,
@@ -37,23 +38,22 @@ function harness() {
   };
 }
 
-test("publisher can create list and withdraw own publishing requests", () => {
-  const ctx = harness();
+test("publisher can create list and withdraw own publishing requests", async () => {
+  const ctx = await harness();
   try {
-    assert.throws(
-      () => createPublishingRequest(ctx.publisher, ctx.customer, { title: "X", storageKey: "private/x" }),
+    await assert.rejects(async () => await createPublishingRequest(ctx.publisher, ctx.customer, { title: "X", storageKey: "private/x" }),
       /Publisher access/,
     );
-    assert.throws(
-      () =>
-        createPublishingRequest(ctx.publisher, ctx.pub, {
+    await assert.rejects(async () =>
+        await createPublishingRequest(ctx.publisher, ctx.pub, {
           title: "Catalog spring",
           storageKey: "https://cdn.example/file.pdf",
         }),
       /public URL/,
     );
 
-    const created = createPublishingRequest(ctx.publisher, ctx.pub, {
+    await seedStoredKey(ctx.publisher, "private/catalog-spring");
+    const created = await createPublishingRequest(ctx.publisher, ctx.pub, {
       title: "Catalog spring",
       notes: "Vietnamese titles",
       storageKey: "private/catalog-spring",
@@ -63,51 +63,48 @@ test("publisher can create list and withdraw own publishing requests", () => {
     assert.equal(created.title, "Catalog spring");
     assert.equal("storageKey" in created, false);
 
-    const listed = listPublishingRequests(ctx.publisher, ctx.pub);
+    const listed = await listPublishingRequests(ctx.publisher, ctx.pub);
     assert.equal(listed.length, 1);
     assert.equal(listed[0].id, created.id);
 
-    const otherList = listPublishingRequests(ctx.publisher, ctx.other);
+    const otherList = await listPublishingRequests(ctx.publisher, ctx.other);
     assert.equal(otherList.length, 0);
-    assert.throws(
-      () => withdrawPublishingRequest(ctx.publisher, ctx.other, { requestId: created.id }),
+    await assert.rejects(async () => await withdrawPublishingRequest(ctx.publisher, ctx.other, { requestId: created.id }),
       /another publisher/,
     );
 
-    const withdrawn = withdrawPublishingRequest(ctx.publisher, ctx.pub, { requestId: created.id });
+    const withdrawn = await withdrawPublishingRequest(ctx.publisher, ctx.pub, { requestId: created.id });
     assert.equal(withdrawn.status, "withdrawn");
-    assert.throws(
-      () => withdrawPublishingRequest(ctx.publisher, ctx.pub, { requestId: created.id }),
+    await assert.rejects(async () => await withdrawPublishingRequest(ctx.publisher, ctx.pub, { requestId: created.id }),
       /already withdrawn/,
     );
   } finally {
-    ctx.publisher.close();
-    ctx.catalog.close();
+    await ctx.publisher.close();
+    await ctx.catalog.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });
 
-test("publisher can register and list private MARC metadata for existing products", () => {
-  const ctx = harness();
+test("publisher can register and list private MARC metadata for existing products", async () => {
+  const ctx = await harness();
   try {
-    assert.throws(
-      () =>
-        registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
+    await assert.rejects(async () =>
+        await registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
           productId: "missing",
           storageKey: "private/marc-1",
         }),
       /Product does not exist/,
     );
-    assert.throws(
-      () =>
-        registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
+    await assert.rejects(async () =>
+        await registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
           productId: ctx.product.id,
           storageKey: "https://cdn.example/marc.mrc",
         }),
       /public URL/,
     );
 
-    const registered = registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
+    await seedStoredKey(ctx.publisher, "private/marc-book-one");
+    const registered = await registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
       productId: ctx.product.id,
       storageKey: "private/marc-book-one",
     });
@@ -115,44 +112,46 @@ test("publisher can register and list private MARC metadata for existing product
     assert.equal(registered.productId, ctx.product.id);
     assert.equal("storageKey" in registered, false);
 
-    const listed = listPublisherMarcRecords(ctx.publisher, ctx.pub);
+    const listed = await listPublisherMarcRecords(ctx.publisher, ctx.pub);
     assert.equal(listed.length, 1);
     assert.equal(listed[0].productId, ctx.product.id);
     assert.equal("storageKey" in listed[0], false);
 
-    const otherList = listPublisherMarcRecords(ctx.publisher, ctx.other);
+    const otherList = await listPublisherMarcRecords(ctx.publisher, ctx.other);
     assert.equal(otherList.length, 0);
 
     // publisher-portal-core must not write into the institution_marc_records domain table
-    const institutionRecordCount = ctx.publisher.db
+    const institutionRecordCount = (await ctx.publisher.db
       .prepare("SELECT COUNT(*) AS count FROM institution_marc_records")
-      .get().count;
+      .get()).count;
     assert.equal(institutionRecordCount, 0);
   } finally {
-    ctx.publisher.close();
-    ctx.catalog.close();
+    await ctx.publisher.close();
+    await ctx.catalog.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });
 
-test("publisher dashboard returns policy-pending financial placeholders under activation gate", () => {
-  const ctx = harness();
+test("publisher dashboard returns policy-pending financial placeholders under activation gate", async () => {
+  const ctx = await harness();
   try {
-    createPublishingRequest(ctx.publisher, ctx.pub, {
+    await seedStoredKey(ctx.publisher, "private/titles");
+    await seedStoredKey(ctx.publisher, "private/marc");
+    await createPublishingRequest(ctx.publisher, ctx.pub, {
       title: "Titles",
       storageKey: "private/titles",
     });
-    registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
+    await registerPublisherMarcRecord(ctx.publisher, ctx.pub, {
       productId: ctx.product.id,
       storageKey: "private/marc",
     });
 
-    const gate = getRoyaltyActivationGate(ctx.publisher);
+    const gate = await getRoyaltyActivationGate(ctx.publisher);
     assert.equal(gate.status, "pending");
     assert.equal(gate.financialActivationAllowed, false);
     assert.ok(gate.unresolvedDecisionAreas.includes("rate_and_split"));
 
-    const dashboard = getPublisherDashboard(ctx.publisher, ctx.pub);
+    const dashboard = await getPublisherDashboard(ctx.publisher, ctx.pub);
     assert.equal(dashboard.publisherId, ctx.pub.id);
     assert.equal(dashboard.nonFinancial.submittedPublishingRequestCount, 1);
     assert.equal(dashboard.nonFinancial.marcRecordCount, 1);
@@ -163,32 +162,32 @@ test("publisher dashboard returns policy-pending financial placeholders under ac
     assert.equal("amountUsd" in dashboard.royalties, false);
     assert.equal("totalUsd" in dashboard.sales, false);
 
-    assert.throws(() => getPublisherDashboard(ctx.publisher, ctx.customer), /Publisher access/);
+    await assert.rejects(async () => await getPublisherDashboard(ctx.publisher, ctx.customer), /Publisher access/);
   } finally {
-    ctx.publisher.close();
-    ctx.catalog.close();
+    await ctx.publisher.close();
+    await ctx.catalog.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });
 
-test("financial activation paths refuse while decision-register acceptance is absent", () => {
-  const ctx = harness();
+test("financial activation paths refuse while decision-register acceptance is absent", async () => {
+  const ctx = await harness();
   try {
-    assert.throws(
+    await assert.rejects(
       () => computePublisherRoyalties(ctx.publisher, ctx.pub, {}),
       /activation gate pending/,
     );
-    assert.throws(
+    await assert.rejects(
       () => allocatePublisherSales(ctx.publisher, ctx.pub, {}),
       /activation gate pending/,
     );
-    assert.throws(
+    await assert.rejects(
       () => createPublisherPayoutInstruction(ctx.publisher, ctx.pub, {}),
       /activation gate pending/,
     );
   } finally {
-    ctx.publisher.close();
-    ctx.catalog.close();
+    await ctx.publisher.close();
+    await ctx.catalog.close();
     rmSync(ctx.directory, { recursive: true, force: true });
   }
 });

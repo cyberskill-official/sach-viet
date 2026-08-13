@@ -31,11 +31,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Webhook rejected." }, { status });
   }
 
-  const store = createCommerceStore();
+  const store = await createCommerceStore();
   try {
     let result;
     try {
-      result = processStripeWebhook(
+      result = await processStripeWebhook(
         store,
         payload,
         request.headers.get("stripe-signature"),
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     if (result.handled && result.orderId) {
       try {
         // Replays drain whatever the outbox still owes, independent of `result.updated`.
-        comms = processOrderCommsOutbox(store, { orderId: result.orderId });
+        comms = await processOrderCommsOutbox(store, { orderId: result.orderId });
       } catch (error) {
         // The order is already paid and the confirmation is durably queued; answering 400 here
         // would make Stripe retry an event that can no longer re-trigger delivery.
@@ -78,6 +78,6 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ...result, comms });
   } finally {
-    store.close();
+    await store.close();
   }
 }

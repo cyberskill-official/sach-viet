@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("author routes use signed sessions and domain operations", () => {
+test("author routes use signed sessions and domain operations", async () => {
   const dashboard = readFileSync(resolve(root, "src/app/api/author/dashboard/route.ts"), "utf8");
   const requests = readFileSync(resolve(root, "src/app/api/author/manuscript-requests/route.ts"), "utf8");
   const detail = readFileSync(resolve(root, "src/app/api/author/manuscript-requests/[id]/route.ts"), "utf8");
@@ -21,7 +21,7 @@ test("author routes use signed sessions and domain operations", () => {
   assert.match(withdraw, /withdrawAuthorManuscriptRequest/);
 });
 
-test("author core encodes activation gate and forbids invented settlement math", () => {
+test("author core encodes activation gate and forbids invented settlement math", async () => {
   const core = readFileSync(resolve(root, "src/lib/author-portal-core.mjs"), "utf8");
   assert.match(core, /assertRoyaltyActivationGate/);
   assert.match(core, /policyPending/);

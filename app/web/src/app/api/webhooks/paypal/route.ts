@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "PayPal webhook is not configured." }, { status: 503 });
   }
 
-  const store = createCommerceStore();
+  const store = await createCommerceStore();
   try {
     let result;
     try {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     let comms = null;
     if (result.handled && "orderId" in result && result.orderId) {
       try {
-        comms = processOrderCommsOutbox(store, { orderId: result.orderId });
+        comms = await processOrderCommsOutbox(store, { orderId: result.orderId });
       } catch (error) {
         console.error(
           JSON.stringify({
@@ -68,6 +68,6 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ...result, comms });
   } finally {
-    store.close();
+    await store.close();
   }
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Copy `pg` + `synckit` (and transitive deps) into a target node_modules.
- * Used by the Docker runner image so db-worker.mjs can resolve imports
+ * Copy `pg` (and transitive deps) into a target node_modules.
+ * Used by the Docker runner image so the async pool can resolve imports
  * when Next standalone tracing omits them.
  *
  * Usage: node scripts/copy-worker-runtime-deps.mjs <sourceNodeModules> <destNodeModules>
@@ -45,7 +45,6 @@ function add(name) {
 }
 
 add("pg");
-add("synckit");
 // Optional peer used by pg in some environments; ship if present.
 if (readPkg(sourceNm, "pg-cloudflare")) add("pg-cloudflare");
 

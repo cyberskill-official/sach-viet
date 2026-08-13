@@ -17,7 +17,7 @@ for (const required of [
   "policyPending",
   "ROYALTY_DECISION_REGISTER",
   "Publisher access is required",
-  "public URL",
+  "requireStoredObjectKey",
   "TASK-REBUILD-017",
 ]) {
   if (!source.includes(required)) throw new Error(`Publisher portal core is missing ${required}.`);

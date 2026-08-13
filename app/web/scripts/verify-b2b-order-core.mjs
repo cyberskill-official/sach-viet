@@ -13,7 +13,7 @@ for (const required of [
   "listInstitutionOrders",
   "Only won quotes",
   "purchase_order artifact is required",
-  "public URL",
+  "requireStoredObjectKey",
   "B2B staff access is required",
   "Institution access is required",
 ]) {

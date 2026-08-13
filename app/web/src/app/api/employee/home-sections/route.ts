@@ -5,13 +5,13 @@ import { createEmployeeRetailStore, listHomeSections, upsertHomeSection } from "
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createEmployeeRetailStore();
+    const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ sections: listHomeSections(store, session.user) });
+      return NextResponse.json({ sections: await listHomeSections(store, session.user) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Home sections are unavailable." }, { status: 403 });
@@ -21,14 +21,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const body = await request.json();
-    const store = createEmployeeRetailStore();
+    const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ section: upsertHomeSection(store, session.user, body) });
+      return NextResponse.json({ section: await upsertHomeSection(store, session.user, body) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Home section write failed." }, { status: 403 });

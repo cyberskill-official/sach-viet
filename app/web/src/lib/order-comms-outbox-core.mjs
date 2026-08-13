@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { beginImmediateWithRetry } from "./db.mjs";
 
 /**
  * Durable queue for order communications (currently the paid-order confirmation).
@@ -42,12 +43,12 @@ export function ensureOrderCommsOutboxSchema(store) {
  * the unique (order_id, kind) index makes re-enqueue a no-op, so a delivered row is never
  * resurrected and a still-pending row keeps its attempt history.
  */
-export function enqueueOrderComms(store, orderId, { kind = "order.paid" } = {}) {
+export async function enqueueOrderComms(store, orderId, { kind = "order.paid" } = {}) {
   if (typeof orderId !== "string" || orderId.trim() === "") throw new Error("Order ID is required.");
   assertKind(kind);
   ensureOrderCommsOutboxSchema(store);
   const timestamp = store.clock();
-  const inserted = store.db
+  const inserted = await store.db
     .prepare(
       `INSERT INTO order_comms_outbox
         (id, order_id, kind, status, attempts, available_at, last_error, created_at, updated_at)
@@ -63,71 +64,87 @@ export function enqueueOrderComms(store, orderId, { kind = "order.paid" } = {}) 
  * before any delivery work happens. A crash mid-dispatch therefore leaves the row `pending`
  * (retried after the backoff) rather than stuck in a `processing` limbo.
  */
-export function claimDueOrderComms(store, { orderId = null, limit = 10 } = {}) {
+export async function claimDueOrderComms(store, { orderId = null, limit = 10, owner = null } = {}) {
   ensureOrderCommsOutboxSchema(store);
   const now = store.clock();
-  const filters = ["status = 'pending'", "available_at <= ?"];
-  const parameters = [now];
+  const leaseOwner = owner || randomBytes(8).toString("hex");
+  const filters = ["status = 'pending'", "available_at <= ?", "(leased_until IS NULL OR leased_until < ?)"];
+  const parameters = [now, now];
   if (orderId) {
     filters.push("order_id = ?");
     parameters.push(orderId);
   }
-  const candidates = store.db
-    .prepare(
-      `SELECT id, order_id AS orderId, kind, attempts
-       FROM order_comms_outbox
-       WHERE ${filters.join(" AND ")}
-       ORDER BY available_at ASC, created_at ASC
-       LIMIT ?`,
-    )
-    .all(...parameters, Math.max(1, Number(limit) || 1));
+  await beginImmediateWithRetry(store.db);
+  try {
+    const candidates = await store.db
+      .prepare(
+        `SELECT id, order_id AS orderId, kind, attempts
+         FROM order_comms_outbox
+         WHERE ${filters.join(" AND ")}
+         ORDER BY available_at ASC, created_at ASC
+         LIMIT ?
+         FOR UPDATE SKIP LOCKED`,
+      )
+      .all(...parameters, Math.max(1, Number(limit) || 1));
 
-  const claim = store.db.prepare(
-    `UPDATE order_comms_outbox
-     SET attempts = attempts + 1, available_at = ?, updated_at = ?
-     WHERE id = ? AND status = 'pending'`,
-  );
-  const claimed = [];
-  for (const candidate of candidates) {
-    const attempt = candidate.attempts + 1;
-    const nextAvailableAt = now + orderCommsRetryDelayMs(attempt);
-    if (claim.run(nextAvailableAt, now, candidate.id).changes === 1) {
-      claimed.push({ ...candidate, attempt, nextAvailableAt });
+    const claimed = [];
+    for (const candidate of candidates) {
+      const attempt = candidate.attempts + 1;
+      const nextAvailableAt = now + orderCommsRetryDelayMs(attempt);
+      const leasedUntil = now + orderCommsRetryDelayMs(attempt);
+      const updated = await store.db
+        .prepare(
+          `UPDATE order_comms_outbox
+           SET attempts = attempts + 1, available_at = ?, leased_until = ?, lease_owner = ?, updated_at = ?
+           WHERE id = ? AND status = 'pending'`,
+        )
+        .run(nextAvailableAt, leasedUntil, leaseOwner, now, candidate.id);
+      if (updated.changes === 1) {
+        claimed.push({ ...candidate, attempt, nextAvailableAt, leaseOwner });
+      }
     }
+    await store.db.exec("COMMIT");
+    return claimed;
+  } catch (error) {
+    try {
+      await store.db.exec("ROLLBACK");
+    } catch {
+      // ignore
+    }
+    throw error;
   }
-  return claimed;
 }
 
-export function markOrderCommsDelivered(store, entryId) {
+export async function markOrderCommsDelivered(store, entryId) {
   const timestamp = store.clock();
-  store.db
+  await store.db
     .prepare(
-      "UPDATE order_comms_outbox SET status = 'delivered', last_error = NULL, available_at = ?, updated_at = ? WHERE id = ?",
+      "UPDATE order_comms_outbox SET status = 'delivered', last_error = NULL, leased_until = NULL, lease_owner = NULL, available_at = ?, updated_at = ? WHERE id = ?",
     )
     .run(timestamp, timestamp, entryId);
 }
 
 /** Leaves the entry pending for another attempt, or dead-letters it once attempts run out. */
-export function markOrderCommsFailed(store, entryId, reason) {
+export async function markOrderCommsFailed(store, entryId, reason) {
   const timestamp = store.clock();
-  const row = store.db.prepare("SELECT attempts FROM order_comms_outbox WHERE id = ?").get(entryId);
+  const row = await store.db.prepare("SELECT attempts FROM order_comms_outbox WHERE id = ?").get(entryId);
   const exhausted = Number(row?.attempts || 0) >= ORDER_COMMS_MAX_ATTEMPTS;
-  store.db
-    .prepare("UPDATE order_comms_outbox SET status = ?, last_error = ?, updated_at = ? WHERE id = ?")
+  await store.db
+    .prepare("UPDATE order_comms_outbox SET status = ?, last_error = ?, leased_until = NULL, lease_owner = NULL, updated_at = ? WHERE id = ?")
     .run(exhausted ? "abandoned" : "pending", reason ? String(reason).slice(0, 500) : null, timestamp, entryId);
   return { status: exhausted ? "abandoned" : "pending" };
 }
 
-export function markOrderCommsAbandoned(store, entryId, reason) {
+export async function markOrderCommsAbandoned(store, entryId, reason) {
   const timestamp = store.clock();
-  store.db
-    .prepare("UPDATE order_comms_outbox SET status = 'abandoned', last_error = ?, updated_at = ? WHERE id = ?")
+  await store.db
+    .prepare("UPDATE order_comms_outbox SET status = 'abandoned', last_error = ?, leased_until = NULL, lease_owner = NULL, updated_at = ? WHERE id = ?")
     .run(reason ? String(reason).slice(0, 500) : null, timestamp, entryId);
 }
 
-export function getOrderCommsEntry(store, orderId, { kind = "order.paid" } = {}) {
+export async function getOrderCommsEntry(store, orderId, { kind = "order.paid" } = {}) {
   ensureOrderCommsOutboxSchema(store);
-  return store.db
+  return await store.db
     .prepare(
       `SELECT id, order_id AS orderId, kind, status, attempts, available_at AS availableAt,
               last_error AS lastError, created_at AS createdAt, updated_at AS updatedAt

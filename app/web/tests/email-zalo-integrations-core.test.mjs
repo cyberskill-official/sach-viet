@@ -21,51 +21,51 @@ import {
   updateUserNotificationPreferences,
 } from "../src/lib/notification-core.mjs";
 
-function fixture(run) {
+async function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-email-zalo-"));
   const dbPath = join(directory, "ops.sqlite");
   const events = [];
-  const store = createNotificationStore({
+  const store = await createNotificationStore({
     dbPath,
     clock: () => 5000,
     log: (event, fields = {}) => events.push({ event, ...fields }),
   });
   try {
-    return run({ store, events });
+    return await run({ store, events });
   } finally {
-    store.close();
+    await store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-test("disabled email and zalo channels skip without live transport calls", () =>
-  fixture(({ store, events }) => {
+test("disabled email and zalo channels skip without live transport calls", async () =>
+  fixture(async ({ store, events }) => {
     const customer = { id: "customer", role: "customer" };
-    const notification = createNotification(store, customer, {
+    const notification = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "Paid",
       body: "Thanks",
       deeplinkPath: "/ecom/orders/1",
     });
-    const attempts = listDeliveryAttempts(store, customer, notification.id);
+    const attempts = await listDeliveryAttempts(store, customer, notification.id);
     assert.equal(attempts.length, 2);
     assert.ok(attempts.every((row) => row.outcome === "skipped" && row.reason === "channel_disabled"));
     assert.ok(events.some((row) => row.event === "notification_delivery_attempted" && row.result === "skipped"));
   }));
 
-test("enabled channels use recording stubs and omit raw recipients", () =>
-  fixture(({ store, events }) => {
+test("enabled channels use recording stubs and omit raw recipients", async () =>
+  fixture(async ({ store, events }) => {
     const customer = { id: "customer", role: "customer" };
-    updateUserNotificationPreferences(store, customer, {
+    await updateUserNotificationPreferences(store, customer, {
       emailChannelEnabled: true,
       zaloChannelEnabled: true,
     });
-    const prefs = getUserNotificationPreferences(store, customer);
+    const prefs = await getUserNotificationPreferences(store, customer);
     assert.equal(prefs.channels.find((row) => row.channel === "email").isEnabled, true);
     assert.equal(prefs.channels.find((row) => row.channel === "zalo").isEnabled, true);
 
-    store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)").run(
+    await store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)").run(
       customer.id,
       "customer@example.com",
       "hash",
@@ -73,14 +73,14 @@ test("enabled channels use recording stubs and omit raw recipients", () =>
       1,
     );
 
-    const notification = createNotification(store, customer, {
+    const notification = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "goods_request.created",
       title: "Goods request",
       body: "We received your request.",
       deeplinkPath: "/ecom/goods-requests/1",
     });
-    const attempts = listDeliveryAttempts(store, customer, notification.id);
+    const attempts = await listDeliveryAttempts(store, customer, notification.id);
     assert.equal(attempts.length, 2);
     assert.ok(attempts.every((row) => row.outcome === "recorded" || row.outcome === "skipped"));
     const emailAttempt = attempts.find((row) => row.channel === "email");
@@ -91,9 +91,9 @@ test("enabled channels use recording stubs and omit raw recipients", () =>
     assert.ok(!JSON.stringify(events).includes("SMTP_PASSWORD"));
   }));
 
-test("smtp and zalo seams skip missing recipients and record locally without submitters", () => {
-  assert.throws(() => createSmtpEmailTransport({ host: "", from: "" }), /SMTP transport requires/);
-  assert.throws(() => createZaloOaHttpTransport({ accessToken: "" }), /Zalo OA transport requires/);
+test("smtp and zalo seams skip missing recipients and record locally without submitters", async () => {
+  await assert.rejects(async () => createSmtpEmailTransport({ host: "", from: "" }), /SMTP transport requires/);
+  await assert.rejects(async () => createZaloOaHttpTransport({ accessToken: "" }), /Zalo OA transport requires/);
 
   const events = [];
   const smtp = createSmtpEmailTransport({
@@ -104,9 +104,9 @@ test("smtp and zalo seams skip missing recipients and record locally without sub
     from: "noreply@example.test",
     log: (event, fields = {}) => events.push({ event, ...fields }),
   });
-  assert.equal(smtp.send({ notificationId: "n0", recipient: null, title: "t", body: "b", deeplinkPath: "/" }).outcome, "skipped");
+  assert.equal((await smtp.send({ notificationId: "n0", recipient: null, title: "t", body: "b", deeplinkPath: "/" })).outcome, "skipped");
   assert.equal(
-    smtp.send({ notificationId: "n1", recipient: "a@example.com", title: "t", body: "b", deeplinkPath: "/ecom" }).outcome,
+    (await smtp.send({ notificationId: "n1", recipient: "a@example.com", title: "t", body: "b", deeplinkPath: "/ecom" })).outcome,
     "recorded",
   );
   assert.ok(events.some((row) => row.event === "email_transport_smtp_local"));
@@ -118,7 +118,7 @@ test("smtp and zalo seams skip missing recipients and record locally without sub
     submit: () => ({ outcome: "failed", reason: "relay_down" }),
   });
   assert.equal(
-    failed.send({ notificationId: "n2", recipient: "a@example.com", title: "t", body: "b", deeplinkPath: "/ecom" }).outcome,
+    (await failed.send({ notificationId: "n2", recipient: "a@example.com", title: "t", body: "b", deeplinkPath: "/ecom" })).outcome,
     "failed",
   );
 
@@ -142,7 +142,7 @@ test("smtp and zalo seams skip missing recipients and record locally without sub
   );
 });
 
-test("missing credentials keep recording mode; env seams switch mode without SaaS SDK", () => {
+test("missing credentials keep recording mode; env seams switch mode without SaaS SDK", async () => {
   const recordingEmail = resolveEmailTransport({});
   const recordingZalo = resolveZaloTransport({});
   assert.equal(recordingEmail.mode, "recording");
@@ -155,13 +155,13 @@ test("missing credentials keep recording mode; env seams switch mode without Saa
   });
   assert.equal(smtp.mode, "smtp");
   assert.equal(
-    smtp.send({
+    (await smtp.send({
       notificationId: "n1",
       recipient: "a@example.com",
       title: "Hi",
       body: "Body",
       deeplinkPath: "/ecom",
-    }).outcome,
+    })).outcome,
     "sent",
   );
 
@@ -187,9 +187,9 @@ test("missing credentials keep recording mode; env seams switch mode without Saa
   assert.equal(resolveZaloTransport({ ZALO_OA_ACCESS_TOKEN: "token" }).mode, "zalo_oa");
 });
 
-test("admin integration status is non-secret and rejects non-admins", () =>
-  fixture(({ store }) => {
-    assert.throws(() => getIntegrationStatus(store, { id: "customer", role: "customer" }), /Admin access/);
+test("admin integration status is non-secret and rejects non-admins", async () =>
+  fixture(async ({ store }) => {
+    await assert.rejects(async () => getIntegrationStatus(store, { id: "customer", role: "customer" }), /Admin access/);
     const status = getIntegrationStatus(store, { id: "admin", role: "admin" }, {});
     assert.equal(status.emailTransport, "recording");
     assert.equal(status.zaloTransport, "recording");
@@ -210,16 +210,16 @@ test("admin integration status is non-secret and rejects non-admins", () =>
     assert.ok(!JSON.stringify(live).includes("secret-token"));
   }));
 
-test("foreign users cannot list delivery attempts", () =>
-  fixture(({ store }) => {
+test("foreign users cannot list delivery attempts", async () =>
+  fixture(async ({ store }) => {
     const customer = { id: "customer", role: "customer" };
-    updateUserNotificationPreferences(store, customer, { emailChannelEnabled: true });
-    const notification = createNotification(store, customer, {
+    await updateUserNotificationPreferences(store, customer, { emailChannelEnabled: true });
+    const notification = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "Paid",
       body: "Thanks",
       deeplinkPath: "/ecom/orders/9",
     });
-    assert.throws(() => listDeliveryAttempts(store, { id: "other", role: "customer" }, notification.id), /Notification access/);
+    await assert.rejects(async () => await listDeliveryAttempts(store, { id: "other", role: "customer" }, notification.id), /Notification access/);
   }));

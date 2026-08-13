@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
+import { requireStoredObjectKey } from "./storage-core.mjs";
 import {
   assertRoyaltyActivationGate,
   getRoyaltyActivationGate,
@@ -30,12 +31,8 @@ function resolveAuthorId(actor, requestedAuthorId) {
   return actor.id;
 }
 
-function assertOpaqueStorageKey(storageKey) {
-  const key = required(storageKey, "Storage key");
-  if (key.startsWith("http://") || key.startsWith("https://")) {
-    throw new Error("Storage key must not be a public URL.");
-  }
-  return key;
+async function assertOpaqueStorageKey(store, storageKey) {
+  return requireStoredObjectKey(store, required(storageKey, "Storage key"));
 }
 
 function publicRequest(row) {
@@ -60,9 +57,9 @@ function publicLog(row) {
   };
 }
 
-function appendStatusLog(store, { manuscriptRequestId, status, actorId, createdAt }) {
+async function appendStatusLog(store, { manuscriptRequestId, status, actorId, createdAt }) {
   const id = identifier();
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO author_manuscript_request_logs
         (id, manuscript_request_id, status, actor_id, created_at)
@@ -72,20 +69,20 @@ function appendStatusLog(store, { manuscriptRequestId, status, actorId, createdA
   return { id, manuscriptRequestId, status, actorId, createdAt };
 }
 
-export function createAuthorPortalStore({
+export async function createAuthorPortalStore({
   dbPath,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-018", ...fields })),
 } = {}) {
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
-export function createAuthorManuscriptRequest(store, actor, input = {}) {
+export async function createAuthorManuscriptRequest(store, actor, input = {}) {
   const authorId = resolveAuthorId(actor, input.authorId);
   const title = required(input.title, "Title");
   const notes = typeof input.notes === "string" ? input.notes.trim() : "";
-  const storageKey = assertOpaqueStorageKey(input.storageKey);
+  const storageKey = await assertOpaqueStorageKey(store, input.storageKey);
   const now = store.clock();
   const row = {
     id: identifier(),
@@ -97,14 +94,14 @@ export function createAuthorManuscriptRequest(store, actor, input = {}) {
     createdAt: now,
     updatedAt: now,
   };
-  store.db
+  await store.db
     .prepare(
       `INSERT INTO author_manuscript_requests
         (id, author_id, title, notes, storage_key, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(row.id, row.authorId, row.title, row.notes, row.storageKey, row.status, row.createdAt, row.updatedAt);
-  appendStatusLog(store, {
+  await appendStatusLog(store, {
     manuscriptRequestId: row.id,
     status: "submitted",
     actorId: actor.id,
@@ -118,23 +115,23 @@ export function createAuthorManuscriptRequest(store, actor, input = {}) {
   return publicRequest(row);
 }
 
-export function listAuthorManuscriptRequests(store, actor, input = {}) {
+export async function listAuthorManuscriptRequests(store, actor, input = {}) {
   const authorId = resolveAuthorId(actor, input.authorId);
-  return store.db
+  const rows = await store.db
     .prepare(
       `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
        FROM author_manuscript_requests
        WHERE author_id = ?
        ORDER BY updated_at DESC, id DESC`,
     )
-    .all(authorId)
-    .map(publicRequest);
+    .all(authorId);
+  return rows.map(publicRequest);
 }
 
-export function getAuthorManuscriptRequest(store, actor, input = {}) {
+export async function getAuthorManuscriptRequest(store, actor, input = {}) {
   const authorId = resolveAuthorId(actor, input.authorId);
   const requestId = required(input.requestId, "Request ID");
-  const existing = store.db
+  const existing = await store.db
     .prepare(
       `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
        FROM author_manuscript_requests WHERE id = ?`,
@@ -142,22 +139,21 @@ export function getAuthorManuscriptRequest(store, actor, input = {}) {
     .get(requestId);
   if (!existing) throw new Error("Manuscript request does not exist.");
   if (existing.authorId !== authorId) throw new Error("You cannot access another author's records.");
-  const logs = store.db
+  const logs = await store.db
     .prepare(
       `SELECT id, manuscript_request_id AS manuscriptRequestId, status, actor_id AS actorId, created_at AS createdAt
        FROM author_manuscript_request_logs
        WHERE manuscript_request_id = ?
        ORDER BY created_at ASC, id ASC`,
     )
-    .all(requestId)
-    .map(publicLog);
-  return { ...publicRequest(existing), logs };
+    .all(requestId);
+  return { ...publicRequest(existing), logs: logs.map(publicLog) };
 }
 
-export function withdrawAuthorManuscriptRequest(store, actor, input = {}) {
+export async function withdrawAuthorManuscriptRequest(store, actor, input = {}) {
   const authorId = resolveAuthorId(actor, input.authorId);
   const requestId = required(input.requestId, "Request ID");
-  const existing = store.db
+  const existing = await store.db
     .prepare(
       `SELECT id, author_id AS authorId, title, notes, status, created_at AS createdAt, updated_at AS updatedAt
        FROM author_manuscript_requests WHERE id = ?`,
@@ -167,10 +163,10 @@ export function withdrawAuthorManuscriptRequest(store, actor, input = {}) {
   if (existing.authorId !== authorId) throw new Error("You cannot access another author's records.");
   if (existing.status === "withdrawn") throw new Error("Manuscript request is already withdrawn.");
   const updatedAt = store.clock();
-  store.db
+  await store.db
     .prepare(`UPDATE author_manuscript_requests SET status = 'withdrawn', updated_at = ? WHERE id = ?`)
     .run(updatedAt, requestId);
-  appendStatusLog(store, {
+  await appendStatusLog(store, {
     manuscriptRequestId: requestId,
     status: "withdrawn",
     actorId: actor.id,
@@ -184,19 +180,19 @@ export function withdrawAuthorManuscriptRequest(store, actor, input = {}) {
   return publicRequest({ ...existing, status: "withdrawn", updatedAt });
 }
 
-export function getAuthorDashboard(store, actor, input = {}) {
+export async function getAuthorDashboard(store, actor, input = {}) {
   const authorId = resolveAuthorId(actor, input.authorId);
-  const gate = getRoyaltyActivationGate(store);
-  const submittedCount = store.db
+  const gate = await getRoyaltyActivationGate(store);
+  const submittedCount = (await store.db
     .prepare(
       `SELECT COUNT(*) AS count FROM author_manuscript_requests WHERE author_id = ? AND status = 'submitted'`,
     )
-    .get(authorId).count;
-  const withdrawnCount = store.db
+    .get(authorId)).count;
+  const withdrawnCount = (await store.db
     .prepare(
       `SELECT COUNT(*) AS count FROM author_manuscript_requests WHERE author_id = ? AND status = 'withdrawn'`,
     )
-    .get(authorId).count;
+    .get(authorId)).count;
   store.log("author_dashboard_read", {
     authorId,
     activationGateStatus: gate.status,
@@ -218,21 +214,21 @@ export function getAuthorDashboard(store, actor, input = {}) {
   };
 }
 
-export function computeAuthorEarnings(store, actor, input = {}) {
+export async function computeAuthorEarnings(store, actor, input = {}) {
   resolveAuthorId(actor, input.authorId);
-  assertRoyaltyActivationGate(store, "Author earnings computation");
+  await assertRoyaltyActivationGate(store, "Author earnings computation");
   throw new Error("Author earnings computation is not implemented without accepted decision-register calculation methods.");
 }
 
-export function allocateAuthorSales(store, actor, input = {}) {
+export async function allocateAuthorSales(store, actor, input = {}) {
   resolveAuthorId(actor, input.authorId);
-  assertRoyaltyActivationGate(store, "Author sales allocation");
+  await assertRoyaltyActivationGate(store, "Author sales allocation");
   throw new Error("Author sales allocation is not implemented without accepted decision-register allocation rules.");
 }
 
-export function createAuthorPayoutInstruction(store, actor, input = {}) {
+export async function createAuthorPayoutInstruction(store, actor, input = {}) {
   resolveAuthorId(actor, input.authorId);
-  assertRoyaltyActivationGate(store, "Author payout");
+  await assertRoyaltyActivationGate(store, "Author payout");
   throw new Error("Author payout instructions are not implemented without accepted payment authority.");
 }
 

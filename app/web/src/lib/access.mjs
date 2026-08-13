@@ -41,6 +41,14 @@ export function canAccessOwnedRecord(user, ownerId) {
   return Boolean(user && (normalizeRole(user.role) === "admin" || user.id === ownerId));
 }
 
+/** Vendor offers may be written by the vendor owner or an admin — never by a customer who happens to share an id. */
+export function canWriteVendorOffer(user, vendorId) {
+  if (!user?.id) return false;
+  const role = normalizeRole(user.role);
+  if (role === "admin") return true;
+  return role === "vendor" && user.id === vendorId;
+}
+
 export function portalForPath(pathname) {
   const segment = pathname.split("/").filter(Boolean)[0];
   return segment && Object.hasOwn(portalRoles, segment) ? segment : null;

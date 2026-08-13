@@ -1,6 +1,8 @@
 # Operations
 
-This package is the SachViet greenfield Next.js foundation. It includes local identity storage and session handling, but has no external identity provider, credentials, or business endpoints.
+This package is the SachViet greenfield Next.js application. Identity is custom `sv_session` (HMAC) plus register/verify/reset. Data is **Postgres** (Compose publishes `127.0.0.1:54329`; this cloud VM may use `127.0.0.1:5432`). There is no WordPress DNS cutover in this package.
+
+Commerce mutations can be frozen by deploying `COMMERCE_MUTATIONS_ENABLED=0` (unset allows writes so Production stays up until that deploy). Never `seed:local` against Supabase Production. Never set `sk_live_` or `PAYPAL_MODE=live`.
 
 ## Required checks
 

@@ -62,36 +62,36 @@ export function validateWordpressImportFixture(fixture) {
   return { users, orders };
 }
 
-function recordOutcome(db, runId, entityType, legacyId, outcome, reason, createdAt) {
-  db.prepare(
+async function recordOutcome(db, runId, entityType, legacyId, outcome, reason, createdAt) {
+  await db.prepare(
     `INSERT INTO wordpress_import_outcomes
       (id, run_id, entity_type, legacy_id, outcome, reason, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ).run(identifier(), runId, entityType, legacyId || null, outcome, reason || null, createdAt);
 }
 
-function importUser(authStore, user, mode, runId, counts, createdAt, pendingUsers) {
+async function importUser(authStore, user, mode, runId, counts, createdAt, pendingUsers) {
   const email = normalizeEmail(user.email);
   const legacyId = String(user.legacyWpUserId);
-  const existingLegacy = authStore.db
+  const existingLegacy = await authStore.db
     .prepare("SELECT id FROM users WHERE legacy_wp_user_id = ?")
     .get(legacyId);
   if (existingLegacy) {
     counts.skipped += 1;
-    recordOutcome(authStore.db, runId, "user", legacyId, "skipped_duplicate", "legacy_wp_user_id", createdAt);
+    await recordOutcome(authStore.db, runId, "user", legacyId, "skipped_duplicate", "legacy_wp_user_id", createdAt);
     pendingUsers.set(email, existingLegacy.id);
     return;
   }
-  const existingEmail = authStore.db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  const existingEmail = await authStore.db.prepare("SELECT id FROM users WHERE email = ?").get(email);
   if (existingEmail) {
     counts.rejected += 1;
-    recordOutcome(authStore.db, runId, "user", legacyId, "rejected", "email_exists", createdAt);
+    await recordOutcome(authStore.db, runId, "user", legacyId, "rejected", "email_exists", createdAt);
     return;
   }
   const userId = identifier();
   if (mode === "apply") {
     const role = user.role === "admin" || user.role === "customer" || user.role === "vendor" ? user.role : "customer";
-    authStore.db
+    await authStore.db
       .prepare(
         "INSERT INTO users (id, email, password_hash, role, created_at, legacy_wp_user_id) VALUES (?, ?, ?, ?, ?, ?)",
       )
@@ -99,26 +99,26 @@ function importUser(authStore, user, mode, runId, counts, createdAt, pendingUser
   }
   pendingUsers.set(email, userId);
   counts.accepted += 1;
-  recordOutcome(authStore.db, runId, "user", legacyId, "accepted", mode, createdAt);
+  await recordOutcome(authStore.db, runId, "user", legacyId, "accepted", mode, createdAt);
 }
 
-function importOrder(authStore, commerceStore, order, mode, runId, counts, createdAt, pendingUsers) {
+async function importOrder(authStore, commerceStore, order, mode, runId, counts, createdAt, pendingUsers) {
   const legacyId = String(order.legacyWpOrderId);
-  const existing = commerceStore.db
+  const existing = await commerceStore.db
     .prepare("SELECT id FROM orders WHERE legacy_wp_order_id = ?")
     .get(legacyId);
   if (existing) {
     counts.skipped += 1;
-    recordOutcome(authStore.db, runId, "order", legacyId, "skipped_duplicate", "legacy_wp_order_id", createdAt);
+    await recordOutcome(authStore.db, runId, "order", legacyId, "skipped_duplicate", "legacy_wp_order_id", createdAt);
     return;
   }
   const email = normalizeEmail(order.billingEmail);
   const totalUsd = normalizeMoney(order.totalUsd);
-  const persisted = email ? authStore.db.prepare("SELECT id FROM users WHERE email = ?").get(email) : null;
+  const persisted = email ? await authStore.db.prepare("SELECT id FROM users WHERE email = ?").get(email) : null;
   const userId = persisted?.id || pendingUsers.get(email);
   if (!userId || !totalUsd) {
     counts.unmatched += 1;
-    recordOutcome(
+    await recordOutcome(
       authStore.db,
       runId,
       "order",
@@ -131,9 +131,9 @@ function importOrder(authStore, commerceStore, order, mode, runId, counts, creat
   }
   if (mode === "apply") {
     const orderId = identifier();
-    beginImmediateWithRetry(commerceStore.db);
+    await beginImmediateWithRetry(commerceStore.db);
     try {
-      commerceStore.db
+      await commerceStore.db
         .prepare(
           `INSERT INTO orders
             (id, user_id, status, currency, subtotal_usd, created_at, updated_at, legacy_wp_order_id)
@@ -149,7 +149,7 @@ function importOrder(authStore, commerceStore, order, mode, runId, counts, creat
         const unitPrice = normalizeMoney(item.unitPriceUsd) || "0.0000";
         const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
         const itemLegacy = item.legacyWpOrderItemId ? String(item.legacyWpOrderItemId) : null;
-        insertItem.run(
+        await insertItem.run(
           identifier(),
           orderId,
           item.productId ? String(item.productId) : `legacy:product:${legacyId}`,
@@ -160,17 +160,17 @@ function importOrder(authStore, commerceStore, order, mode, runId, counts, creat
           itemLegacy,
         );
       }
-      commerceStore.db.exec("COMMIT");
+      await commerceStore.db.exec("COMMIT");
     } catch (error) {
-      commerceStore.db.exec("ROLLBACK");
+      await commerceStore.db.exec("ROLLBACK");
       throw error;
     }
   }
   counts.accepted += 1;
-  recordOutcome(authStore.db, runId, "order", legacyId, "accepted", mode, createdAt);
+  await recordOutcome(authStore.db, runId, "order", legacyId, "accepted", mode, createdAt);
 }
 
-export function importWordpressFixture(authStore, commerceStore, fixture, { mode = "dry_run", log = defaultLog } = {}) {
+export async function importWordpressFixture(authStore, commerceStore, fixture, { mode = "dry_run", log = defaultLog } = {}) {
   if (mode !== "dry_run" && mode !== "apply") throw new Error("Import mode must be dry_run or apply.");
   ensureWordpressImportSchema(authStore, commerceStore);
   const { users, orders } = validateWordpressImportFixture(fixture);
@@ -179,7 +179,7 @@ export function importWordpressFixture(authStore, commerceStore, fixture, { mode
   const counts = { accepted: 0, skipped: 0, unmatched: 0, rejected: 0 };
   const pendingUsers = new Map();
   log("wordpress_import_run_started", { result: "started", mode, run_id: runId });
-  authStore.db
+  await authStore.db
     .prepare(
       `INSERT INTO wordpress_import_runs
         (id, mode, accepted_count, skipped_count, unmatched_count, rejected_count, created_at)
@@ -187,10 +187,10 @@ export function importWordpressFixture(authStore, commerceStore, fixture, { mode
     )
     .run(runId, mode, createdAt);
 
-  for (const user of users) importUser(authStore, user, mode, runId, counts, createdAt, pendingUsers);
-  for (const order of orders) importOrder(authStore, commerceStore, order, mode, runId, counts, createdAt, pendingUsers);
+  for (const user of users) await importUser(authStore, user, mode, runId, counts, createdAt, pendingUsers);
+  for (const order of orders) await importOrder(authStore, commerceStore, order, mode, runId, counts, createdAt, pendingUsers);
 
-  authStore.db
+  await authStore.db
     .prepare(
       `UPDATE wordpress_import_runs
        SET accepted_count = ?, skipped_count = ?, unmatched_count = ?, rejected_count = ?
@@ -218,10 +218,10 @@ export function importWordpressFixture(authStore, commerceStore, fixture, { mode
   };
 }
 
-export function getWordpressImportStatus(authStore, actor) {
+export async function getWordpressImportStatus(authStore, actor) {
   requireAdmin(actor);
   ensureWordpressImportRunSchema(authStore);
-  const runs = authStore.db
+  const runs = await authStore.db
     .prepare(
       `SELECT id, mode, accepted_count AS acceptedCount, skipped_count AS skippedCount,
               unmatched_count AS unmatchedCount, rejected_count AS rejectedCount, created_at AS createdAt
@@ -239,13 +239,13 @@ export function getWordpressImportStatus(authStore, actor) {
   };
 }
 
-export function applyWordpressImportAsAdmin(authStore, commerceStore, actor, fixture, { mode = "apply", log = defaultLog } = {}) {
+export async function applyWordpressImportAsAdmin(authStore, commerceStore, actor, fixture, { mode = "apply", log = defaultLog } = {}) {
   requireAdmin(actor);
-  return importWordpressFixture(authStore, commerceStore, fixture, { mode, log });
+  return await importWordpressFixture(authStore, commerceStore, fixture, { mode, log });
 }
 
-export function listWordpressImportOutcomes(authStore, runId) {
-  return authStore.db
+export async function listWordpressImportOutcomes(authStore, runId) {
+  return await authStore.db
     .prepare(
       `SELECT id, run_id AS runId, entity_type AS entityType, legacy_id AS legacyId,
               outcome, reason, created_at AS createdAt

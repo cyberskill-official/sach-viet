@@ -56,7 +56,7 @@ function fixture({ withVerdict }) {
   return { root, base };
 }
 
-test("final acceptance transition fails closed without a new human verdict", () => {
+test("final acceptance transition fails closed without a new human verdict", async () => {
   const { root, base } = fixture({ withVerdict: false });
   try {
     const result = verifyHitlVerdicts({ root, base });
@@ -67,7 +67,7 @@ test("final acceptance transition fails closed without a new human verdict", () 
   }
 });
 
-test("matching newly added human verdict authorizes the final transition", () => {
+test("matching newly added human verdict authorizes the final transition", async () => {
   const { root, base } = fixture({ withVerdict: true });
   try {
     const result = verifyHitlVerdicts({ root, base });

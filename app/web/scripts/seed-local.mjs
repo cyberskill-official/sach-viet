@@ -40,11 +40,11 @@ export function writeSeedPasswordFile(password, filePath = DEFAULT_SEED_PASSWORD
   return destination;
 }
 
-export function runSeedLocal(environment = process.env, options = {}) {
+export async function runSeedLocal(environment = process.env, options = {}) {
   const { password, source, passwordFile } = resolveSeedPassword(environment, options);
   const databaseUrl = environment.DATABASE_URL;
   const dbPath = environment.DATABASE_PATH;
-  const summary = seedLocalData({ databaseUrl, dbPath, password, env: environment });
+  const summary = await seedLocalData({ databaseUrl, dbPath, password, env: environment });
 
   console.log(`Seeded ${summary.databaseUrl}`);
   console.log(`  bootstrap admin: ${summary.bootstrapAdmin}`);
@@ -63,5 +63,8 @@ export function runSeedLocal(environment = process.env, options = {}) {
 
 const invokedPath = process.argv[1];
 if (invokedPath && import.meta.url === pathToFileURL(resolve(invokedPath)).href) {
-  runSeedLocal();
+  runSeedLocal().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
 }

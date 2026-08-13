@@ -4,10 +4,10 @@ import { suggestCatalogQueries } from "@/lib/vietnamese-search-core.mjs";
 
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams.get("q") ?? "";
-  const store = createCatalogStore();
+  const store = await createCatalogStore();
   try {
-    return NextResponse.json({ suggestions: suggestCatalogQueries(store, { q }) });
+    return NextResponse.json({ suggestions: await suggestCatalogQueries(store, { q }) });
   } finally {
-    store.close();
+    await store.close();
   }
 }

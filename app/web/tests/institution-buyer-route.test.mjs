@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("institution buyer routes use signed sessions and domain operations", () => {
+test("institution buyer routes use signed sessions and domain operations", async () => {
   const budget = readFileSync(resolve(root, "src/app/api/institution/budget/route.ts"), "utf8");
   const purchaseOrder = readFileSync(resolve(root, "src/app/api/institution/orders/[id]/purchase-order/route.ts"), "utf8");
   const marcList = readFileSync(resolve(root, "src/app/api/institution/marc/route.ts"), "utf8");
@@ -20,7 +20,7 @@ test("institution buyer routes use signed sessions and domain operations", () =>
   assert.match(staffMarc, /registerInstitutionMarcRecord/);
 });
 
-test("existing institution blind-read handlers remain intact", () => {
+test("existing institution blind-read handlers remain intact", async () => {
   const quotes = readFileSync(resolve(root, "src/app/api/institution/quotes/route.ts"), "utf8");
   const quote = readFileSync(resolve(root, "src/app/api/institution/quotes/[id]/route.ts"), "utf8");
   const orders = readFileSync(resolve(root, "src/app/api/institution/orders/route.ts"), "utf8");

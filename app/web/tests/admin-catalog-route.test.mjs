@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("admin catalog routes use signed sessions and admin-catalog-core writers", () => {
+test("admin catalog routes use signed sessions and admin-catalog-core writers", async () => {
   const categories = readFileSync(resolve(root, "src/app/api/admin/catalog/categories/route.ts"), "utf8");
   const products = readFileSync(resolve(root, "src/app/api/admin/catalog/products/route.ts"), "utf8");
   const offers = readFileSync(resolve(root, "src/app/api/admin/catalog/offers/route.ts"), "utf8");

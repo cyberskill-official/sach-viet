@@ -5,21 +5,21 @@ import { join } from "node:path";
 import test from "node:test";
 import { resolveSeedPassword, writeSeedPasswordFile } from "../scripts/seed-local.mjs";
 
-test("seed refuses NODE_ENV=production", () => {
+test("seed refuses NODE_ENV=production", async () => {
   assert.throws(
     () => resolveSeedPassword({ NODE_ENV: "production", SEED_PASSWORD: "x" }),
     /NODE_ENV=production/,
   );
 });
 
-test("seed prefers SEED_PASSWORD and does not write a file", () => {
+test("seed prefers SEED_PASSWORD and does not write a file", async () => {
   const resolved = resolveSeedPassword({ NODE_ENV: "development", SEED_PASSWORD: "from-env-password" });
   assert.equal(resolved.source, "env");
   assert.equal(resolved.password, "from-env-password");
   assert.equal(resolved.passwordFile, null);
 });
 
-test("seed writes generated password to a 0600 local file when SEED_PASSWORD is unset", () => {
+test("seed writes generated password to a 0600 local file when SEED_PASSWORD is unset", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-seed-hygiene-"));
   const passwordFilePath = join(directory, ".seed-password");
   try {
@@ -42,7 +42,7 @@ test("seed writes generated password to a 0600 local file when SEED_PASSWORD is 
   }
 });
 
-test("writeSeedPasswordFile creates parent directories", () => {
+test("writeSeedPasswordFile creates parent directories", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-seed-nested-"));
   const nested = join(directory, "nested", ".seed-password");
   try {

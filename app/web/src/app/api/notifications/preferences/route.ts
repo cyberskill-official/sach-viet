@@ -6,9 +6,9 @@ import {
   updateUserNotificationPreferences,
 } from "@/lib/notification-core.mjs";
 
-function sessionFor(request: Request) {
-  return readSession(
-    getAuthStore(),
+async function sessionFor(request: Request) {
+  return await readSession(
+    await getAuthStore(),
     request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
     process.env.AUTH_SESSION_SECRET,
   );
@@ -16,13 +16,13 @@ function sessionFor(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createNotificationStore();
+    const store = await createNotificationStore();
     try {
-      return NextResponse.json(getUserNotificationPreferences(store, session.user));
+      return NextResponse.json(await getUserNotificationPreferences(store, session.user));
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Preferences are unavailable." }, { status: 403 });
@@ -31,13 +31,13 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createNotificationStore();
+    const store = await createNotificationStore();
     try {
-      return NextResponse.json(updateUserNotificationPreferences(store, session.user, await request.json()));
+      return NextResponse.json(await updateUserNotificationPreferences(store, session.user, await request.json()));
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Preference update failed." }, { status: 400 });

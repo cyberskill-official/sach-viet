@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("publisher routes use signed sessions and domain operations", () => {
+test("publisher routes use signed sessions and domain operations", async () => {
   const dashboard = readFileSync(resolve(root, "src/app/api/publisher/dashboard/route.ts"), "utf8");
   const requests = readFileSync(resolve(root, "src/app/api/publisher/publishing-requests/route.ts"), "utf8");
   const withdraw = readFileSync(
@@ -22,7 +22,7 @@ test("publisher routes use signed sessions and domain operations", () => {
   assert.match(marc, /listPublisherMarcRecords/);
 });
 
-test("publisher core encodes activation gate and forbids invented settlement math", () => {
+test("publisher core encodes activation gate and forbids invented settlement math", async () => {
   const core = readFileSync(resolve(root, "src/lib/publisher-portal-core.mjs"), "utf8");
   assert.match(core, /assertRoyaltyActivationGate/);
   assert.match(core, /policyPending/);

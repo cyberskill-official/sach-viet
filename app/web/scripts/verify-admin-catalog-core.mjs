@@ -26,7 +26,7 @@ for (const required of [
   if (!core.includes(required)) throw new Error(`Admin catalog core is missing ${required}.`);
 }
 
-if (!catalog.includes("export function listCategories")) throw new Error("catalog-core must export listCategories.");
+if (!catalog.includes("export async function listCategories")) throw new Error("catalog-core must export listCategories.");
 
 for (const source of routes) {
   if (!source.includes("readSession")) throw new Error("Admin catalog routes must use readSession.");

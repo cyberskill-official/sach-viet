@@ -18,31 +18,31 @@ import {
 
 const SECRET = "test-ai-settings-secret-32chars!!";
 
-function fixture(run, { settingsSecret = SECRET } = {}) {
+async function fixture(run, { settingsSecret = SECRET } = {}) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-ai-"));
   const dbPath = join(directory, `ai-${randomUUID()}.sqlite`);
   const events = [];
-  const store = createAiSettingsStore({
+  const store = await createAiSettingsStore({
     dbPath,
     clock: () => 9_000,
     settingsSecret,
     log: (event, fields = {}) => events.push({ event, ...fields }),
   });
   try {
-    return run({ store, events, directory });
+    return await run({ store, events, directory });
   } finally {
-    store.close();
+    await store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 }
 
-test("AI_SETTINGS_SECRET fails closed when short or unset", () => {
+test("AI_SETTINGS_SECRET fails closed when short or unset", async () => {
   assert.throws(() => requireAiSettingsSecret(""), /AI_SETTINGS_SECRET is required/);
   assert.throws(() => requireAiSettingsSecret("short"), /AI_SETTINGS_SECRET is required/);
   assert.equal(requireAiSettingsSecret(SECRET), SECRET);
 });
 
-test("encrypt/decrypt round-trips API keys", () => {
+test("encrypt/decrypt round-trips API keys", async () => {
   const plaintext = `sk-test-${randomBytes(8).toString("hex")}`;
   const cipher = encryptApiKey(plaintext, SECRET);
   assert.notEqual(cipher, plaintext);
@@ -50,21 +50,21 @@ test("encrypt/decrypt round-trips API keys", () => {
   assert.throws(() => decryptApiKey(cipher, `${SECRET}x`), /Unsupported state|unable to authenticate|bad decrypt|auth/i);
 });
 
-test("getAiSettings defaults and never returns raw api key", () =>
-  fixture(({ store }) => {
+test("getAiSettings defaults and never returns raw api key", async () =>
+  fixture(async ({ store }) => {
     const admin = { id: "admin-1", role: "admin" };
-    const settings = getAiSettings(store, admin);
+    const settings = await getAiSettings(store, admin);
     assert.equal(settings.apiKeyConfigured, false);
     assert.equal(settings.encryptionReady, true);
     assert.ok(settings.baseUrl.includes("openrouter"));
     assert.ok(!("apiKey" in settings));
-    assert.throws(() => getAiSettings(store, { id: "c1", role: "customer" }), /Administrator/);
+    await assert.rejects(async () => await getAiSettings(store, { id: "c1", role: "customer" }), /Administrator/);
   }));
 
-test("updateAiSettings stores encrypted key and masks last4", () =>
-  fixture(({ store, events }) => {
+test("updateAiSettings stores encrypted key and masks last4", async () =>
+  fixture(async ({ store, events }) => {
     const admin = { id: "admin-1", role: "admin" };
-    const updated = updateAiSettings(store, admin, {
+    const updated = await updateAiSettings(store, admin, {
       baseUrl: "https://api.groq.com/openai/v1",
       model: "llama-3.1-8b-instant",
       apiKey: "sk-live-abcdef12",
@@ -72,27 +72,27 @@ test("updateAiSettings stores encrypted key and masks last4", () =>
     assert.equal(updated.apiKeyConfigured, true);
     assert.equal(updated.apiKeyLast4, "••••ef12");
     assert.equal(updated.baseUrl, "https://api.groq.com/openai/v1");
-    const row = store.db.prepare("SELECT api_key_ciphertext AS c FROM ai_settings WHERE id = 'default'").get();
+    const row = await store.db.prepare("SELECT api_key_ciphertext AS c FROM ai_settings WHERE id = 'default'").get();
     assert.ok(row.c);
     assert.ok(!String(row.c).includes("sk-live"));
     assert.ok(events.some((e) => e.event === "ai_settings_updated"));
 
-    const kept = updateAiSettings(store, admin, { model: "llama-3.1-8b-instant" });
+    const kept = await updateAiSettings(store, admin, { model: "llama-3.1-8b-instant" });
     assert.equal(kept.apiKeyConfigured, true);
     assert.equal(kept.apiKeyLast4, "••••ef12");
   }));
 
-test("resolveAiChatConfig and chat fail closed without key or secret", () =>
-  fixture(({ store }) => {
+test("resolveAiChatConfig and chat fail closed without key or secret", async () =>
+  fixture(async ({ store }) => {
     const admin = { id: "admin-1", role: "admin" };
-    assert.throws(() => resolveAiChatConfig(store, admin), /API key is not configured/);
+    await assert.rejects(async () => await resolveAiChatConfig(store, admin), /API key is not configured/);
   }));
 
-test("resolveAiChatConfig fails closed when secret unset on store", () =>
+test("resolveAiChatConfig fails closed when secret unset on store", async () =>
   fixture(
-    ({ store }) => {
+    async ({ store }) => {
       const admin = { id: "admin-1", role: "admin" };
-      assert.throws(() => resolveAiChatConfig(store, admin), /AI_SETTINGS_SECRET is required/);
+      await assert.rejects(async () => await resolveAiChatConfig(store, admin), /AI_SETTINGS_SECRET is required/);
     },
     { settingsSecret: "" },
   ));
@@ -149,7 +149,7 @@ test("createChatCompletion surfaces provider errors", async () => {
 test("adminAiChat loads BYOK config and returns mocked reply", async () =>
   fixture(async ({ store, events }) => {
     const admin = { id: "admin-1", role: "admin" };
-    updateAiSettings(store, admin, {
+    await updateAiSettings(store, admin, {
       baseUrl: "https://api.groq.com/openai/v1",
       model: "llama-3.1-8b-instant",
       apiKey: "gsk_test_key",
@@ -171,12 +171,11 @@ test("adminAiChat loads BYOK config and returns mocked reply", async () =>
     assert.ok(events.some((e) => e.event === "ai_chat_completed"));
   }));
 
-test("updateAiSettings requires secret when setting a key", () =>
+test("updateAiSettings requires secret when setting a key", async () =>
   fixture(
-    ({ store }) => {
+    async ({ store }) => {
       const admin = { id: "admin-1", role: "admin" };
-      assert.throws(
-        () => updateAiSettings(store, admin, { apiKey: "sk-x", baseUrl: "https://x", model: "m" }),
+      await assert.rejects(async () => await updateAiSettings(store, admin, { apiKey: "sk-x", baseUrl: "https://openrouter.ai/api/v1", model: "m" }),
         /AI_SETTINGS_SECRET is required/,
       );
     },

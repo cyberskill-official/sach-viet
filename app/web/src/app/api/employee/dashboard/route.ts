@@ -5,13 +5,13 @@ import { createEmployeeRetailStore, getEmployeeDashboard } from "@/lib/employee-
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createEmployeeRetailStore();
+    const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ dashboard: getEmployeeDashboard(store, session.user) });
+      return NextResponse.json({ dashboard: await getEmployeeDashboard(store, session.user) });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Employee dashboard is unavailable." }, { status: 403 });

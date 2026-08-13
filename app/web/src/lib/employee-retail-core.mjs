@@ -24,25 +24,25 @@ function homeConfigActor(user) {
   employeeActor(user);
 }
 
-function countRows(db, table, whereSql = "", params = []) {
-  if (!tableExists(db, table)) return 0;
-  const row = db.prepare(`SELECT COUNT(*) AS count FROM ${table}${whereSql ? ` WHERE ${whereSql}` : ""}`).get(...params);
+async function countRows(db, table, whereSql = "", params = []) {
+  if (!await tableExists(db, table)) return 0;
+  const row = await db.prepare(`SELECT COUNT(*) AS count FROM ${table}${whereSql ? ` WHERE ${whereSql}` : ""}`).get(...params);
   return Number(row?.count || 0);
 }
 
-export function createEmployeeRetailStore({
+export async function createEmployeeRetailStore({
   dbPath,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-009", ...fields })),
 } = {}) {
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   return { db, clock, log, close: () => db.close() };
 }
 
-export function getEmployeeDashboard(store, actor) {
+export async function getEmployeeDashboard(store, actor) {
   employeeActor(actor);
-  const pendingApplications = tableExists(store.db, "vendor_applications")
-    ? store.db.prepare(`
+  const pendingApplications = await tableExists(store.db, "vendor_applications")
+    ? await store.db.prepare(`
         SELECT id, user_id AS userId, status, created_at AS createdAt, updated_at AS updatedAt
         FROM vendor_applications
         WHERE status = 'pending'
@@ -50,26 +50,26 @@ export function getEmployeeDashboard(store, actor) {
       `).all()
     : [];
   return {
-    orderCount: countRows(store.db, "orders"),
-    paidOrderCount: countRows(store.db, "orders", "status = ?", ["paid"]),
-    openTicketCount: countRows(store.db, "support_tickets", "status = ?", ["open"]),
-    openGoodsRequestCount: countRows(store.db, "goods_requests", "status = ?", ["open"]),
+    orderCount: await countRows(store.db, "orders"),
+    paidOrderCount: await countRows(store.db, "orders", "status = ?", ["paid"]),
+    openTicketCount: await countRows(store.db, "support_tickets", "status = ?", ["open"]),
+    openGoodsRequestCount: await countRows(store.db, "goods_requests", "status = ?", ["open"]),
     pendingVendorApplicationCount: pendingApplications.length,
     approvalQueue: pendingApplications,
   };
 }
 
-export function listHomeSections(store, actor) {
+export async function listHomeSections(store, actor) {
   homeConfigActor(actor);
-  return store.db.prepare(`
+  return (await store.db.prepare(`
     SELECT id, section_key AS sectionKey, title, body, sort_order AS sortOrder,
            is_enabled AS isEnabled, updated_by AS updatedBy, created_at AS createdAt, updated_at AS updatedAt
     FROM home_sections
     ORDER BY sort_order ASC, section_key ASC
-  `).all().map((row) => ({ ...row, isEnabled: row.isEnabled === 1 }));
+  `).all()).map((row) => ({ ...row, isEnabled: row.isEnabled === 1 }));
 }
 
-export function upsertHomeSection(store, actor, input) {
+export async function upsertHomeSection(store, actor, input) {
   homeConfigActor(actor);
   const sectionKey = required(input?.sectionKey, "Section key");
   if (!/^[a-z][a-z0-9_]{1,63}$/.test(sectionKey)) throw new Error("Section key must be a lowercase snake_case identifier.");
@@ -78,10 +78,10 @@ export function upsertHomeSection(store, actor, input) {
   if (body.length > 4000) throw new Error("Section body is too long.");
   const sortOrder = Number.isInteger(input?.sortOrder) ? input.sortOrder : 0;
   const isEnabled = input?.isEnabled === false ? 0 : 1;
-  const existing = store.db.prepare("SELECT id, created_at FROM home_sections WHERE section_key = ?").get(sectionKey);
+  const existing = await store.db.prepare("SELECT id, created_at FROM home_sections WHERE section_key = ?").get(sectionKey);
   const timestamp = store.clock();
   if (existing) {
-    store.db.prepare(`
+    await store.db.prepare(`
       UPDATE home_sections
       SET title = ?, body = ?, sort_order = ?, is_enabled = ?, updated_by = ?, updated_at = ?
       WHERE id = ?
@@ -110,7 +110,7 @@ export function upsertHomeSection(store, actor, input) {
     createdAt: timestamp,
     updatedAt: timestamp,
   };
-  store.db.prepare(`
+  await store.db.prepare(`
     INSERT INTO home_sections (id, section_key, title, body, sort_order, is_enabled, updated_by, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(section.id, section.sectionKey, section.title, section.body, section.sortOrder, isEnabled, section.updatedBy, section.createdAt, section.updatedAt);
@@ -118,10 +118,10 @@ export function upsertHomeSection(store, actor, input) {
   return section;
 }
 
-export function listRetailOrders(store, actor) {
+export async function listRetailOrders(store, actor) {
   retailActor(actor);
-  if (!tableExists(store.db, "orders")) return [];
-  return store.db.prepare(`
+  if (!await tableExists(store.db, "orders")) return [];
+  return await store.db.prepare(`
     SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt
     FROM orders
     ORDER BY created_at DESC, id DESC

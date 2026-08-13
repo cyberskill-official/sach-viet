@@ -1,95 +1,21 @@
 /**
  * Postgres data access for SachViet.
  *
- * Exposes a DatabaseSync-compatible sync surface (prepare/get/all/run/exec)
- * backed by `pg` via a synckit worker, so existing store factories stay sync.
+ * In-process async `pg` Pool for local, CI, Docker, and Vercel. Transactions use a
+ * checked-out client so BEGIN/COMMIT/ROLLBACK are real (not spawnSync no-ops).
  */
-import { spawnSync } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { createSyncFn } from "synckit";
+import pg from "pg";
 import { MIGRATIONS } from "../../migrations/registry.mjs";
-import { applyPendingMigrationsSync } from "./migrate.mjs";
+import { applyPendingMigrations } from "./migrate.mjs";
 
-/**
- * Resolve the synckit worker without `new URL(..., import.meta.url)`.
- * Turbopack rewrites that pattern into a media asset URL and breaks
- * `createSyncFn` / `pathToFileURL` during `next build` page collection.
- * Prefer cwd-relative paths (Docker + local). On Vercel file tracing, also try
- * the module directory via `fileURLToPath(import.meta.url)` (not `new URL`).
- */
-function resolveDbWorkerPath() {
-  const besideModule = join(dirname(fileURLToPath(import.meta.url)), "db-worker.mjs");
-  const candidates = [
-    join(process.cwd(), "src/lib/db-worker.mjs"),
-    join(process.cwd(), "db-worker.mjs"),
-    besideModule,
-    join(process.cwd(), ".next/server/src/lib/db-worker.mjs"),
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(
-    `db-worker.mjs not found (cwd=${process.cwd()}; tried ${candidates.join(", ")})`,
-  );
-}
+const { Pool, types } = pg;
 
-/** Lazy init — top-level createSyncFn can hang cold-start on some serverless hosts. */
-let callWorker;
+// BIGINT / COUNT(*) come back as strings by default; app code expects numbers.
+types.setTypeParser(types.builtins.INT8, (value) => Number(value));
 
-function getCallWorker() {
-  if (!callWorker) {
-    callWorker = createSyncFn(resolveDbWorkerPath());
-  }
-  return callWorker;
-}
-
-function resolveDbRpcPath() {
-  const besideModule = join(dirname(fileURLToPath(import.meta.url)), "db-rpc-oneshot.mjs");
-  const candidates = [
-    join(process.cwd(), "src/lib/db-rpc-oneshot.mjs"),
-    join(process.cwd(), "db-rpc-oneshot.mjs"),
-    besideModule,
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(
-    `db-rpc-oneshot.mjs not found (cwd=${process.cwd()}; tried ${candidates.join(", ")})`,
-  );
-}
-
-/**
- * Vercel serverless: worker_threads / synckit hang. Use one-shot spawnSync RPC instead.
- * @param {object} message
- */
-function callViaSpawnSync(message) {
-  const rpc = resolveDbRpcPath();
-  const result = spawnSync(process.execPath, [rpc], {
-    input: JSON.stringify(message),
-    encoding: "utf8",
-    timeout: 20_000,
-    env: process.env,
-    maxBuffer: 10 * 1024 * 1024,
-  });
-  if (result.error) throw result.error;
-  const stdout = (result.stdout || "").trim();
-  let parsed;
-  try {
-    parsed = stdout ? JSON.parse(stdout) : null;
-  } catch {
-    throw new Error(
-      `db-rpc invalid JSON (status=${result.status}): ${(result.stderr || stdout).slice(0, 400)}`,
-    );
-  }
-  if (parsed?.__error) throw new Error(parsed.__error);
-  if (result.status !== 0) {
-    throw new Error((result.stderr || stdout || `db-rpc exited ${result.status}`).slice(0, 400));
-  }
-  return parsed?.__result;
-}
+/** @type {Map<string, import("pg").Pool>} */
+const sharedPools = new Map();
 
 /** Default local Compose Postgres (see app/docker-compose.yml). */
 export const DEFAULT_DATABASE_URL = "postgres://sachviet:sachviet@127.0.0.1:54329/sachviet";
@@ -119,14 +45,107 @@ function newSessionId() {
   return randomBytes(12).toString("hex");
 }
 
-function call(message) {
-  try {
-    if (process.env.VERCEL) return callViaSpawnSync(message);
-    return getCallWorker()(message);
-  } catch (error) {
-    if (error instanceof Error) throw error;
-    throw new Error(typeof error === "string" ? error : "Database worker failed.");
+function quoteIdent(ident) {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(ident)) {
+    throw new Error(`Invalid SQL identifier: ${ident}`);
   }
+  return `"${ident}"`;
+}
+
+export function isLocalDatabaseHost(databaseUrl) {
+  try {
+    const { hostname } = new URL(databaseUrl);
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "db" ||
+      hostname === "::1"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * TLS policy: loopback/Compose have no TLS. Remote hosts verify certificates
+ * unless `PGSSL_REJECT_UNAUTHORIZED=0` (documented override for poolers whose
+ * chain the runtime trust store rejects).
+ * @param {string} databaseUrl
+ */
+export function sslOptionsForDatabaseUrl(databaseUrl) {
+  if (isLocalDatabaseHost(databaseUrl)) return undefined;
+  const rejectUnauthorized = process.env.PGSSL_REJECT_UNAUTHORIZED !== "0";
+  return { rejectUnauthorized };
+}
+
+function poolOptions(databaseUrl) {
+  const onVercel = Boolean(process.env.VERCEL);
+  const ssl = sslOptionsForDatabaseUrl(databaseUrl);
+  return {
+    connectionString: databaseUrl,
+    max: onVercel ? 1 : 40,
+    connectionTimeoutMillis: 8_000,
+    idleTimeoutMillis: onVercel ? 5_000 : 30_000,
+    ...(ssl ? { ssl } : {}),
+  };
+}
+
+export function getSharedPool(databaseUrl) {
+  const url = resolveDatabaseUrl(databaseUrl);
+  let pool = sharedPools.get(url);
+  if (!pool) {
+    pool = new Pool(poolOptions(url));
+    sharedPools.set(url, pool);
+  }
+  return pool;
+}
+
+function convertPlaceholders(sql) {
+  let index = 0;
+  return sql.replace(/\?/g, () => {
+    index += 1;
+    return `$${index}`;
+  });
+}
+
+/**
+ * Postgres folds unquoted identifiers to lowercase. Quote camelCase AS aliases
+ * so row keys match the SQLite-era JavaScript property names.
+ */
+function quoteCamelCaseAliases(sql) {
+  return sql.replace(/\bAS\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/gi, (match, alias) => {
+    if (alias !== alias.toLowerCase() && alias !== alias.toUpperCase()) {
+      return `AS "${alias}"`;
+    }
+    return match;
+  });
+}
+
+export function prepareSql(sql) {
+  return convertPlaceholders(quoteCamelCaseAliases(sql));
+}
+
+function splitStatements(sql) {
+  return sql
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function isBegin(sql) {
+  return /^(BEGIN)(\s+IMMEDIATE)?$/i.test(sql.trim());
+}
+
+function isCommit(sql) {
+  return /^COMMIT$/i.test(sql.trim());
+}
+
+function isRollback(sql) {
+  return /^ROLLBACK$/i.test(sql.trim());
+}
+
+function isSerializationError(error) {
+  return error && (error.code === "40001" || error.code === "40P01");
 }
 
 export function isSerializationConflictError(error) {
@@ -135,7 +154,8 @@ export function isSerializationConflictError(error) {
     (error.message.includes("could not serialize") ||
       error.message.includes("deadlock detected") ||
       error.message.includes("40001") ||
-      error.message.includes("40P01"))
+      error.message.includes("40P01") ||
+      isSerializationError(error))
   );
 }
 
@@ -150,60 +170,218 @@ export function isUniqueViolationError(error) {
     error instanceof Error &&
     (error.message.includes("UNIQUE constraint failed") ||
       error.message.includes("duplicate key value violates unique constraint") ||
-      error.message.includes("23505"))
+      error.message.includes("23505") ||
+      error.code === "23505")
   );
 }
 
+function wrapError(error) {
+  if (error instanceof Error) {
+    if (error.code && !error.message.includes(String(error.code))) {
+      error.message = `${error.message} (${error.code})`;
+    }
+    return error;
+  }
+  return new Error(typeof error === "string" ? error : "Database query failed.");
+}
+
 /**
- * Sync Postgres handle with a node:sqlite-like API.
+ * Async Postgres handle with a node:sqlite-like API (prepare/get/all/run/exec).
+ * Callers must await get/all/run/exec/close.
  */
 export class PgDatabase {
   /**
-   * @param {string} id
-   * @param {string} [databaseUrl]
-   * @param {string | null} [schema]
+   * @param {{ pool: import("pg").Pool, databaseUrl: string, schema?: string | null, id?: string }} options
    */
-  constructor(id, databaseUrl = "", schema = null) {
+  constructor({ pool, databaseUrl, schema = null, id = newSessionId() }) {
     this.id = id;
+    this.pool = pool;
     this.databaseUrl = databaseUrl;
     this.schema = schema;
+    /** @type {import("pg").PoolClient | null} */
+    this.client = null;
+    this.closed = false;
+    /** @type {number | null} */
+    this._writesRemainingBeforeFailure = null;
+  }
+
+  /**
+   * Test hook: allow `count` successful write queries, then throw on the next write.
+   * Used to prove ROLLBACK leaves zero partial commits.
+   * @param {number} count
+   */
+  injectFailureAfterWrites(count) {
+    this._writesRemainingBeforeFailure = count;
+  }
+
+  clearFailureInjection() {
+    this._writesRemainingBeforeFailure = null;
+  }
+
+  async _ensureSearchPath(executor) {
+    if (!this.schema) return;
+    await executor.query(`SET search_path TO ${quoteIdent(this.schema)}, public`);
+  }
+
+  async _executor() {
+    if (this.closed) throw new Error("Database session is closed.");
+    if (this.client) return this.client;
+    return this.pool;
+  }
+
+  _maybeInjectWriteFailure(sql) {
+    if (this._writesRemainingBeforeFailure == null) return;
+    const trimmed = sql.trim();
+    if (isBegin(trimmed) || isCommit(trimmed) || isRollback(trimmed)) return;
+    const isWrite = /^(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\b/i.test(trimmed);
+    if (!isWrite) return;
+    if (this._writesRemainingBeforeFailure <= 0) {
+      throw new Error("injected adapter failure");
+    }
+    this._writesRemainingBeforeFailure -= 1;
+  }
+
+  /**
+   * @param {string} sql
+   * @param {unknown[]} [params]
+   * @param {"get" | "all" | "run"} [mode]
+   * @returns {Promise<any>}
+   */
+  async query(sql, params = [], mode = "all") {
+    this._maybeInjectWriteFailure(sql);
+    const text = prepareSql(sql);
+    try {
+      if (this.client) {
+        await this._ensureSearchPath(this.client);
+        const result = await this.client.query(text, params);
+        if (mode === "get") return result.rows[0];
+        if (mode === "all") return result.rows;
+        return { changes: result.rowCount ?? 0 };
+      }
+      if (this.schema) {
+        const borrowed = await this.pool.connect();
+        try {
+          await this._ensureSearchPath(borrowed);
+          const result = await borrowed.query(text, params);
+          if (mode === "get") return result.rows[0];
+          if (mode === "all") return result.rows;
+          return { changes: result.rowCount ?? 0 };
+        } finally {
+          borrowed.release();
+        }
+      }
+      const result = await this.pool.query(text, params);
+      if (mode === "get") return result.rows[0];
+      if (mode === "all") return result.rows;
+      return { changes: result.rowCount ?? 0 };
+    } catch (error) {
+      throw wrapError(error);
+    }
+  }
+
+  async begin() {
+    if (this.closed) throw new Error("Database session is closed.");
+    if (!this.client) {
+      this.client = await this.pool.connect();
+      try {
+        await this._ensureSearchPath(this.client);
+      } catch (error) {
+        this.client.release();
+        this.client = null;
+        throw wrapError(error);
+      }
+    } else {
+      await this._ensureSearchPath(this.client);
+    }
+    await this.client.query("BEGIN");
+  }
+
+  async commit() {
+    if (!this.client) throw new Error("COMMIT without an open transaction.");
+    await this.client.query("COMMIT");
+    if (!this.schema) {
+      this.client.release();
+      this.client = null;
+    }
+  }
+
+  async rollback() {
+    if (!this.client) throw new Error("ROLLBACK without an open transaction.");
+    await this.client.query("ROLLBACK");
+    if (!this.schema) {
+      this.client.release();
+      this.client = null;
+    }
   }
 
   /**
    * @param {string} sql
    */
-  exec(sql) {
-    call({
-      op: "exec",
-      id: this.id,
-      databaseUrl: this.databaseUrl,
-      schema: this.schema,
-      sql,
-    });
+  async exec(sql) {
+    const statements = splitStatements(sql);
+    for (const statement of statements) {
+      if (isBegin(statement)) {
+        await this.begin();
+        continue;
+      }
+      if (isCommit(statement)) {
+        await this.commit();
+        continue;
+      }
+      if (isRollback(statement)) {
+        await this.rollback();
+        continue;
+      }
+      this._maybeInjectWriteFailure(statement);
+      try {
+        if (this.client) {
+          await this._ensureSearchPath(this.client);
+          await this.client.query(statement);
+        } else if (this.schema) {
+          const borrowed = await this.pool.connect();
+          try {
+            await this._ensureSearchPath(borrowed);
+            await borrowed.query(statement);
+          } finally {
+            borrowed.release();
+          }
+        } else {
+          await this.pool.query(statement);
+        }
+      } catch (error) {
+        throw wrapError(error);
+      }
+    }
   }
 
   /**
    * @param {string} sql
+   * @returns {{
+   *   get: (...params: unknown[]) => Promise<any>,
+   *   all: (...params: unknown[]) => Promise<any[]>,
+   *   run: (...params: unknown[]) => Promise<{ changes: number }>,
+   * }}
    */
   prepare(sql) {
-    const id = this.id;
-    const databaseUrl = this.databaseUrl;
-    const schema = this.schema;
     return {
-      get(...params) {
-        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "get" });
-      },
-      all(...params) {
-        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "all" });
-      },
-      run(...params) {
-        return call({ op: "query", id, databaseUrl, schema, sql, params, mode: "run" });
-      },
+      get: (...params) => this.query(sql, params, "get"),
+      all: (...params) => this.query(sql, params, "all"),
+      run: (...params) => this.query(sql, params, "run"),
     };
   }
 
-  close() {
-    call({ op: "close", id: this.id, databaseUrl: this.databaseUrl, schema: this.schema });
+  async close() {
+    if (this.closed) return;
+    this.closed = true;
+    if (this.client) {
+      try {
+        await this.client.query("ROLLBACK");
+      } catch {
+        // ignore — no open transaction
+      }
+      this.client.release();
+      this.client = null;
+    }
   }
 }
 
@@ -211,12 +389,16 @@ export class PgDatabase {
  * Opens a Postgres session. Prefer `DATABASE_URL`. Optional `dbPath` selects a
  * disposable schema (test compatibility with former SQLite temp files).
  *
+ * Runtime DDL: never on Vercel. Test schemas still apply migrations locally.
+ * Docker/local public schema auto-migrates unless `skipMigrations` is set;
+ * `npm run migrate` is the operator path for Production (direct URL).
+ *
  * @param {string | undefined} databaseUrlOrDbPath When it looks like a path
  *   (contains `/` or ends with `.sqlite`) it is treated as a legacy dbPath.
  * @param {{ databaseUrl?: string, schema?: string | null, skipMigrations?: boolean, dbPath?: string }} [options]
- * @returns {PgDatabase}
+ * @returns {Promise<PgDatabase>}
  */
-export function openDatabase(databaseUrlOrDbPath, options = {}) {
+export async function openDatabase(databaseUrlOrDbPath, options = {}) {
   const {
     databaseUrl: explicitUrl,
     schema: explicitSchema,
@@ -238,42 +420,61 @@ export function openDatabase(databaseUrlOrDbPath, options = {}) {
   const schema =
     explicitSchema === undefined ? (dbPath ? schemaFromDbPath(dbPath) : null) : explicitSchema;
   const databaseUrl = resolveDatabaseUrl(url);
-  const id = newSessionId();
+  const pool = getSharedPool(databaseUrl);
+  const db = new PgDatabase({ pool, databaseUrl, schema });
 
-  call({ op: "open", id, databaseUrl, schema });
-  const db = new PgDatabase(id, databaseUrl, schema);
-  if (!skipMigrations) applyPendingMigrationsSync(db, MIGRATIONS);
+  if (schema) {
+    const client = await pool.connect();
+    try {
+      await client.query(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(schema)}`);
+      await client.query(`SET search_path TO ${quoteIdent(schema)}, public`);
+      db.client = client;
+    } catch (error) {
+      client.release();
+      throw wrapError(error);
+    }
+  }
+
+  const onVercel = Boolean(process.env.VERCEL);
+  const shouldMigrate = !skipMigrations && (!onVercel || Boolean(schema));
+  if (shouldMigrate) {
+    await applyPendingMigrations(db, MIGRATIONS);
+  }
   return db;
 }
 
 /** @deprecated Use openDatabase. Kept so transitional imports keep working. */
-export function openSqliteDatabase(dbPath, options = {}) {
+export async function openSqliteDatabase(dbPath, options = {}) {
   return openDatabase(dbPath, options);
 }
 
 /** Starts a write transaction, retrying on serialization/deadlock conflicts. */
-export function beginImmediateWithRetry(db, { retries = 3, backoffMs = 50 } = {}) {
-  for (let attempt = 0; ; attempt += 1) {
+export async function beginImmediateWithRetry(db, { retries = 3, backoffMs = 50 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
     try {
-      call({
-        op: "begin",
-        id: db.id,
-        databaseUrl: db.databaseUrl,
-        schema: db.schema,
-        retries: 0,
-        backoffMs,
-      });
+      await db.begin();
       return;
     } catch (error) {
+      lastError = error;
+      if (db.client && !db.schema) {
+        try {
+          db.client.release();
+        } catch {
+          // ignore
+        }
+        db.client = null;
+      }
       if (!isSerializationConflictError(error) || attempt >= retries) throw error;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, backoffMs * (attempt + 1));
+      await new Promise((resolve) => setTimeout(resolve, backoffMs * (attempt + 1)));
     }
   }
+  throw lastError;
 }
 
 /** True when a table is visible on the session search_path. */
-export function tableExists(db, name) {
-  const row = db
+export async function tableExists(db, name) {
+  const row = await db
     .prepare(
       `SELECT EXISTS (
          SELECT 1 FROM information_schema.tables
@@ -286,8 +487,8 @@ export function tableExists(db, name) {
 }
 
 /** Column names for a table on the session search_path (PRAGMA table_info replacement). */
-export function listTableColumns(db, tableName) {
-  return db
+export async function listTableColumns(db, tableName) {
+  return await db
     .prepare(
       `SELECT column_name AS name
        FROM information_schema.columns

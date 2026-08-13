@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("notification routes use signed sessions and server-side repository calls", () => {
+test("notification routes use signed sessions and server-side repository calls", async () => {
   const inbox = readFileSync(resolve(root, "src/app/api/notifications/route.ts"), "utf8");
   const preferences = readFileSync(resolve(root, "src/app/api/notifications/preferences/route.ts"), "utf8");
   const markRead = readFileSync(resolve(root, "src/app/api/notifications/[id]/read/route.ts"), "utf8");

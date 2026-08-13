@@ -8,10 +8,11 @@ export async function GET(request: Request) {
   const q = url.searchParams.get("q") ?? undefined;
   const limitParam = url.searchParams.get("limit");
   const limit = limitParam ? Number(limitParam) : undefined;
-  const store = createCatalogStore();
+  const after = url.searchParams.get("after") ?? undefined;
+  const store = await createCatalogStore();
   try {
-    return NextResponse.json({ products: searchPublicProducts(store, { category, q, limit }) });
+    return NextResponse.json({ products: await searchPublicProducts(store, { category, q, limit, after }) });
   } finally {
-    store.close();
+    await store.close();
   }
 }

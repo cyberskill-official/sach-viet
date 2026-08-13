@@ -3,7 +3,7 @@ import { COOKIE_NAME, expiredCookie, getAuthStore, revokeSession } from "@/lib/a
 
 export async function POST(request: Request) {
   try {
-    revokeSession(getAuthStore(), request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
+    await revokeSession(await getAuthStore(), request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
   } catch {}
   const response = NextResponse.json({ ok: true });
   response.headers.append("Set-Cookie", expiredCookie());

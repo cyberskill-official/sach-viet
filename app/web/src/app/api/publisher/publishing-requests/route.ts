@@ -9,16 +9,16 @@ import {
 export async function GET(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const publisherId = new URL(request.url).searchParams.get("publisherId") || undefined;
-    const store = createPublisherPortalStore();
+    const store = await createPublisherPortalStore();
     try {
       return NextResponse.json({
-        publishingRequests: listPublishingRequests(store, session.user, { publisherId }),
+        publishingRequests: await listPublishingRequests(store, session.user, { publisherId }),
       });
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json(
@@ -31,16 +31,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = readSession(getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
+    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    const store = createPublisherPortalStore();
+    const store = await createPublisherPortalStore();
     try {
       return NextResponse.json(
-        { publishingRequest: createPublishingRequest(store, session.user, await request.json()) },
+        { publishingRequest: await createPublishingRequest(store, session.user, await request.json()) },
         { status: 201 },
       );
     } finally {
-      store.close();
+      await store.close();
     }
   } catch (error) {
     return NextResponse.json(

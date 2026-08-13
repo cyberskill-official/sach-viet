@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("live notification stream route requires signed session and SSE headers", () => {
+test("live notification stream route requires signed session and SSE headers", async () => {
   const stream = readFileSync(resolve(root, "src/app/api/notifications/stream/route.ts"), "utf8");
   assert.match(stream, /readSession/);
   assert.match(stream, /createOwnerNotificationSseStream/);
@@ -13,7 +13,7 @@ test("live notification stream route requires signed session and SSE headers", (
   assert.doesNotMatch(stream, /Pusher|Reverb|SMTP|Zalo|WebSocket/);
 });
 
-test("live notification core defines SSE transport without paid push providers", () => {
+test("live notification core defines SSE transport without paid push providers", async () => {
   const source = readFileSync(resolve(root, "src/lib/live-notifications-core.mjs"), "utf8");
   assert.match(source, /formatSseFrame/);
   assert.match(source, /createOwnerNotificationSseStream/);

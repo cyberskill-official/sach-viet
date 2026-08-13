@@ -21,7 +21,7 @@ async function fixture(run) {
   const dbPath = join(directory, "ops.sqlite");
   const events = [];
   resetLiveNotificationBusForTests();
-  const store = createNotificationStore({
+  const store = await createNotificationStore({
     dbPath,
     clock: (() => {
       let tick = 5000;
@@ -35,7 +35,7 @@ async function fixture(run) {
   try {
     return await run({ store, events });
   } finally {
-    store.close();
+    await store.close();
     resetLiveNotificationBusForTests();
     rmSync(directory, { recursive: true, force: true });
   }
@@ -60,7 +60,7 @@ async function readFrames(stream, count) {
   return frames;
 }
 
-test("cursor helpers and sse framing omit secrets", () => {
+test("cursor helpers and sse framing omit secrets", async () => {
   const payload = buildLiveNotificationPayload(
     {
       id: "n1",
@@ -94,7 +94,7 @@ test("createNotification publishes only to the owner live subscribers", async ()
     const unsubscribeOwner = subscribeLiveNotifications(customer.id, (payload) => ownerEvents.push(payload));
     const unsubscribeOther = subscribeLiveNotifications(other.id, (payload) => otherEvents.push(payload));
 
-    const created = createNotification(store, customer, {
+    const created = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "Order paid",
@@ -116,37 +116,37 @@ test("cursor resume returns only newer owner-scoped notifications", async () =>
   fixture(async ({ store }) => {
     const customer = { id: "customer", role: "customer" };
     const other = { id: "other", role: "customer" };
-    const first = createNotification(store, customer, {
+    const first = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "First",
       body: "one",
       deeplinkPath: "/ecom/orders/1",
     });
-    createNotification(store, other, {
+    await createNotification(store, other, {
       userId: other.id,
       eventType: "order.paid",
       title: "Other",
       body: "secret",
       deeplinkPath: "/ecom/orders/9",
     });
-    const second = createNotification(store, customer, {
+    const second = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "support.ticket_created",
       title: "Second",
       body: "two",
       deeplinkPath: "/support/tickets/1",
     });
-    const after = listNotificationsAfterCursor(store, customer, encodeNotificationCursor(first));
+    const after = await listNotificationsAfterCursor(store, customer, encodeNotificationCursor(first));
     assert.equal(after.length, 1);
     assert.equal(after[0].id, second.id);
-    assert.throws(() => listNotificationsAfterCursor(store, null, encodeNotificationCursor(first)), /Authentication/);
+    await assert.rejects(async () => await listNotificationsAfterCursor(store, null, encodeNotificationCursor(first)), /Authentication/);
   }));
 
 test("authenticated SSE stream replays from cursor and receives live events", async () =>
   fixture(async ({ store }) => {
     const customer = { id: "customer", role: "customer" };
-    const first = createNotification(store, customer, {
+    const first = await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "First",
@@ -162,7 +162,7 @@ test("authenticated SSE stream replays from cursor and receives live events", as
     });
     const livePromise = readFrames(stream, 2);
     await new Promise((resolve) => setTimeout(resolve, 20));
-    createNotification(store, customer, {
+    await createNotification(store, customer, {
       userId: customer.id,
       eventType: "payout.created",
       title: "Live",
@@ -175,9 +175,8 @@ test("authenticated SSE stream replays from cursor and receives live events", as
     assert.ok(!frames.some((frame) => /email|sessionToken|paymentSecret/i.test(frame)));
   }));
 
-test("unauthenticated stream open fails", () => {
-  assert.throws(
-    () =>
+test("unauthenticated stream open fails", async () => {
+  await assert.rejects(async () =>
       createOwnerNotificationSseStream({
         store: { close: () => {} },
         user: null,
@@ -206,21 +205,21 @@ test("SSE stream heartbeats and closes on abort", async () =>
 test("list without cursor returns owner inbox chronologically", async () =>
   fixture(async ({ store }) => {
     const customer = { id: "customer", role: "customer" };
-    createNotification(store, customer, {
+    await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "A",
       body: "a",
       deeplinkPath: "/ecom/orders/1",
     });
-    createNotification(store, customer, {
+    await createNotification(store, customer, {
       userId: customer.id,
       eventType: "order.paid",
       title: "B",
       body: "b",
       deeplinkPath: "/ecom/orders/2",
     });
-    const listed = listNotificationsAfterCursor(store, customer, null);
+    const listed = await listNotificationsAfterCursor(store, customer, null);
     assert.equal(listed.length, 2);
     assert.ok(listed[0].createdAt <= listed[1].createdAt);
   }));

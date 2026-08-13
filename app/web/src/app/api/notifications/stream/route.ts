@@ -3,9 +3,9 @@ import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
 import { createOwnerNotificationSseStream } from "@/lib/live-notifications-core.mjs";
 import { createNotificationStore } from "@/lib/notification-core.mjs";
 
-function sessionFor(request: Request) {
-  return readSession(
-    getAuthStore(),
+async function sessionFor(request: Request) {
+  return await readSession(
+    await getAuthStore(),
     request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
     process.env.AUTH_SESSION_SECRET,
   );
@@ -13,10 +13,10 @@ function sessionFor(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    const session = sessionFor(request);
+    const session = await sessionFor(request);
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined;
-    const store = createNotificationStore();
+    const store = await createNotificationStore();
     const stream = createOwnerNotificationSseStream({
       store,
       user: session.user,

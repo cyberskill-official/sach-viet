@@ -5,7 +5,7 @@ import test from "node:test";
 
 const root = resolve(import.meta.dirname, "..");
 
-test("B2B order routes use signed sessions and server-side domain operations", () => {
+test("B2B order routes use signed sessions and server-side domain operations", async () => {
   const staffOrders = readFileSync(resolve(root, "src/app/api/b2b/orders/route.ts"), "utf8");
   const staffOrder = readFileSync(resolve(root, "src/app/api/b2b/orders/[id]/route.ts"), "utf8");
   const institutionOrders = readFileSync(resolve(root, "src/app/api/institution/orders/route.ts"), "utf8");

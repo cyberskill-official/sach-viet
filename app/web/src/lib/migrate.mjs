@@ -8,8 +8,8 @@
 
 const appliedDbs = new WeakSet();
 
-function ensureLedger(db) {
-  db.exec(`
+async function ensureLedger(db) {
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       id TEXT PRIMARY KEY,
       applied_at BIGINT NOT NULL
@@ -19,13 +19,13 @@ function ensureLedger(db) {
 
 /**
  * Applies any pending migrations from the provided ordered list.
- * Safe to call on every `openDatabase`; already-applied ids are skipped.
+ * Safe to call on every `openDatabase` (non-Vercel); already-applied ids are skipped.
  */
-export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
+export async function applyPendingMigrations(db, migrations, { log } = {}) {
   if (appliedDbs.has(db)) return { applied: [] };
-  ensureLedger(db);
+  await ensureLedger(db);
   const applied = new Set(
-    db.prepare("SELECT id FROM schema_migrations").all().map((row) => row.id),
+    (await db.prepare("SELECT id FROM schema_migrations").all()).map((row) => row.id),
   );
   const newlyApplied = [];
   const insert = db.prepare("INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)");
@@ -34,16 +34,16 @@ export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
       throw new Error("Each migration must export { id, up }.");
     }
     if (applied.has(migration.id)) continue;
-    db.exec("BEGIN");
+    await db.exec("BEGIN");
     try {
-      migration.up(db);
-      insert.run(migration.id, Date.now());
-      db.exec("COMMIT");
+      await migration.up(db);
+      await insert.run(migration.id, Date.now());
+      await db.exec("COMMIT");
       newlyApplied.push(migration.id);
       log?.("schema_migration_applied", { result: "accepted", migration_id: migration.id });
     } catch (error) {
       try {
-        db.exec("ROLLBACK");
+        await db.exec("ROLLBACK");
       } catch {
         // ignore rollback errors when the transaction never started
       }
@@ -54,8 +54,13 @@ export function applyPendingMigrationsSync(db, migrations, { log } = {}) {
   return { applied: newlyApplied };
 }
 
-export function listAppliedMigrations(db) {
-  ensureLedger(db);
+/** @deprecated Use applyPendingMigrations. */
+export async function applyPendingMigrationsSync(db, migrations, options) {
+  return applyPendingMigrations(db, migrations, options);
+}
+
+export async function listAppliedMigrations(db) {
+  await ensureLedger(db);
   return db
     .prepare("SELECT id, applied_at AS \"appliedAt\" FROM schema_migrations ORDER BY id ASC")
     .all();

@@ -65,40 +65,40 @@ function projectNotification(row) {
   };
 }
 
-export function createNotificationStore({
+export async function createNotificationStore({
   dbPath,
   clock = () => Date.now(),
   log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-010", ...fields })),
 } = {}) {
-  const db = openDatabase(dbPath);
+  const db = await openDatabase(dbPath);
   const seed = db.prepare(
     "INSERT INTO notification_event_types (key, description, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
   );
   const now = clock();
   for (const key of NOTIFICATION_EVENT_TYPES) {
-    seed.run(key, key.replaceAll(".", " "), now);
+    await seed.run(key, key.replaceAll(".", " "), now);
   }
   return { db, clock, log, close: () => db.close() };
 }
 
-function isInAppChannelEnabled(store, userId) {
-  const row = store.db.prepare("SELECT is_enabled AS isEnabled FROM user_channels WHERE user_id = ? AND channel = 'in_app'").get(userId);
+async function isInAppChannelEnabled(store, userId) {
+  const row = await store.db.prepare("SELECT is_enabled AS isEnabled FROM user_channels WHERE user_id = ? AND channel = 'in_app'").get(userId);
   return row ? row.isEnabled === 1 : true;
 }
 
-function isUserEventEnabled(store, userId, eventType) {
-  const row = store.db.prepare(
+async function isUserEventEnabled(store, userId, eventType) {
+  const row = await store.db.prepare(
     "SELECT in_app_enabled AS inAppEnabled FROM user_notification_preferences WHERE user_id = ? AND event_type = ?",
   ).get(userId, eventType);
   return row ? row.inAppEnabled === 1 : true;
 }
 
-export function listEventTypes(store, user) {
+export async function listEventTypes(store, user) {
   requireUser(user);
-  return store.db.prepare("SELECT key, description, created_at AS createdAt FROM notification_event_types ORDER BY key ASC").all();
+  return await store.db.prepare("SELECT key, description, created_at AS createdAt FROM notification_event_types ORDER BY key ASC").all();
 }
 
-export function createNotification(store, actor, input) {
+export async function createNotification(store, actor, input) {
   requireUser(actor);
   const userId = required(input?.userId, "User ID");
   const eventType = assertEventType(input?.eventType);
@@ -107,7 +107,7 @@ export function createNotification(store, actor, input) {
   if (body.length > 4000) throw new Error("Notification body is too long.");
   const deeplinkPath = assertDeeplink(input?.deeplinkPath);
 
-  if (!isInAppChannelEnabled(store, userId) || !isUserEventEnabled(store, userId, eventType)) {
+  if (!await isInAppChannelEnabled(store, userId) || !await isUserEventEnabled(store, userId, eventType)) {
     store.log("notification_skipped", { result: "skipped", event_type: eventType, user_id: userId, reason: "preference_or_channel" });
     return null;
   }
@@ -122,44 +122,61 @@ export function createNotification(store, actor, input) {
     isRead: false,
     createdAt: store.clock(),
   };
-  store.db.prepare(`
+  await store.db.prepare(`
     INSERT INTO notifications (id, user_id, event_type, title, body, deeplink_path, is_read, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 0, ?)
   `).run(notification.id, notification.userId, notification.eventType, notification.title, notification.body, notification.deeplinkPath, notification.createdAt);
   store.log("notification_created", { result: "accepted", notification_id: notification.id, event_type: eventType, user_id: userId });
-  publishNotificationCreated(store, notification);
-  dispatchExternalNotificationChannels(store, notification);
+  await publishNotificationCreated(store, notification);
+  await dispatchExternalNotificationChannels(store, notification);
   return notification;
 }
 
-export function listNotifications(store, user) {
+export async function listNotifications(store, user, { after, limit } = {}) {
   requireUser(user);
-  const notifications = store.db.prepare(`
+  const clauses = ["user_id = ?"];
+  const params = [user.id];
+  if (after) {
+    const cursor = await store.db
+      .prepare("SELECT created_at AS createdAt, id FROM notifications WHERE id = ? AND user_id = ?")
+      .get(after, user.id);
+    if (cursor) {
+      clauses.push("(created_at, id) < (?, ?)");
+      params.push(cursor.createdAt, cursor.id);
+    }
+  }
+  const capped = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : null;
+  let sql = `
     SELECT id, user_id AS userId, event_type AS eventType, title, body, deeplink_path AS deeplinkPath,
            is_read AS isRead, created_at AS createdAt
     FROM notifications
-    WHERE user_id = ?
+    WHERE ${clauses.join(" AND ")}
     ORDER BY created_at DESC, id DESC
-  `).all(user.id).map(projectNotification);
-  const unread = store.db.prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0").get(user.id);
+  `;
+  if (capped) {
+    sql += " LIMIT ?";
+    params.push(capped);
+  }
+  const notifications = (await store.db.prepare(sql).all(...params)).map(projectNotification);
+  const unread = await store.db.prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND is_read = 0").get(user.id);
   return { notifications, unreadCount: Number(unread?.count || 0) };
 }
 
-export function markNotificationRead(store, user, notificationId) {
+export async function markNotificationRead(store, user, notificationId) {
   requireUser(user);
   const id = required(notificationId, "Notification ID");
-  const existing = store.db.prepare("SELECT id, user_id AS userId, is_read AS isRead FROM notifications WHERE id = ?").get(id);
+  const existing = await store.db.prepare("SELECT id, user_id AS userId, is_read AS isRead FROM notifications WHERE id = ?").get(id);
   if (!existing || existing.userId !== user.id) throw new Error("Notification access is denied.");
   if (existing.isRead === 1) {
-    return projectNotification(store.db.prepare(`
+    return projectNotification(await store.db.prepare(`
       SELECT id, user_id AS userId, event_type AS eventType, title, body, deeplink_path AS deeplinkPath,
              is_read AS isRead, created_at AS createdAt
       FROM notifications WHERE id = ?
     `).get(id));
   }
-  store.db.prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?").run(id, user.id);
+  await store.db.prepare("UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?").run(id, user.id);
   store.log("notification_marked_read", { result: "accepted", notification_id: id, user_id: user.id });
-  return projectNotification(store.db.prepare(`
+  return projectNotification(await store.db.prepare(`
     SELECT id, user_id AS userId, event_type AS eventType, title, body, deeplink_path AS deeplinkPath,
            is_read AS isRead, created_at AS createdAt
     FROM notifications WHERE id = ?
@@ -174,9 +191,9 @@ function defaultPreferenceRows(userKeyField, userId) {
   }));
 }
 
-export function getUserNotificationPreferences(store, user) {
+export async function getUserNotificationPreferences(store, user) {
   requireUser(user);
-  const rows = store.db.prepare(`
+  const rows = await store.db.prepare(`
     SELECT user_id AS userId, event_type AS eventType, in_app_enabled AS inAppEnabled, updated_at AS updatedAt
     FROM user_notification_preferences
     WHERE user_id = ?
@@ -184,7 +201,7 @@ export function getUserNotificationPreferences(store, user) {
   `).all(user.id);
   const byType = new Map(rows.map((row) => [row.eventType, { ...row, inAppEnabled: row.inAppEnabled === 1 }]));
   const preferences = defaultPreferenceRows("userId", user.id).map((fallback) => byType.get(fallback.eventType) || fallback);
-  const channelRows = store.db
+  const channelRows = await store.db
     .prepare("SELECT user_id AS userId, channel, is_enabled AS isEnabled, updated_at AS updatedAt FROM user_channels WHERE user_id = ?")
     .all(user.id);
   const byChannel = new Map(channelRows.map((row) => [row.channel, row]));
@@ -210,14 +227,14 @@ export function getUserNotificationPreferences(store, user) {
   };
 }
 
-export function updateUserNotificationPreferences(store, user, input) {
+export async function updateUserNotificationPreferences(store, user, input) {
   requireUser(user);
   const updates = Array.isArray(input?.preferences) ? input.preferences : [];
   const timestamp = store.clock();
   for (const item of updates) {
     const eventType = assertEventType(item?.eventType);
     const inAppEnabled = item?.inAppEnabled === false ? 0 : 1;
-    store.db.prepare(`
+    await store.db.prepare(`
       INSERT INTO user_notification_preferences (user_id, event_type, in_app_enabled, updated_at)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, event_type) DO UPDATE SET in_app_enabled = excluded.in_app_enabled, updated_at = excluded.updated_at
@@ -231,7 +248,7 @@ export function updateUserNotificationPreferences(store, user, input) {
   for (const [field, channel] of channelUpdates) {
     if (!Object.hasOwn(input || {}, field)) continue;
     const isEnabled = input[field] === false ? 0 : 1;
-    store.db.prepare(`
+    await store.db.prepare(`
       INSERT INTO user_channels (user_id, channel, is_enabled, updated_at)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(user_id, channel) DO UPDATE SET is_enabled = excluded.is_enabled, updated_at = excluded.updated_at
@@ -239,13 +256,13 @@ export function updateUserNotificationPreferences(store, user, input) {
     store.log("user_channel_updated", { result: "accepted", user_id: user.id, channel, is_enabled: isEnabled === 1 });
   }
   store.log("user_notification_preferences_updated", { result: "accepted", user_id: user.id, updated_count: updates.length });
-  return getUserNotificationPreferences(store, user);
+  return await getUserNotificationPreferences(store, user);
 }
 
-export function getVendorNotificationPreferences(store, user) {
+export async function getVendorNotificationPreferences(store, user) {
   requireVendor(user);
   const vendorId = user.id;
-  const rows = store.db.prepare(`
+  const rows = await store.db.prepare(`
     SELECT vendor_id AS vendorId, event_type AS eventType, in_app_enabled AS inAppEnabled, updated_at AS updatedAt
     FROM vendor_notification_preferences
     WHERE vendor_id = ?
@@ -257,19 +274,19 @@ export function getVendorNotificationPreferences(store, user) {
   };
 }
 
-export function updateVendorNotificationPreferences(store, user, input) {
+export async function updateVendorNotificationPreferences(store, user, input) {
   requireVendor(user);
   const updates = Array.isArray(input?.preferences) ? input.preferences : [];
   const timestamp = store.clock();
   for (const item of updates) {
     const eventType = assertEventType(item?.eventType);
     const inAppEnabled = item?.inAppEnabled === false ? 0 : 1;
-    store.db.prepare(`
+    await store.db.prepare(`
       INSERT INTO vendor_notification_preferences (vendor_id, event_type, in_app_enabled, updated_at)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(vendor_id, event_type) DO UPDATE SET in_app_enabled = excluded.in_app_enabled, updated_at = excluded.updated_at
     `).run(user.id, eventType, inAppEnabled, timestamp);
   }
   store.log("vendor_notification_preferences_updated", { result: "accepted", vendor_id: user.id, updated_count: updates.length });
-  return getVendorNotificationPreferences(store, user);
+  return await getVendorNotificationPreferences(store, user);
 }
