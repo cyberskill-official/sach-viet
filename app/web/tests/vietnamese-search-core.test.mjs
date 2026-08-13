@@ -76,11 +76,12 @@ test("normalizeVietnameseText folds diacritics and đ", async () => {
 test("diacritic-insensitive query finds accented titles and logs analytics", async () =>
   fixture(async ({ store, events, productA }) => {
     const results = await searchPublicProducts(store, { q: "tieng viet" });
-    assert.equal(results[0].id, productA.id);
-    assert.ok(results.some((row) => row.slug === "tieng-viet-co-ban"));
+    assert.equal(results.items[0].id, productA.id);
+    assert.ok(results.items.some((row) => row.slug === "tieng-viet-co-ban"));
+    assert.equal(Object.hasOwn(results, "nextCursor"), true);
     const logs = await listSearchLogs(store);
     assert.equal(logs[0].queryNormalized, "tieng viet");
-    assert.equal(logs[0].backendMode, "local");
+    assert.equal(logs[0].backendMode, "postgres");
     assert.ok(logs[0].resultCount >= 1);
     assert.ok(events.some((row) => row.event === "vietnamese_search_logged"));
   }));
@@ -88,20 +89,19 @@ test("diacritic-insensitive query finds accented titles and logs analytics", asy
 test("light typo tolerance matches short title tokens", async () =>
   fixture(async ({ store, productB }) => {
     const results = await searchPublicProducts(store, { q: "lich su viet" });
-    assert.ok(results.some((row) => row.id === productB.id));
+    assert.ok(results.items.some((row) => row.id === productB.id));
     const typo = await searchPublicProducts(store, { q: "lichxu" });
-    assert.ok(typo.some((row) => row.slug === "lich-su-viet-nam") || typo.length >= 0);
-    // Single-char typo on a short token should still score "lich"
+    assert.ok(typo.items.some((row) => row.slug === "lich-su-viet-nam") || typo.items.length >= 0);
     const near = await searchPublicProducts(store, { q: "lich" });
-    assert.ok(near.some((row) => row.id === productB.id));
+    assert.ok(near.items.some((row) => row.id === productB.id));
   }));
 
 test("empty q preserves category list behavior without search logs", async () =>
   fixture(async ({ store }) => {
     const all = await searchPublicProducts(store, {});
-    assert.equal(all.length, 3);
+    assert.equal(all.items.length, 3);
     const filtered = await searchPublicProducts(store, { category: "sach", q: "   " });
-    assert.equal(filtered.length, 3);
+    assert.equal(filtered.items.length, 3);
     assert.equal((await listSearchLogs(store)).length, 0);
   }));
 
@@ -125,7 +125,8 @@ test("public search and suggestion queries are capped in length", async () =>
   fixture(async ({ store }) => {
     const oversized = `tieng ${"x".repeat(10_000)}`;
     const results = await searchPublicProducts(store, { q: oversized });
-    assert.ok(Array.isArray(results));
+    assert.ok(Array.isArray(results.items));
+    assert.ok(results.items.length <= 24);
     const logs = await listSearchLogs(store);
     assert.equal(logs.length, 1);
     assert.ok(logs[0].queryNormalized.length <= MAX_SEARCH_QUERY_LENGTH);
@@ -169,7 +170,7 @@ test("search logs older than the retention window are pruned on write", async ()
 
 test("local backend is default and Meilisearch seam is env-gated without network", async () => {
   assert.equal(resolveSearchBackend({ env: {} }).mode, "local");
-  assert.equal(getSearchBackendStatus({ env: {} }).searchBackend, "local");
+  assert.equal(getSearchBackendStatus({ env: {} }).searchBackend, "postgres");
   await assert.rejects(async () => createMeilisearchSearchBackend({ host: "" }), /Meilisearch backend requires/);
 
   const backend = createMeilisearchSearchBackend({ host: "http://meili.local", submit: null });

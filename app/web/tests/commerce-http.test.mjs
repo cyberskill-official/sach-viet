@@ -46,3 +46,19 @@ test("checkout HTTP handler refuses unauthenticated and frozen mutations", async
   );
   assert.equal(missingProvider.status, 401);
 });
+
+test("checkout sandbox stub still requires a signed session", async () => {
+  const stub = await handleCheckout(
+    new Request("http://sachviet.test/api/checkout", {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: "sv_session=not-a-token" },
+      body: JSON.stringify({ items: [{ vendorOfferId: "x", quantity: 1 }], provider: "stub" }),
+    }),
+    {
+      COMMERCE_MUTATIONS_ENABLED: "1",
+      AUTH_SESSION_SECRET: "a-session-secret-that-is-long-enough-for-the-test-suite",
+      CHECKOUT_SANDBOX_STUB: "1",
+    },
+  );
+  assert.equal(stub.status, 401);
+});

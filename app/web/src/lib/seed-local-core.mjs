@@ -1,6 +1,19 @@
 import { createHash, randomBytes } from "node:crypto";
+import { createAccountStore, createAddress, updateAccount } from "./account-core.mjs";
 import { createAdminCommerceStore, submitVendorApplication } from "./admin-commerce-core.mjs";
 import { bootstrapFirstAdmin, createAuthStore, hashPassword, normalizeEmail } from "./auth-core.mjs";
+import { createAuthorManuscriptRequest, createAuthorPortalStore } from "./author-portal-core.mjs";
+import {
+  addOrganizationMember,
+  addSelectionListItem,
+  createB2bQuoteStore,
+  createOrganization,
+  createSelectionList,
+  requestQuoteFromSelectionList,
+  setQuoteItemPrices,
+  transitionQuoteStatus,
+} from "./b2b-quote-core.mjs";
+import { convertWonQuoteToOrder, createB2bOrderStore } from "./b2b-order-core.mjs";
 import {
   addProductMedia,
   createCatalogStore,
@@ -10,9 +23,36 @@ import {
   writeVendorOffer,
 } from "./catalog-core.mjs";
 import { createCommerceStore, createPendingOrder } from "./commerce-core.mjs";
+import { isLocalDatabaseHost } from "./db.mjs";
+import { createEmployeeRetailStore, setRetailOrderItemFulfillment } from "./employee-retail-core.mjs";
+import { submitInstitutionPurchaseOrder, createInstitutionBuyerStore } from "./institution-buyer-core.mjs";
 import { createNotification, createNotificationStore } from "./notification-core.mjs";
-import { createReview, createSupportStore, createTicket } from "./support-core.mjs";
-import { createVendorCommerceStore, createVendorPayout } from "./vendor-commerce-core.mjs";
+import {
+  createPublisherPortalStore,
+  createPublishingRequest,
+  registerPublisherMarcRecord,
+} from "./publisher-portal-core.mjs";
+import { createStorageStore, putStoredObject } from "./storage-core.mjs";
+import { assignTicket, createReview, createSupportStore, createTicket } from "./support-core.mjs";
+import { createVendorCommerceStore, createVendorPayout, setOrderItemFulfillment } from "./vendor-commerce-core.mjs";
+
+export function assertSeedDatabaseTarget({
+  env = process.env,
+  databaseUrl,
+  dbPath,
+} = {}) {
+  if (env.NODE_ENV === "production") {
+    throw new Error("seed:local refuses to run when NODE_ENV=production.");
+  }
+  if (dbPath) return;
+  const url = databaseUrl || env.DATABASE_URL;
+  if (!url) {
+    throw new Error("seed:local requires DATABASE_URL when DATABASE_PATH is not set.");
+  }
+  if (!isLocalDatabaseHost(url)) {
+    throw new Error("seed:local refuses DATABASE_URL hosts that are not loopback or Compose db.");
+  }
+}
 
 /** Stable ids keep re-runs idempotent for records the domain cores upsert by id. */
 function seedIdentifier(kind, key) {
@@ -252,8 +292,13 @@ async function seedCatalog(catalog, vendors, counters) {
 }
 
 async function seedOrders(commerce, customer, catalogIndex, counters) {
-  const existing = await commerce.db.prepare("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?").get(customer.id);
-  if (existing.count > 0) return { paidOrderId: null, pendingOrderId: null };
+  const existing = await commerce.db.prepare("SELECT id, status FROM orders WHERE user_id = ? ORDER BY created_at ASC, id ASC").all(customer.id);
+  if (existing.length > 0) {
+    return {
+      paidOrderId: existing.find((row) => row.status === "paid")?.id ?? null,
+      pendingOrderId: existing.find((row) => row.status === "pending_payment")?.id ?? null,
+    };
+  }
   const paidOrder = await createPendingOrder(commerce, customer, [
     { vendorOfferId: (catalogIndex.get("truyen-kieu")).offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 1 },
     { vendorOfferId: (catalogIndex.get("hoang-tu-be")).offers.find((offer) => offer.vendorKey === "vendorAn").id, quantity: 2, giftWrap: true },
@@ -276,6 +321,13 @@ async function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
     ORDER BY order_items.id ASC
   `).all(orderId, vendor.id);
   if (!lines.length) return null;
+  const existing = await vendorCommerce.db.prepare(`
+    SELECT payout_items.payout_id AS payoutId
+    FROM payout_items
+    WHERE payout_items.order_item_id = ?
+    LIMIT 1
+  `).get(lines[0].orderItemId);
+  if (existing?.payoutId) return { id: existing.payoutId };
   const amountUsd = moneyString(lines.reduce((sum, line) => sum + moneyUnits(line.unitPriceUsd) * BigInt(line.quantity), 0n));
   const payout = await createVendorPayout(vendorCommerce, admin, {
     vendorId: vendor.id,
@@ -284,6 +336,181 @@ async function seedPayout(vendorCommerce, admin, vendor, orderId, counters) {
   });
   counters.payouts += 1;
   return payout;
+}
+
+async function seedOpaqueObject(storage, ownerId, label) {
+  return await putStoredObject(storage, {
+    bytes: Buffer.from(`sachviet-seed:${label}`, "utf8"),
+    contentType: "text/plain",
+    ownerId,
+  });
+}
+
+async function seedPortalWalkthrough({
+  account,
+  support,
+  vendorCommerce,
+  retail,
+  quotes,
+  b2bOrders,
+  institution,
+  publisher,
+  author,
+  storage,
+  users,
+  catalogIndex,
+  orders,
+  counters,
+}) {
+  const admin = users.get("admin");
+  const customer = users.get("customer");
+  const vendorAn = users.get("vendorAn");
+  const employee = users.get("employee");
+  const retailUser = users.get("retail");
+  const b2b = users.get("b2b");
+  const librarian = users.get("librarian");
+  const publisherUser = users.get("publisher");
+  const authorUser = users.get("author");
+  const walkthrough = {
+    customer: {},
+    vendor: {},
+    admin: {},
+    employee: {},
+    retail: {},
+    b2b: {},
+    institution: {},
+    publisher: {},
+    author: {},
+  };
+
+  const updated = await updateAccount(account, customer, { locale: "en" });
+  walkthrough.customer.locale = updated.locale;
+  if ((await account.db.prepare("SELECT COUNT(*) AS count FROM user_addresses WHERE user_id = ?").get(customer.id)).count === 0) {
+    const address = await createAddress(account, customer, {
+      label: "Nhà",
+      line1: "123 Đường Sách",
+      city: "Hà Nội",
+      region: "HN",
+      postalCode: "100000",
+      country: "VN",
+    });
+    counters.addresses += 1;
+    walkthrough.customer.addressId = address.id;
+  } else {
+    walkthrough.customer.addressId = (await account.db.prepare("SELECT id FROM user_addresses WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(customer.id)).id;
+  }
+  walkthrough.customer.paidOrderId = orders.paidOrderId;
+  walkthrough.customer.pendingOrderId = orders.pendingOrderId;
+
+  if (orders.paidOrderId) {
+    const vendorLine = await vendorCommerce.db.prepare(`
+      SELECT order_items.id
+      FROM order_items
+      JOIN vendor_offers ON vendor_offers.id = order_items.vendor_offer_id
+      WHERE order_items.order_id = ? AND vendor_offers.vendor_id = ?
+      ORDER BY order_items.id ASC
+      LIMIT 1
+    `).get(orders.paidOrderId, vendorAn.id);
+    if (vendorLine) {
+      const current = await vendorCommerce.db.prepare("SELECT fulfillment_status AS fulfillmentStatus FROM order_items WHERE id = ?").get(vendorLine.id);
+      if (!current.fulfillmentStatus) {
+        await setOrderItemFulfillment(vendorCommerce, vendorAn, { orderItemId: vendorLine.id, fulfillmentStatus: "packing" });
+        counters.fulfillments += 1;
+      }
+      walkthrough.vendor.orderItemId = vendorLine.id;
+      walkthrough.vendor.fulfillmentStatus = "packing";
+    }
+    const retailLine = await retail.db.prepare(`
+      SELECT id FROM order_items WHERE order_id = ? ORDER BY id DESC LIMIT 1
+    `).get(orders.paidOrderId);
+    if (retailLine) {
+      const current = await retail.db.prepare("SELECT fulfillment_status AS fulfillmentStatus FROM order_items WHERE id = ?").get(retailLine.id);
+      if (current.fulfillmentStatus !== "shipped" && current.fulfillmentStatus !== "delivered") {
+        await setRetailOrderItemFulfillment(retail, retailUser, { orderItemId: retailLine.id, fulfillmentStatus: "shipped" });
+        counters.fulfillments += 1;
+      }
+      walkthrough.retail.paidOrderId = orders.paidOrderId;
+      walkthrough.retail.orderItemId = retailLine.id;
+    }
+  }
+
+  const ticket = await support.db.prepare("SELECT id, assignee_id AS assigneeId FROM support_tickets WHERE user_id = ? ORDER BY created_at ASC LIMIT 1").get(customer.id);
+  if (ticket && !ticket.assigneeId) {
+    await assignTicket(support, employee, { ticketId: ticket.id, assigneeId: employee.id });
+    counters.assignedTickets += 1;
+  }
+  walkthrough.employee.assignedTicketId = ticket?.id ?? null;
+
+  if ((await quotes.db.prepare("SELECT COUNT(*) AS count FROM organizations").get()).count === 0) {
+    const org = await createOrganization(quotes, b2b, { name: "Thư viện seed Sách Việt" });
+    await addOrganizationMember(quotes, b2b, { organizationId: org.id, userId: librarian.id });
+    const list = await createSelectionList(quotes, librarian, { title: "Danh mục seed" });
+    await addSelectionListItem(quotes, librarian, {
+      selectionListId: list.id,
+      productId: catalogIndex.get("truyen-kieu").productId,
+      quantity: 2,
+    });
+    const quote = await requestQuoteFromSelectionList(quotes, librarian, { selectionListId: list.id });
+    await setQuoteItemPrices(quotes, b2b, { quoteId: quote.id, items: [{ id: quote.items[0].id, unitPriceUsd: "7.00" }] });
+    await transitionQuoteStatus(quotes, b2b, { quoteId: quote.id, status: "sent" });
+    await transitionQuoteStatus(quotes, b2b, { quoteId: quote.id, status: "negotiating" });
+    await transitionQuoteStatus(quotes, b2b, { quoteId: quote.id, status: "won" });
+    const order = await convertWonQuoteToOrder(b2bOrders, b2b, { quoteId: quote.id });
+    const po = await seedOpaqueObject(storage, librarian.id, "institution-po");
+    await submitInstitutionPurchaseOrder(institution, librarian, {
+      orderId: order.id,
+      referenceNumber: "PO-SEED-1001",
+      storageKey: po.key,
+    });
+    counters.organizations += 1;
+    counters.quotes += 1;
+    counters.b2bOrders += 1;
+    counters.purchaseOrders += 1;
+    walkthrough.b2b = { organizationId: org.id, quoteId: quote.id, orderId: order.id };
+    walkthrough.institution = { orderId: order.id, purchaseOrderKey: po.key };
+  } else {
+    const org = await quotes.db.prepare("SELECT id FROM organizations ORDER BY created_at ASC LIMIT 1").get();
+    const quote = await quotes.db.prepare("SELECT id FROM b2b_quotes ORDER BY created_at ASC LIMIT 1").get();
+    const order = await b2bOrders.db.prepare("SELECT id FROM b2b_orders ORDER BY created_at ASC LIMIT 1").get();
+    walkthrough.b2b = { organizationId: org?.id ?? null, quoteId: quote?.id ?? null, orderId: order?.id ?? null };
+    walkthrough.institution = { orderId: order?.id ?? null };
+  }
+
+  if ((await publisher.db.prepare("SELECT COUNT(*) AS count FROM publishing_requests WHERE publisher_id = ?").get(publisherUser.id)).count === 0) {
+    const asset = await seedOpaqueObject(storage, publisherUser.id, "publisher-manuscript");
+    const request = await createPublishingRequest(publisher, publisherUser, {
+      title: "Bản thảo seed",
+      storageKey: asset.key,
+    });
+    counters.publishingRequests += 1;
+    walkthrough.publisher.requestId = request.id;
+  } else {
+    walkthrough.publisher.requestId = (await publisher.db.prepare("SELECT id FROM publishing_requests WHERE publisher_id = ? ORDER BY created_at ASC LIMIT 1").get(publisherUser.id)).id;
+  }
+  if ((await publisher.db.prepare("SELECT COUNT(*) AS count FROM publisher_marc_records WHERE publisher_id = ?").get(publisherUser.id)).count === 0) {
+    const marc = await seedOpaqueObject(storage, publisherUser.id, "publisher-marc");
+    await registerPublisherMarcRecord(publisher, publisherUser, {
+      productId: catalogIndex.get("truyen-kieu").productId,
+      storageKey: marc.key,
+    });
+    counters.marcRecords += 1;
+  }
+  walkthrough.publisher.marcProductId = catalogIndex.get("truyen-kieu").productId;
+
+  if ((await author.db.prepare("SELECT COUNT(*) AS count FROM author_manuscript_requests WHERE author_id = ?").get(authorUser.id)).count === 0) {
+    const asset = await seedOpaqueObject(storage, authorUser.id, "author-manuscript");
+    const request = await createAuthorManuscriptRequest(author, authorUser, {
+      title: "Bản thảo tác giả seed",
+      storageKey: asset.key,
+    });
+    counters.manuscriptRequests += 1;
+    walkthrough.author.requestId = request.id;
+  } else {
+    walkthrough.author.requestId = (await author.db.prepare("SELECT id FROM author_manuscript_requests WHERE author_id = ? ORDER BY created_at ASC LIMIT 1").get(authorUser.id)).id;
+  }
+
+  walkthrough.admin = { catalogProducts: catalogIndex.size, paidOrderId: orders.paidOrderId };
+  return walkthrough;
 }
 
 async function seedNotifications(notifications, actor, messages, counters) {
@@ -313,6 +540,7 @@ export async function seedLocalData({
 } = {}) {
   // Prefer an explicit dbPath (schema-isolated tests). Only fall back to
   // DATABASE_URL when the caller did not ask for path-based isolation.
+  assertSeedDatabaseTarget({ env, databaseUrl, dbPath });
   const resolvedUrl = databaseUrl ?? (dbPath ? undefined : process.env.DATABASE_URL);
   const storeOptions = dbPath
     ? { dbPath, databaseUrl: resolvedUrl, log }
@@ -325,9 +553,19 @@ export async function seedLocalData({
   const vendorCommerce = await createVendorCommerceStore({ ...storeOptions, clock });
   const notifications = await createNotificationStore({ ...storeOptions, clock });
   const support = await createSupportStore({ ...storeOptions, clock });
+  const account = await createAccountStore({ ...storeOptions, now: clock });
+  const retail = await createEmployeeRetailStore({ ...storeOptions, clock });
+  const quotes = await createB2bQuoteStore({ ...storeOptions, clock });
+  const b2bOrders = await createB2bOrderStore({ ...storeOptions, clock });
+  const institution = await createInstitutionBuyerStore({ ...storeOptions, clock });
+  const publisher = await createPublisherPortalStore({ ...storeOptions, clock });
+  const author = await createAuthorPortalStore({ ...storeOptions, clock });
+  const storage = await createStorageStore({ ...storeOptions, clock });
   const counters = {
     users: 0, categories: 0, products: 0, variants: 0, media: 0, offers: 0,
     orders: 0, payouts: 0, vendorApplications: 0, notifications: 0, reviews: 0, tickets: 0,
+    addresses: 0, assignedTickets: 0, fulfillments: 0, organizations: 0, quotes: 0,
+    b2bOrders: 0, purchaseOrders: 0, publishingRequests: 0, marcRecords: 0, manuscriptRequests: 0,
   };
 
   try {
@@ -375,6 +613,23 @@ export async function seedLocalData({
       counters.tickets += 1;
     }
 
+    const walkthrough = await seedPortalWalkthrough({
+      account,
+      support,
+      vendorCommerce,
+      retail,
+      quotes,
+      b2bOrders,
+      institution,
+      publisher,
+      author,
+      storage,
+      users,
+      catalogIndex,
+      orders,
+      counters,
+    });
+
     return {
       databaseUrl: connectionTarget,
       password,
@@ -383,6 +638,7 @@ export async function seedLocalData({
       created: counters,
       orders,
       payoutId: payout?.id ?? null,
+      walkthrough,
       totals: {
         products: (await catalog.db.prepare("SELECT COUNT(*) AS count FROM products").get()).count,
         offers: (await catalog.db.prepare("SELECT COUNT(*) AS count FROM vendor_offers").get()).count,
@@ -391,6 +647,9 @@ export async function seedLocalData({
       },
     };
   } finally {
-    for (const store of [support, notifications, vendorCommerce, adminCommerce, commerce, catalog, auth]) await store.close();
+    for (const store of [
+      storage, author, publisher, institution, b2bOrders, quotes, retail, account,
+      support, notifications, vendorCommerce, adminCommerce, commerce, catalog, auth,
+    ]) await store.close();
   }
 }

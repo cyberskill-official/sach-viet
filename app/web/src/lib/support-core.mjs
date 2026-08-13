@@ -4,7 +4,7 @@ import { normalizeRole } from "./access.mjs";
 
 const id = () => randomBytes(16).toString("hex");
 const required = (value, name) => { if (typeof value !== "string" || value.trim() === "") throw new Error(`${name} is required.`); return value.trim(); };
-const staff = (user) => ["admin", "employee", "employee_b2c"].includes(normalizeRole(user?.role));
+const staff = (user) => ["admin", "employee", "employee_b2c", "employee_b2b"].includes(normalizeRole(user?.role));
 
 export async function createSupportStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-006", ...fields })) } = {}) {
   const db = await openDatabase(dbPath);
@@ -19,9 +19,53 @@ export async function createTicket(store, user, input) {
   return ticket;
 }
 
-export async function listTickets(store, user) {
+/**
+ * @param {*} store
+ * @param {*} user
+ * @param {{ after?: string, limit?: number }} [options]
+ */
+export async function listTickets(store, user, { after, limit = 50 } = {}) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
-  return staff(user) ? await store.db.prepare("SELECT id, user_id AS userId, subject, status, created_at AS createdAt FROM support_tickets ORDER BY created_at DESC").all() : await store.db.prepare("SELECT id, user_id AS userId, subject, status, created_at AS createdAt FROM support_tickets WHERE user_id = ? ORDER BY created_at DESC").all(user.id);
+  const capped = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const clauses = staff(user) ? [] : ["user_id = ?"];
+  const params = staff(user) ? [] : [user.id];
+  if (after) {
+    clauses.push("id < ?");
+    params.push(after);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = await store.db
+    .prepare(
+      `SELECT id, user_id AS userId, subject, status, assignee_id AS assigneeId, created_at AS createdAt
+       FROM support_tickets ${where}
+       ORDER BY created_at DESC, id DESC
+       LIMIT ?`,
+    )
+    .all(...params, capped + 1);
+  const hasMore = rows.length > capped;
+  const items = hasMore ? rows.slice(0, capped) : rows;
+  return { items, nextCursor: hasMore ? items[items.length - 1].id : null };
+}
+
+export async function assignTicket(store, user, input = {}) {
+  if (!user?.id) throw new Error("A signed-in customer is required.");
+  if (!staff(user)) throw new Error("Ticket assignment is denied.");
+  const ticketId = required(input.ticketId, "Ticket ID");
+  const assigneeId = typeof input.assigneeId === "string" && input.assigneeId.trim() !== "" ? input.assigneeId.trim() : null;
+  const ticket = await store.db.prepare("SELECT id FROM support_tickets WHERE id = ?").get(ticketId);
+  if (!ticket) throw new Error("Ticket does not exist.");
+  if (assigneeId) {
+    const assignee = await store.db.prepare("SELECT id, role FROM users WHERE id = ?").get(assigneeId);
+    if (!assignee || !staff(assignee)) throw new Error("Assignee must be staff.");
+  }
+  await store.db.prepare("UPDATE support_tickets SET assignee_id = ? WHERE id = ?").run(assigneeId, ticketId);
+  store.log("support_ticket_assigned", { result: "accepted", ticket_id: ticketId, assignee_id: assigneeId });
+  const row = await store.db
+    .prepare(
+      "SELECT id, user_id AS userId, subject, status, assignee_id AS assigneeId, created_at AS createdAt FROM support_tickets WHERE id = ?",
+    )
+    .get(ticketId);
+  return row;
 }
 
 export async function addTicketMessage(store, user, input) {

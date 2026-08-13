@@ -132,7 +132,7 @@ export async function selectPrimaryOffer(store, productId) {
   return winner ? { id: winner.id, priceUsd: winner.price_usd, listPriceUsd: winner.list_price_usd, stockQuantity: winner.stock_quantity } : null;
 }
 
-async function hydrateProducts(store, products) {
+export async function hydrateProducts(store, products) {
   if (!products.length) return [];
   const ids = products.map((product) => product.id);
   const placeholders = ids.map(() => "?").join(",");
@@ -235,4 +235,45 @@ export async function listPublicProducts(store, { category, limit, after } = {})
   }
   const products = await store.db.prepare(sql).all(...params);
   return hydrateProducts(store, products);
+}
+
+/**
+ * @param {*} store
+ * @param {*} actor
+ * @param {{ vendorId?: string, after?: string, limit?: number }} [options]
+ */
+export async function listVendorOffers(store, actor, { vendorId, after, limit = 24 } = {}) {
+  const ownerId = vendorId || actor?.id;
+  if (!canWriteVendorOffer(actor, ownerId)) {
+    throw new Error("You cannot read this vendor offer.");
+  }
+  const capped = Math.min(Math.max(Number(limit) || 24, 1), 100);
+  const clauses = ["vendor_offers.vendor_id = ?"];
+  const params = [ownerId];
+  if (after) {
+    const cursor = await store.db.prepare("SELECT id FROM vendor_offers WHERE id = ? AND vendor_id = ?").get(after, ownerId);
+    if (cursor) {
+      clauses.push("vendor_offers.id > ?");
+      params.push(after);
+    }
+  }
+  const rows = await store.db
+    .prepare(
+      `SELECT vendor_offers.id, vendor_offers.product_id AS productId, vendor_offers.variant_id AS variantId,
+              vendor_offers.vendor_id AS vendorId, vendor_offers.price_usd AS priceUsd,
+              vendor_offers.list_price_usd AS listPriceUsd, vendor_offers.stock_quantity AS stockQuantity,
+              vendor_offers.is_active AS isActive, products.title AS productTitle, products.slug AS productSlug
+       FROM vendor_offers
+       JOIN products ON products.id = vendor_offers.product_id
+       WHERE ${clauses.join(" AND ")}
+       ORDER BY products.title ASC, vendor_offers.id ASC
+       LIMIT ?`,
+    )
+    .all(...params, capped + 1);
+  const hasMore = rows.length > capped;
+  const items = (hasMore ? rows.slice(0, capped) : rows).map((row) => ({
+    ...row,
+    isActive: row.isActive === 1,
+  }));
+  return { items, nextCursor: hasMore ? items[items.length - 1].id : null };
 }

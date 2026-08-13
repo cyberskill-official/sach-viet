@@ -33,7 +33,7 @@ export function RegisterForm() {
   }
 
   return (
-    <form className="mt-8 grid gap-4" onSubmit={submit}>
+    <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
       <label className="grid gap-2 text-sm">Email<input required name="email" type="email" autoComplete="email" className="rounded border border-zinc-600 bg-zinc-950 px-3 py-2" /></label>
       <label className="grid gap-2 text-sm">Password<input required name="password" type="password" minLength={8} autoComplete="new-password" className="rounded border border-zinc-600 bg-zinc-950 px-3 py-2" /></label>
       {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}

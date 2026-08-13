@@ -59,9 +59,10 @@ Full list: `docs/tasks/BACKLOG.md`.
 
 ## Suggested next steps (operator-gated)
 
-1. Complete HITL review of `TASK-GOV-001` … `TASK-TEST-001` (status `implementing`). Do not mark `ready_to_test` or `done` without verdict JSON.
-2. Optional Production freeze: deploy `COMMERCE_MUTATIONS_ENABLED=0` only with an explicit operator instruction.
-3. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred behind `DEC-ROY-001` / `DEC-PUB-001`.
-4. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by Production go).
-5. WordPress DNS / retirement still needs a **separate** cutover instruction (`TASK-CUTOVER-001` / `002`).
-6. Live Stripe/PayPal, Zalo, tax/shipping, and US-region PITR wait on named `DEC-*` records.
+1. Complete HITL review of `TASK-GOV-001` … `TASK-TEST-001` **and** `TASK-COM-002` … `TASK-TEST-002` (leave `implementing` until verdict JSON). Do not mark `ready_to_test` or `done` without that JSON.
+2. Sandbox Production candidate is **prepare-only** — [`app/web/OPERATIONS.md`](../app/web/OPERATIONS.md) § Wave 5. Do not merge `cursor/local-complete-golive-wave`, migrate Production, or smoke a live Production URL until a later operator instruction.
+3. Optional Production freeze: deploy `COMMERCE_MUTATIONS_ENABLED=0` only with an explicit operator instruction; enable after candidate smoke.
+4. Decide whether to accept royalty rates/policy (unlocks financial compute) — currently deferred behind `DEC-ROY-001` / `DEC-PUB-001`.
+5. Release selected `on_hold` product tasks only with explicit operator instruction (Phase B/C; not unlocked by Production go).
+6. WordPress DNS / retirement still needs a **separate** cutover instruction (`TASK-CUTOVER-001` / `002`).
+7. Live Stripe/PayPal, Zalo, tax/shipping, and US-region PITR wait on named `DEC-*` records. Never `sk_live_` / `PAYPAL_MODE=live`.

@@ -35,19 +35,61 @@ export async function createVendorCommerceStore({ dbPath, clock = () => Date.now
   return { db, clock, log, close: () => db.close() };
 }
 
+export const FULFILLMENT_STATUSES = Object.freeze(["packing", "shipped", "delivered"]);
+
 export async function listVendorIncomingOrders(store, actor, input = {}) {
   const vendorId = resolveVendorId(actor, input.vendorId);
   if (!canAccessOwnedRecord(actor, vendorId)) throw new Error("You cannot read this vendor's orders.");
-  return await store.db.prepare(`
+  const capped = Math.min(Math.max(Number(input.limit) || 50, 1), 100);
+  const clauses = ["vendor_offers.vendor_id = ?"];
+  const params = [vendorId];
+  if (input.after) {
+    clauses.push("order_items.id < ?");
+    params.push(input.after);
+  }
+  const rows = await store.db.prepare(`
     SELECT orders.id AS orderId, orders.status, orders.currency, order_items.id AS orderItemId,
            order_items.title, order_items.unit_price_usd AS unitPriceUsd, order_items.quantity,
-           order_items.vendor_offer_id AS vendorOfferId, orders.created_at AS createdAt
+           order_items.vendor_offer_id AS vendorOfferId,
+           order_items.fulfillment_status AS fulfillmentStatus, orders.created_at AS createdAt
     FROM order_items
     JOIN orders ON orders.id = order_items.order_id
     JOIN vendor_offers ON vendor_offers.id = order_items.vendor_offer_id
-    WHERE vendor_offers.vendor_id = ?
+    WHERE ${clauses.join(" AND ")}
     ORDER BY orders.created_at DESC, order_items.id DESC
-  `).all(vendorId);
+    LIMIT ?
+  `).all(...params, capped + 1);
+  const hasMore = rows.length > capped;
+  const items = hasMore ? rows.slice(0, capped) : rows;
+  return { items, nextCursor: hasMore ? items[items.length - 1].orderItemId : null };
+}
+
+export async function setOrderItemFulfillment(store, actor, input = {}) {
+  vendorActor(actor);
+  const orderItemId = required(input.orderItemId, "Order item ID");
+  const fulfillmentStatus = required(input.fulfillmentStatus, "Fulfillment status");
+  if (!FULFILLMENT_STATUSES.includes(fulfillmentStatus)) {
+    throw new Error("Fulfillment status must be packing, shipped, or delivered.");
+  }
+  const row = await store.db.prepare(`
+    SELECT order_items.id, vendor_offers.vendor_id AS vendorId, orders.status AS orderStatus
+    FROM order_items
+    JOIN vendor_offers ON vendor_offers.id = order_items.vendor_offer_id
+    JOIN orders ON orders.id = order_items.order_id
+    WHERE order_items.id = ?
+  `).get(orderItemId);
+  if (!row) throw new Error("Order item does not exist.");
+  if (normalizeRole(actor.role) !== "admin" && row.vendorId !== actor.id) {
+    throw new Error("You cannot update another vendor's order lines.");
+  }
+  await store.db.prepare("UPDATE order_items SET fulfillment_status = ? WHERE id = ?")
+    .run(fulfillmentStatus, orderItemId);
+  store.log("vendor_fulfillment_updated", {
+    result: "accepted",
+    order_item_id: orderItemId,
+    fulfillment_status: fulfillmentStatus,
+  });
+  return { orderItemId, fulfillmentStatus, vendorId: row.vendorId, orderStatus: row.orderStatus };
 }
 
 export async function createVendorPayout(store, actor, input) {

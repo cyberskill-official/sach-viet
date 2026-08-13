@@ -13,6 +13,19 @@ type Product = {
   primaryOffer: null | { id: string; priceUsd: string; listPriceUsd?: string | null; stockQuantity: number };
 };
 
+function apiMessage(body: Record<string, unknown>, fallback: string) {
+  const error = body.error;
+  if (error && typeof error === "object" && error !== null && "message" in error) return String((error as { message: string }).message);
+  if (typeof error === "string") return error;
+  return fallback;
+}
+
+function catalogItems(body: Record<string, unknown>): Product[] {
+  if (Array.isArray(body.items)) return body.items as Product[];
+  if (Array.isArray(body.products)) return body.products as Product[];
+  return [];
+}
+
 function readCart() {
   try { return normalizeCart(JSON.parse(window.localStorage.getItem(CART_KEY) || "[]")); }
   catch { return []; }
@@ -39,9 +52,10 @@ export function Storefront() {
     fetch(`/api/catalog/products?${params}`, { signal: controller.signal })
       .then(async (response) => {
         const body = await response.json();
-        if (!response.ok || !Array.isArray(body.products)) throw new Error(body.error || "Không thể tải danh mục.");
-        setProducts(body.products);
-        setHasMore(!submittedQuery && body.products.length === pageSize);
+        const items = catalogItems(body);
+        if (!response.ok) throw new Error(apiMessage(body, "Không thể tải danh mục."));
+        setProducts(items);
+        setHasMore(Boolean(body.nextCursor) || (!submittedQuery && items.length === pageSize));
       })
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -82,9 +96,10 @@ export function Storefront() {
     try {
       const response = await fetch(`/api/catalog/products?${params}`);
       const body = await response.json();
-      if (!response.ok || !Array.isArray(body.products)) throw new Error(body.error || "Không thể tải danh mục.");
-      setProducts((current) => [...current, ...body.products]);
-      setHasMore(body.products.length === pageSize);
+      const items = catalogItems(body);
+      if (!response.ok) throw new Error(apiMessage(body, "Không thể tải danh mục."));
+      setProducts((current) => [...current, ...items]);
+      setHasMore(Boolean(body.nextCursor) || items.length === pageSize);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
     } finally {
@@ -101,6 +116,7 @@ export function Storefront() {
             <span><strong className="block text-lg">Sách Việt</strong><small className="text-muted">Sách hay, gần bạn</small></span>
           </Link>
           <nav className="flex items-center gap-2 text-sm">
+            <Link className="cs-button cs-button--ghost" href="/account">Tài khoản</Link>
             <Link className="cs-button cs-button--ghost" href="/wishlist">Yêu thích</Link>
             <Link className="cs-button cs-button--ghost" href="/support">Hỗ trợ</Link>
             <Link className="cs-button cs-button--ghost" href="/ecom/orders">Đơn hàng</Link>

@@ -10,7 +10,14 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 ## ready_to_implement
 
-- (none yet - add rows as `- [ready_to_implement] TASK-001-slug - title`; append `(improvement)` for hardening tasks)
+- [ready_to_implement] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock
+- [ready_to_implement] TASK-PLT-001-ready-probe-liveness-health - Add GET /api/ready; keep /api/health liveness-only
+- [ready_to_implement] TASK-JOB-002-enqueue-identity-mail-on-leased-outbox - Enqueue register, verify, and reset mail on the leased outbox
+- [implementing] TASK-OPS-001-retire-wp-ai-supplier-from-production-ui - Retire WP-import apply, admin AI, and supplier portal from Production UI (improvement)
+- [ready_to_implement] TASK-API-001-error-envelope-and-cursor-lists - Adopt error envelope and cursor lists on hot paths (improvement)
+- [ready_to_implement] TASK-SRCH-002-postgres-fts-trigram - Postgres FTS/trigram search; stop hydrate-all then rank
+- [ready_to_implement] TASK-UI-002-account-support-vendor-fulfillment - Customer account, support assignment, vendor offer editor, fulfillment overlay
+- [implementing] TASK-TEST-002-playwright-next-start-smoke - Playwright and next start smoke of FL happy paths (improvement)
 - [implementing] TASK-GOV-001-audit-queue-docs-and-kill-switch - Author audit task queue, honest docs, and commerce kill-switch (improvement)
 - [implementing] TASK-DATA-001-async-pg-transactions - Replace spawnSync DB adapter with async pg transactions (improvement)
 - [implementing] TASK-ID-001-register-verify-reset - Customer register, email verify, and password reset

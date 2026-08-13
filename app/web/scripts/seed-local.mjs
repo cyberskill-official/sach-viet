@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { generateSeedPassword, seedLocalData } from "../src/lib/seed-local-core.mjs";
+import { assertSeedDatabaseTarget, generateSeedPassword, seedLocalData } from "../src/lib/seed-local-core.mjs";
 
 /** Default local file for generated seed passwords (mode 0600). Never commit. */
 export const DEFAULT_SEED_PASSWORD_FILE = ".seed-password";
@@ -44,6 +44,7 @@ export async function runSeedLocal(environment = process.env, options = {}) {
   const { password, source, passwordFile } = resolveSeedPassword(environment, options);
   const databaseUrl = environment.DATABASE_URL;
   const dbPath = environment.DATABASE_PATH;
+  assertSeedDatabaseTarget({ env: environment, databaseUrl, dbPath });
   const summary = await seedLocalData({ databaseUrl, dbPath, password, env: environment });
 
   console.log(`Seeded ${summary.databaseUrl}`);
@@ -56,6 +57,12 @@ export async function runSeedLocal(environment = process.env, options = {}) {
     console.log("  password: taken from SEED_PASSWORD (not printed).");
   } else {
     console.log(`  password: written to ${passwordFile} (mode 0600); not printed to stdout.`);
+  }
+  if (summary.walkthrough) {
+    console.log("  portal walkthrough:");
+    for (const [portal, payload] of Object.entries(summary.walkthrough)) {
+      console.log(`    ${portal.padEnd(12)} ${JSON.stringify(payload)}`);
+    }
   }
   console.log("  Never reuse the seed password outside local development.");
   return { ...summary, passwordSource: source, passwordFile };

@@ -12,6 +12,7 @@ import {
   getEmployeeDashboard,
   listHomeSections,
   listRetailOrders,
+  setRetailOrderItemFulfillment,
   upsertHomeSection,
 } from "../src/lib/employee-retail-core.mjs";
 import { createSupportStore, createTicket, createGoodsRequest } from "../src/lib/support-core.mjs";
@@ -117,13 +118,19 @@ test("retail roles list orders without email or payment secrets and non-retail r
   fixture(async (stores) => {
     await seedCommerce(stores);
     const orders = await listRetailOrders(stores.ops, { id: "retailer", role: "employee_b2c" });
-    assert.equal(orders.length, 1);
-    assert.equal(orders[0].status, "paid");
-    assert.equal(Object.hasOwn(orders[0], "email"), false);
-    assert.equal(Object.hasOwn(orders[0], "stripe_session_id"), false);
-    assert.equal(Object.hasOwn(orders[0], "checkout_url"), false);
+    assert.equal(orders.items.length, 1);
+    assert.equal(orders.items[0].status, "paid");
+    assert.equal(Object.hasOwn(orders.items[0], "email"), false);
+    assert.equal(Object.hasOwn(orders.items[0], "stripe_session_id"), false);
+    assert.equal(Object.hasOwn(orders.items[0], "checkout_url"), false);
+    const lineId = orders.items[0].items[0].id;
+    const overlay = await setRetailOrderItemFulfillment(stores.ops, { id: "retailer", role: "employee_b2c" }, {
+      orderItemId: lineId,
+      fulfillmentStatus: "delivered",
+    });
+    assert.equal(overlay.fulfillmentStatus, "delivered");
     const adminOrders = await listRetailOrders(stores.ops, { id: "admin", role: "admin" });
-    assert.equal(adminOrders.length, 1);
+    assert.equal(adminOrders.items.length, 1);
     await assert.rejects(async () => await listRetailOrders(stores.ops, { id: "employee", role: "employee" }), /Retail access/);
     await assert.rejects(async () => await listRetailOrders(stores.ops, { id: "b2b", role: "employee_b2b" }), /Retail access/);
     await assert.rejects(async () => await listRetailOrders(stores.ops, { id: "customer", role: "customer" }), /Retail access/);
@@ -145,5 +152,5 @@ test("home-config validation and empty-store dashboard paths stay safe", async (
     const section = await upsertHomeSection(stores.ops, { id: "employee", role: "employee" }, { sectionKey: "promo", title: "Promo" });
     assert.equal(section.sortOrder, 0);
     assert.equal(section.isEnabled, true);
-    assert.equal((await listRetailOrders(stores.ops, { id: "retailer", role: "employee_b2c" })).length, 0);
+    assert.equal((await listRetailOrders(stores.ops, { id: "retailer", role: "employee_b2c" })).items.length, 0);
   }));

@@ -12,4 +12,6 @@ test("wordpress import admin routes exist and gate through session + core helper
   assert.match(statusRoute, /readSession/);
   assert.match(applyRoute, /applyWordpressImportAsAdmin/);
   assert.match(applyRoute, /readSession/);
+  assert.match(applyRoute, /assertNotProductionRetired/);
+  assert.match(applyRoute, /status: 410/);
 });

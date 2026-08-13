@@ -9,6 +9,7 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { normalizeRole } from "./access.mjs";
 import { openDatabase } from "./db.mjs";
+import { assertNotProductionRetired } from "./production-retirement.mjs";
 
 export const AI_SETTINGS_ROW_ID = "default";
 
@@ -66,9 +67,7 @@ export function assertAllowedAiBaseUrl(baseUrl, environment = process.env) {
 }
 
 export function assertAiChatEnabled(environment = process.env) {
-  if (environment.NODE_ENV === "production" && environment.AI_CHAT_ENABLED !== "1") {
-    throw new Error("Admin AI chat is retired on Production.");
-  }
+  assertNotProductionRetired("Admin AI", environment);
 }
 
 const ENCRYPTION_SALT = "sachviet-ai-settings-v1";

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
 import { createCommerceStore, createPendingOrder } from "../src/lib/commerce-core.mjs";
-import { addTicketMessage, createGoodsRequest, createReview, createSupportStore, createTicket, listGoodsRequests, listTicketMessages, listTickets } from "../src/lib/support-core.mjs";
+import { addTicketMessage, assignTicket, createGoodsRequest, createReview, createSupportStore, createTicket, listGoodsRequests, listTicketMessages, listTickets } from "../src/lib/support-core.mjs";
 
 test("customers can read and write only their own support tickets", async () => {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-support-"));
@@ -15,12 +15,18 @@ test("customers can read and write only their own support tickets", async () => 
     const other = { id: "customer-b", role: "customer" };
     await assert.rejects(async () => await createTicket(store, customer, { subject: "" }), /required/);
     const ticket = await createTicket(store, customer, { subject: "Need help" });
-    assert.equal((await listTickets(store, customer)).length, 1);
-    assert.equal((await listTickets(store, other)).length, 0);
+    assert.equal((await listTickets(store, customer)).items.length, 1);
+    assert.equal((await listTickets(store, other)).items.length, 0);
     await assert.rejects(async () => await addTicketMessage(store, other, { ticketId: ticket.id, body: "No" }), /denied/);
     assert.equal((await addTicketMessage(store, { id: "staff", role: "employee_b2c" }, { ticketId: ticket.id, body: "We can help" })).body, "We can help");
     assert.equal((await addTicketMessage(store, customer, { ticketId: ticket.id, body: "I have more details" })).body, "I have more details");
     assert.equal((await listTicketMessages(store, customer, ticket.id)).length, 2);
+    await store.db.prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
+      .run("staff-employee", "staff@example.test", "x", "employee", 1);
+    await assert.rejects(async () => await assignTicket(store, customer, { ticketId: ticket.id, assigneeId: "staff-employee" }), /denied/);
+    const assigned = await assignTicket(store, { id: "staff-employee", role: "employee" }, { ticketId: ticket.id, assigneeId: "staff-employee" });
+    assert.equal(assigned.assigneeId, "staff-employee");
+    assert.equal((await listTickets(store, { id: "staff-employee", role: "employee" })).items[0].assigneeId, "staff-employee");
   } finally { await store.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 

@@ -118,12 +118,65 @@ export async function upsertHomeSection(store, actor, input) {
   return section;
 }
 
-export async function listRetailOrders(store, actor) {
+/**
+ * @param {*} store
+ * @param {*} actor
+ * @param {{ after?: string, limit?: number, paidOnly?: boolean }} [options]
+ */
+export async function listRetailOrders(store, actor, { after, limit = 50, paidOnly = true } = {}) {
   retailActor(actor);
-  if (!await tableExists(store.db, "orders")) return [];
-  return await store.db.prepare(`
+  if (!await tableExists(store.db, "orders")) return { items: [], nextCursor: null };
+  const capped = Math.min(Math.max(Number(limit) || 50, 1), 100);
+  const clauses = paidOnly ? ["status = 'paid'"] : [];
+  const params = [];
+  if (after) {
+    const cursor = await store.db.prepare("SELECT created_at AS createdAt, id FROM orders WHERE id = ?").get(after);
+    if (cursor) {
+      clauses.push("(created_at, id) < (?, ?)");
+      params.push(cursor.createdAt, cursor.id);
+    }
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = await store.db.prepare(`
     SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt
     FROM orders
+    ${where}
     ORDER BY created_at DESC, id DESC
-  `).all();
+    LIMIT ?
+  `).all(...params, capped + 1);
+  const hasMore = rows.length > capped;
+  const page = hasMore ? rows.slice(0, capped) : rows;
+  const itemStmt = store.db.prepare(`
+    SELECT id, title, quantity, unit_price_usd AS unitPriceUsd, fulfillment_status AS fulfillmentStatus
+    FROM order_items WHERE order_id = ? ORDER BY id ASC
+  `);
+  const items = [];
+  for (const order of page) {
+    items.push({ ...order, items: await itemStmt.all(order.id) });
+  }
+  return { items, nextCursor: hasMore ? page[page.length - 1].id : null };
+}
+
+export async function setRetailOrderItemFulfillment(store, actor, input = {}) {
+  retailActor(actor);
+  const orderItemId = required(input.orderItemId, "Order item ID");
+  const fulfillmentStatus = required(input.fulfillmentStatus, "Fulfillment status");
+  if (!["packing", "shipped", "delivered"].includes(fulfillmentStatus)) {
+    throw new Error("Fulfillment status must be packing, shipped, or delivered.");
+  }
+  const row = await store.db.prepare(`
+    SELECT order_items.id, orders.status AS orderStatus
+    FROM order_items JOIN orders ON orders.id = order_items.order_id
+    WHERE order_items.id = ?
+  `).get(orderItemId);
+  if (!row) throw new Error("Order item does not exist.");
+  if (row.orderStatus !== "paid") throw new Error("Fulfillment overlay applies to paid orders only.");
+  await store.db.prepare("UPDATE order_items SET fulfillment_status = ? WHERE id = ?")
+    .run(fulfillmentStatus, orderItemId);
+  store.log("retail_fulfillment_updated", {
+    result: "accepted",
+    order_item_id: orderItemId,
+    fulfillment_status: fulfillmentStatus,
+  });
+  return { orderItemId, fulfillmentStatus, orderStatus: row.orderStatus };
 }

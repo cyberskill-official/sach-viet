@@ -6,7 +6,7 @@ import test from "node:test";
 import { createAuthStore, hashPassword } from "../src/lib/auth-core.mjs";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
 import { createCommerceStore, createPendingOrder } from "../src/lib/commerce-core.mjs";
-import { createVendorCommerceStore, createVendorPayout, getVendorDashboard, listAdminPayouts, listVendorIncomingOrders, listVendorPayouts } from "../src/lib/vendor-commerce-core.mjs";
+import { createVendorCommerceStore, createVendorPayout, getVendorDashboard, listAdminPayouts, listVendorIncomingOrders, listVendorPayouts, setOrderItemFulfillment } from "../src/lib/vendor-commerce-core.mjs";
 
 async function fixture(run) {
   const directory = mkdtempSync(join(tmpdir(), "sachviet-vendor-commerce-"));
@@ -39,9 +39,21 @@ async function seedOrders({ catalog, commerce, addUser }) {
 test("vendors read only their incoming order lines and dashboard totals", async () => fixture(async (stores) => {
   const { items } = await seedOrders(stores);
   const orders = await listVendorIncomingOrders(stores.vendorStore, { id: "vendor-a", role: "vendor" });
-  assert.equal(orders.length, 1);
-  assert.equal(orders[0].quantity, 2);
-  assert.equal(Object.hasOwn(orders[0], "email"), false);
+  assert.equal(orders.items.length, 1);
+  assert.equal(orders.items[0].quantity, 2);
+  assert.equal(Object.hasOwn(orders.items[0], "email"), false);
+  const marked = await setOrderItemFulfillment(stores.vendorStore, { id: "vendor-a", role: "vendor" }, {
+    orderItemId: orders.items[0].orderItemId,
+    fulfillmentStatus: "packing",
+  });
+  assert.equal(marked.fulfillmentStatus, "packing");
+  await assert.rejects(
+    async () => await setOrderItemFulfillment(stores.vendorStore, { id: "vendor-a", role: "vendor" }, {
+      orderItemId: items.find((item) => item.vendorOfferId !== orders.items[0].vendorOfferId).id,
+      fulfillmentStatus: "shipped",
+    }),
+    /another vendor/,
+  );
   await assert.rejects(async () => await listVendorIncomingOrders(stores.vendorStore, { id: "vendor-a", role: "vendor" }, { vendorId: "vendor-b" }), /another vendor/);
   await assert.rejects(async () => await listVendorIncomingOrders(stores.vendorStore, { id: "customer", role: "customer" }), /Vendor access/);
   const dashboard = await getVendorDashboard(stores.vendorStore, { id: "vendor-a", role: "vendor" });

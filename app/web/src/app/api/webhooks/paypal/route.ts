@@ -50,10 +50,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Webhook rejected." }, { status: 400 });
     }
 
-    let comms = null;
+    if ("rejected" in result && result.rejected) {
+      return NextResponse.json(
+        {
+          error: { code: "order_expired", message: "Order is no longer payable.", requestId: result.orderId },
+          ...result,
+        },
+        { status: 409 },
+      );
+    }
+
+    let comms: unknown = null;
     if (result.handled && "orderId" in result && result.orderId) {
       try {
-        comms = await processOrderCommsOutbox(store, { orderId: result.orderId });
+        comms = await processOrderCommsOutbox(store, { orderId: String(result.orderId) });
       } catch (error) {
         console.error(
           JSON.stringify({

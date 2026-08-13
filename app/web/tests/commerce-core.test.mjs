@@ -7,16 +7,20 @@ import test from "node:test";
 import { createCatalogStore, createCategory, createProduct, writeVendorOffer } from "../src/lib/catalog-core.mjs";
 import {
   assertPayPalSandboxMode,
+  assertSandboxPaymentsOnly,
   assertStripeTestSecret,
   capturePayPalOrder,
   createCommerceStore,
   createPayPalCheckoutOrder,
   createPendingOrder,
+  createSandboxStubCheckout,
   createStripeCheckoutSession,
+  expirePendingOrders,
   listCustomerOrders,
   normalizeCheckoutProvider,
   processPayPalWebhook,
   processStripeWebhook,
+  sandboxCheckoutStubEnabled,
   STRIPE_FETCH_TIMEOUT_MS,
   verifyPayPalWebhookSignature,
   verifyStripeSignature,
@@ -96,7 +100,37 @@ test("normalizeCheckoutProvider defaults to stripe and rejects unknown", async (
   assert.equal(normalizeCheckoutProvider(undefined), "stripe");
   assert.equal(normalizeCheckoutProvider("PayPal"), "paypal");
   assert.throws(() => normalizeCheckoutProvider("square"), /stripe or paypal/);
+  assert.throws(() => normalizeCheckoutProvider("stub"), /stripe or paypal/);
+  assert.equal(normalizeCheckoutProvider("stub", { allowStub: true }), "stub");
 });
+
+test("sandbox checkout stub is local-only and refuses live payment keys", async () => withStores(async ({ catalog, commerce }) => {
+  assert.equal(sandboxCheckoutStubEnabled({}), false);
+  assert.equal(sandboxCheckoutStubEnabled({ TEST_HOOKS_ENABLED: "1" }), true);
+  assert.equal(sandboxCheckoutStubEnabled({ CHECKOUT_SANDBOX_STUB: "1" }), true);
+  assert.equal(sandboxCheckoutStubEnabled({ CHECKOUT_SANDBOX_STUB: "1", VERCEL: "1" }), false);
+  assert.equal(sandboxCheckoutStubEnabled({ CHECKOUT_SANDBOX_STUB: "1", VERCEL_ENV: "production" }), false);
+  assert.throws(() => assertSandboxPaymentsOnly({ STRIPE_SECRET_KEY: "sk_live_forbidden" }), /Live Stripe/);
+  assert.throws(() => assertSandboxPaymentsOnly({ PAYPAL_MODE: "live" }), /PAYPAL_MODE=sandbox/);
+
+  const { user, offer } = await fixture(catalog);
+  const order = await createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  await assert.rejects(
+    () => createSandboxStubCheckout(commerce, order.id, {}),
+    /not enabled/,
+  );
+  await assert.rejects(
+    () => createSandboxStubCheckout(commerce, order.id, { CHECKOUT_SANDBOX_STUB: "1", STRIPE_SECRET_KEY: "sk_live_x" }),
+    /Live Stripe/,
+  );
+  const session = await createSandboxStubCheckout(commerce, order.id, { CHECKOUT_SANDBOX_STUB: "1" });
+  assert.equal(session.provider, "stub");
+  assert.equal(session.url, `/ecom/orders/${order.id}`);
+  const row = await commerce.db.prepare("SELECT payment_provider, checkout_url, status FROM orders WHERE id = ?").get(order.id);
+  assert.equal(row.payment_provider, "stub");
+  assert.equal(row.status, "pending_payment");
+  assert.equal(row.checkout_url, session.url);
+}));
 
 test("PayPal checkout requires sandbox config and saves approve URL", async () => withStores(async ({ catalog, commerce }) => {
   const { user, offer } = await fixture(catalog);
@@ -160,7 +194,7 @@ test("PayPal capture marks pending order paid idempotently", async () => withSto
   const first = await capturePayPalOrder(commerce, "PAYPAL-ORDER-2", env, fetcher);
   assert.equal(first.updated, true);
   assert.equal(first.paid, true);
-  assert.equal((await listCustomerOrders(commerce, user))[0].status, "paid");
+  assert.equal((await listCustomerOrders(commerce, user)).items[0].status, "paid");
   const second = await capturePayPalOrder(commerce, "PAYPAL-ORDER-2", env, fetcher);
   assert.equal(second.updated, false);
   assert.equal(second.paid, true);
@@ -201,7 +235,7 @@ test("PayPal webhook verifies via API then captures on ORDER.APPROVED", async ()
   const result = await processPayPalWebhook(commerce, payload, headers, "WH-TEST-ID-1", env, fetcher);
   assert.equal(result.handled, true);
   assert.equal(result.paid, true);
-  assert.equal((await listCustomerOrders(commerce, user))[0].status, "paid");
+  assert.equal((await listCustomerOrders(commerce, user)).items[0].status, "paid");
 }));
 
 test("signed Stripe completion updates only the referenced pending order", async () => withStores(async ({ catalog, commerce }) => {
@@ -219,7 +253,7 @@ test("signed Stripe completion updates only the referenced pending order", async
     enqueued: true,
     orderId: order.id,
   });
-  assert.equal((await listCustomerOrders(commerce, user))[0].status, "paid");
+  assert.equal((await listCustomerOrders(commerce, user)).items[0].status, "paid");
   assert.deepEqual(await processStripeWebhook(commerce, payload, signature, secret), {
     handled: true,
     updated: false,
@@ -227,7 +261,7 @@ test("signed Stripe completion updates only the referenced pending order", async
     enqueued: false,
     orderId: order.id,
   });
-  assert.equal((await listCustomerOrders(commerce, user))[0].status, "paid");
+  assert.equal((await listCustomerOrders(commerce, user)).items[0].status, "paid");
   await assert.rejects(async () => await processStripeWebhook(commerce, payload, "t=1,v1=bad", secret), /signature/);
   await assert.rejects(async () => await processStripeWebhook(commerce, payload, signature, undefined), /signature/);
   await assert.rejects(async () => await processStripeWebhook(commerce, payload, signature, "short"), /signature/);
@@ -246,3 +280,73 @@ test("Stripe checkout rejects missing success or cancel URLs even when secret is
     /not configured/,
   );
 }));
+
+function signedStripePaidPayload(orderId, secret = "whsec_test_secret_value") {
+  const payload = JSON.stringify({
+    type: "checkout.session.completed",
+    data: { object: { id: "cs_test_expired", metadata: { order_id: orderId } } },
+  });
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = `t=${timestamp},v1=${createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex")}`;
+  return { payload, signature, secret };
+}
+
+test("last-unit checkout expires, restocks, and a second buyer can purchase", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "sachviet-commerce-expire-"));
+  const dbPath = join(directory, "sachviet.sqlite");
+  let currentTime = 1_000;
+  const catalog = await createCatalogStore({ dbPath, log: () => {} });
+  const commerce = await createCommerceStore({
+    dbPath,
+    log: () => {},
+    clock: () => currentTime,
+    pendingOrderTtlMs: 60_000,
+  });
+  try {
+    await createCategory(catalog, { slug: "books", name: "Books" });
+    const product = await createProduct(catalog, { categorySlug: "books", slug: "book", title: "A Book" });
+    const offer = await writeVendorOffer(catalog, { id: "vendor-1", role: "vendor" }, {
+      productId: product.id,
+      vendorId: "vendor-1",
+      priceUsd: "12.50",
+      stockQuantity: 1,
+    });
+    const firstBuyer = { id: "customer-1", role: "customer" };
+    const secondBuyer = { id: "customer-2", role: "customer" };
+    const pending = await createPendingOrder(commerce, firstBuyer, [{ vendorOfferId: offer.id, quantity: 1 }]);
+    assert.equal(pending.status, "pending_payment");
+    assert.equal(pending.expiresAt, 61_000);
+    assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 0);
+    await assert.rejects(
+      () => createPendingOrder(commerce, secondBuyer, [{ vendorOfferId: offer.id, quantity: 1 }]),
+      /no longer available/,
+    );
+
+    currentTime = 61_000;
+    const expired = await expirePendingOrders(commerce);
+    assert.equal(expired.expired, 1);
+    assert.equal((await commerce.db.prepare("SELECT status FROM orders WHERE id = ?").get(pending.id)).status, "payment_failed");
+    assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 1);
+    const restock = await commerce.db
+      .prepare("SELECT delta, reason FROM inventory_movements WHERE order_id = ? AND reason = 'expire_restock'")
+      .get(pending.id);
+    assert.equal(restock.delta, 1);
+
+    const second = await createPendingOrder(commerce, secondBuyer, [{ vendorOfferId: offer.id, quantity: 1 }]);
+    assert.equal(second.status, "pending_payment");
+    assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 0);
+
+    const signed = signedStripePaidPayload(pending.id);
+    const webhook = await processStripeWebhook(commerce, signed.payload, signed.signature, signed.secret);
+    assert.equal(webhook.rejected, true);
+    assert.equal(webhook.paid, false);
+    assert.equal(webhook.updated, false);
+    assert.equal((await commerce.db.prepare("SELECT status FROM orders WHERE id = ?").get(pending.id)).status, "payment_failed");
+    assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 0);
+    assert.equal((await expirePendingOrders(commerce)).expired, 0);
+  } finally {
+    await commerce.close();
+    await catalog.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

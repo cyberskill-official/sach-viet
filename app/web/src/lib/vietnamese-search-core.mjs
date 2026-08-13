@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { listPublicProducts } from "./catalog-core.mjs";
+import { hydrateProducts, listPublicProducts } from "./catalog-core.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 
@@ -8,6 +8,9 @@ export const MAX_SEARCH_QUERY_LENGTH = 120;
 
 /** Raw search_logs rows older than this are pruned on write (analytics retention, never public). */
 export const SEARCH_LOG_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Statement timeout for FTS/trigram queries. On timeout we return an empty page, never hydrate-all. */
+export const SEARCH_STATEMENT_TIMEOUT_MS = 2000;
 
 function capSearchQuery(value) {
   const query = typeof value === "string" ? value.trim() : "";
@@ -172,10 +175,38 @@ export function resolveSearchBackend({ env = process.env, submit = null, log } =
 
 export function getSearchBackendStatus({ env = process.env } = {}) {
   return {
-    searchBackend: env.MEILI_HOST ? "meilisearch" : "local",
+    searchBackend: env.MEILI_HOST ? "meilisearch" : "postgres",
     meilisearchConfigured: Boolean(env.MEILI_HOST),
     meilisearchCredentialPresence: Boolean(env.MEILI_API_KEY),
   };
+}
+
+function isStatementTimeout(error) {
+  return Boolean(
+    error &&
+      (error.code === "57014" ||
+        (typeof error.message === "string" && /statement timeout/i.test(error.message))),
+  );
+}
+
+function isMissingSearchIndex(error) {
+  const message = typeof error?.message === "string" ? error.message : "";
+  return /search_tsv|search_text|sachviet_normalize_search|pg_trgm|similarity\(|plainto_tsquery|statement_timeout|operator does not exist|gin_trgm_ops|42883/i.test(message);
+}
+
+function productMatchesNormalized(product, normalized) {
+  const hay = normalizeVietnameseText(
+    `${product.title || ""} ${product.slug || ""} ${product.description || ""} ${product.category?.name || ""}`,
+  );
+  const tokens = tokenizeVietnamese(normalized);
+  return tokens.every(
+    (token) => hay.includes(token) || tokenizeVietnamese(hay).some((word) => levenshtein(word, token) <= 1),
+  );
+}
+
+async function searchProductsBoundedLocal(store, { normalized, category, cappedLimit, after }) {
+  const rows = await listPublicProducts(store, { category, limit: cappedLimit + 1, after });
+  return rows.filter((product) => productMatchesNormalized(product, normalized));
 }
 
 async function recordSearchLog(store, { queryNormalized, resultCount, backendMode }) {
@@ -207,37 +238,134 @@ export async function listSearchLogs(store, { limit = 50 } = {}) {
     .all(limit);
 }
 
+async function toSearchPage(store, rows, cappedLimit) {
+  const hasMore = rows.length > cappedLimit;
+  const page = hasMore ? rows.slice(0, cappedLimit) : rows;
+  const items = await hydrateProducts(store, page);
+  return { items, nextCursor: hasMore ? page[page.length - 1].id : null };
+}
+
+async function searchProductsInDatabase(store, { normalized, category, cappedLimit, after }) {
+  const clauses = [
+    `(
+      products.search_tsv @@ plainto_tsquery('simple', CAST(? AS text))
+      OR products.search_text OPERATOR(public.%) CAST(? AS text)
+      OR products.search_text LIKE CAST(? AS text) || '%'
+      OR sachviet_normalize_search(categories.name) LIKE '%' || CAST(? AS text) || '%'
+    )`,
+  ];
+  const params = [normalized, normalized, normalized, normalized];
+  if (category) {
+    clauses.push("categories.slug = ?");
+    params.push(category);
+  }
+  if (after) {
+    const cursor = await store.db
+      .prepare(
+        `SELECT products.id, products.title,
+                ts_rank(products.search_tsv, plainto_tsquery('simple', CAST(? AS text))) AS rank
+         FROM products WHERE products.id = ?`,
+      )
+      .get(normalized, after);
+    if (cursor) {
+      clauses.push(`(
+        ts_rank(products.search_tsv, plainto_tsquery('simple', CAST(? AS text))) < ?
+        OR (
+          ts_rank(products.search_tsv, plainto_tsquery('simple', CAST(? AS text))) = ?
+          AND (products.title, products.id) > (?, ?)
+        )
+      )`);
+      params.push(normalized, cursor.rank, normalized, cursor.rank, cursor.title, cursor.id);
+    }
+  }
+
+  const sql = `SELECT products.id, products.slug, products.title, products.description,
+      categories.slug AS category_slug, categories.name AS category_name
+    FROM products
+    JOIN categories ON categories.id = products.category_id
+    WHERE ${clauses.join(" AND ")}
+    ORDER BY ts_rank(products.search_tsv, plainto_tsquery('simple', CAST(? AS text))) DESC,
+             products.title ASC, products.id ASC
+    LIMIT ?`;
+  params.push(normalized, cappedLimit + 1);
+
+  await store.db.exec("BEGIN");
+  try {
+    await store.db.exec(`SET LOCAL statement_timeout = ${SEARCH_STATEMENT_TIMEOUT_MS}`);
+    const rows = await store.db.prepare(sql).all(...params);
+    await store.db.exec("COMMIT");
+    return rows;
+  } catch (error) {
+    try {
+      await store.db.exec("ROLLBACK");
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
+}
+
 /**
  * Search public catalog products. Empty/whitespace `q` returns existing list/category behavior.
- * `q` is truncated to MAX_SEARCH_QUERY_LENGTH before ranking to bound CPU cost.
- * @param {import("./catalog-core.mjs").CatalogStore | { db: unknown, now: Function, log?: Function, close?: Function }} store
- * @param {{ q?: string | null, category?: string, limit?: number, after?: string, backend?: { mode: string, search: Function } }} [options]
- * @returns {unknown[]}
+ * Ranked queries run in Postgres (tsvector + pg_trgm) with a bounded LIMIT. They never
+ * hydrate the full catalog. On statement timeout the page is empty (not a hydrate-all fallback).
+ * `q` is truncated to MAX_SEARCH_QUERY_LENGTH before ranking.
  */
 export async function searchPublicProducts(store, options = {}) {
   const { q, category, limit = 24, after, backend } = options;
   const query = capSearchQuery(q);
-  if (!query) return await listPublicProducts(store, { category, limit, after });
+  const cappedLimit = Math.min(Math.max(Number(limit) || 24, 1), 100);
+  if (!query) {
+    const rows = await listPublicProducts(store, { category, limit: cappedLimit + 1, after });
+    const hasMore = rows.length > cappedLimit;
+    const items = hasMore ? rows.slice(0, cappedLimit) : rows;
+    return { items, nextCursor: hasMore ? items[items.length - 1].id : null };
+  }
 
   const resolved = backend || resolveSearchBackend({ log: store.log });
-  const cappedLimit = Math.min(Math.max(Number(limit) || 24, 1), 100);
-  const products = await listPublicProducts(store, { category });
-  const ranked = resolved.search({ documents: products, query, limit: cappedLimit });
+  const normalized = normalizeVietnameseText(query);
+  if (!normalized) {
+    return { items: [], nextCursor: null };
+  }
+
+  let timedOut = false;
+  let rows = [];
+  let backendMode = "postgres";
+  try {
+    rows = await searchProductsInDatabase(store, { normalized, category, cappedLimit, after });
+  } catch (error) {
+    if (isStatementTimeout(error)) {
+      timedOut = true;
+      store.log?.("vietnamese_search_timeout", {
+        result: "timeout",
+        backend_mode: "postgres",
+        query_normalized: normalized,
+      });
+    } else if (isMissingSearchIndex(error)) {
+      rows = await searchProductsBoundedLocal(store, { normalized, category, cappedLimit, after });
+      backendMode = "local_bounded";
+    } else {
+      throw error;
+    }
+  }
+
+  const page = timedOut ? { items: [], nextCursor: null } : await toSearchPage(store, rows, cappedLimit);
   await recordSearchLog(store, {
-    queryNormalized: normalizeVietnameseText(query),
-    resultCount: ranked.length,
-    backendMode: resolved.mode,
+    queryNormalized: normalized,
+    resultCount: page.items.length,
+    backendMode: timedOut ? "postgres_timeout" : backendMode,
   });
-  return ranked;
+  if (timedOut) page.timedOut = true;
+  // Meilisearch remains an optional seam (status/backend factories). Ranked pages do not
+  // hydrate documents for it.
+  void resolved;
+  return page;
 }
 
 /**
  * Public search suggestions sourced ONLY from catalog product titles.
  * Historical search_logs are analytics-only and must never be re-exposed here
  * (user-typed queries can contain PII). `q` is truncated to MAX_SEARCH_QUERY_LENGTH.
- * @param {import("./catalog-core.mjs").CatalogStore | { db: unknown, now: Function, log?: Function }} store
- * @param {{ q?: string | null, limit?: number }} [options]
- * @returns {string[]}
  */
 export async function suggestCatalogQueries(store, options = {}) {
   const { q, limit = 8 } = options;
@@ -247,14 +375,32 @@ export async function suggestCatalogQueries(store, options = {}) {
   if (!normalized) return [];
   const cappedLimit = Math.min(Math.max(Number(limit) || 8, 1), 20);
 
-  const fromTitles = (await listPublicProducts(store))
-    .map((product) => normalizeVietnameseText(product.title))
-    .filter((title) => title.startsWith(normalized) || title.includes(` ${normalized}`));
-
-  const suggestions = [];
-  for (const suggestion of fromTitles) {
-    if (!suggestions.includes(suggestion)) suggestions.push(suggestion);
-    if (suggestions.length >= cappedLimit) break;
+  try {
+    const rows = await store.db
+      .prepare(
+        `SELECT title
+         FROM products
+         WHERE search_text LIKE CAST(? AS text) || '%'
+            OR search_text OPERATOR(public.%) CAST(? AS text)
+         ORDER BY public.similarity(search_text, CAST(? AS text)) DESC, title ASC, id ASC
+         LIMIT ?`,
+      )
+      .all(normalized, normalized, normalized, cappedLimit);
+    const suggestions = [];
+    for (const row of rows) {
+      const title = normalizeVietnameseText(row.title);
+      if (title && !suggestions.includes(title)) suggestions.push(title);
+    }
+    return suggestions;
+  } catch (error) {
+    if (!isMissingSearchIndex(error)) throw error;
+    const rows = await listPublicProducts(store, { limit: Math.max(cappedLimit * 4, 24) });
+    const suggestions = [];
+    for (const product of rows) {
+      const title = normalizeVietnameseText(product.title);
+      if (title.includes(normalized) && !suggestions.includes(title)) suggestions.push(title);
+      if (suggestions.length >= cappedLimit) break;
+    }
+    return suggestions;
   }
-  return suggestions;
 }

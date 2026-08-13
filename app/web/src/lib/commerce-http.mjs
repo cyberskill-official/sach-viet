@@ -1,12 +1,15 @@
 import { COOKIE_NAME, getAuthStore, readSession } from "./auth-core.mjs";
 import {
   assertPayPalSandboxMode,
+  assertSandboxPaymentsOnly,
   assertStripeTestSecret,
   createCommerceStore,
   createPayPalCheckoutOrder,
   createPendingOrder,
+  createSandboxStubCheckout,
   createStripeCheckoutSession,
   normalizeCheckoutProvider,
+  sandboxCheckoutStubEnabled,
 } from "./commerce-core.mjs";
 import { commerceMutationsDisabledMessage, commerceMutationsEnabled } from "./commerce-kill-switch.mjs";
 import { isUniqueViolationError } from "./db.mjs";
@@ -46,8 +49,13 @@ export async function handleCheckout(request, environment = process.env) {
   const body = await request.json().catch(() => null);
   let provider;
   try {
-    provider = normalizeCheckoutProvider(body?.provider);
-    assertProviderConfigured(provider, environment);
+    const stubEnabled = sandboxCheckoutStubEnabled(environment);
+    provider = normalizeCheckoutProvider(body?.provider, { allowStub: stubEnabled });
+    if (provider === "stub") {
+      assertSandboxPaymentsOnly(environment);
+    } else {
+      assertProviderConfigured(provider, environment);
+    }
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Checkout is not configured.", 400);
   }
@@ -66,9 +74,11 @@ export async function handleCheckout(request, environment = process.env) {
 
     const order = await createPendingOrder(store, session.user, body?.items);
     const checkout =
-      provider === "paypal"
-        ? await createPayPalCheckoutOrder(store, order.id, environment)
-        : await createStripeCheckoutSession(store, order.id, environment);
+      provider === "stub"
+        ? await createSandboxStubCheckout(store, order.id, environment)
+        : provider === "paypal"
+          ? await createPayPalCheckoutOrder(store, order.id, environment)
+          : await createStripeCheckoutSession(store, order.id, environment);
     const payload = { order, checkout };
     if (idempotencyKey) {
       try {

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   adminAiChat,
+  assertAiChatEnabled,
   createAiSettingsStore,
   createChatCompletion,
   decryptApiKey,
@@ -35,6 +36,10 @@ async function fixture(run, { settingsSecret = SECRET } = {}) {
     rmSync(directory, { recursive: true, force: true });
   }
 }
+
+test("admin AI is retired on Production even when AI_CHAT_ENABLED=1", () => {
+  assert.throws(() => assertAiChatEnabled({ NODE_ENV: "production", AI_CHAT_ENABLED: "1" }), /retired on Production/);
+});
 
 test("AI_SETTINGS_SECRET fails closed when short or unset", async () => {
   assert.throws(() => requireAiSettingsSecret(""), /AI_SETTINGS_SECRET is required/);

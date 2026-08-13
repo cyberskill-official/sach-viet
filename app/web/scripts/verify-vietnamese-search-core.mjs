@@ -27,12 +27,11 @@ const catalogCore = readFileSync(resolve(root, "src/lib/catalog-core.mjs"), "utf
 if (/searchPublicProducts|Meilisearch|Algolia/.test(catalogCore)) {
   throw new Error("Catalog core must not embed search backend implementation.");
 }
-const listRoute = readFileSync(resolve(root, "src/app/api/catalog/products/route.ts"), "utf8");
-if (!listRoute.includes("searchPublicProducts") || !listRoute.includes('get("q")')) {
-  throw new Error("Catalog products route must wire optional q through searchPublicProducts.");
+const listHttp = readFileSync(resolve(root, "src/lib/catalog-http.mjs"), "utf8");
+if (!listHttp.includes("searchPublicProducts") || !listHttp.includes('get("q")')) {
+  throw new Error("Catalog products HTTP must wire optional q through searchPublicProducts.");
 }
-const suggestionsRoute = readFileSync(resolve(root, "src/app/api/catalog/search/suggestions/route.ts"), "utf8");
-if (!suggestionsRoute.includes("suggestCatalogQueries")) {
-  throw new Error("Suggestions route must use suggestCatalogQueries.");
+if (!listHttp.includes("suggestCatalogQueries")) {
+  throw new Error("Suggestions HTTP must use suggestCatalogQueries.");
 }
 console.info(JSON.stringify({ event: "vietnamese_search_core_verified", task_id: "TASK-REBUILD-020", result: "passed" }));
