@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { resolveSeedPassword, writeSeedPasswordFile } from "../scripts/seed-local.mjs";
+import { assertSeedDatabaseTarget } from "../src/lib/seed-local-core.mjs";
 
 test("seed refuses NODE_ENV=production", async () => {
   assert.throws(
@@ -40,6 +41,16 @@ test("seed writes generated password to a 0600 local file when SEED_PASSWORD is 
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+});
+
+test("seed fingerprint refuses remote DATABASE_URL hosts", () => {
+  assert.throws(
+    () => assertSeedDatabaseTarget({
+      env: { NODE_ENV: "development" },
+      databaseUrl: "postgres://user:pass@prod.example.net:5432/sachviet",
+    }),
+    /loopback or Compose db/,
+  );
 });
 
 test("writeSeedPasswordFile creates parent directories", async () => {

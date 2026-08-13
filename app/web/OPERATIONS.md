@@ -31,11 +31,11 @@ Build the production image without starting an application process (from `app/we
 docker build --tag sachviet-web-foundation:local .
 ```
 
-`captain-definition` selects this Dockerfile for a **transitional** CapRover package. Prefer Vercel + Supabase for cloud preview ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md)). Do not deploy CapRover or Vercel without an explicit operator instruction.
+`captain-definition` is retained only for historical packaging verification. It is **not** a supported deploy path. Prefer Vercel + Supabase ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md)). Do not deploy without an explicit operator instruction.
 
 ### Local Docker (production-like)
 
-Use Compose under `app/` to run the same production image locally against **Postgres** (not SQLite). This matches the Vercel + Supabase target shape. CapRover/SQLite remains transitional only. This is **not** a CapRover deploy and is **not** a hot-reload / `next dev` stack.
+Use Compose under `app/` to run the same production image locally against **Postgres**. This matches the Vercel + Supabase target shape. This is **not** a hot-reload / `next dev` stack.
 
 **Prerequisites:** Docker Desktop or Engine with Compose.
 
@@ -82,21 +82,9 @@ Add `-v` only if you intend to reset the Postgres volume (`sachviet-pg`).
 
 When SMTP, Zalo, Stripe webhook, or Meili env vars are unset, those integrations use recording stubs / local defaults.
 
-### Admin BYOK AI (Wave 3)
+### Admin AI (retired on Production)
 
-Admin-only settings + playground live on `/admin` (AI panel). Not a customer feature.
-
-1. Set `AI_SETTINGS_SECRET` in `app/.env.docker` (min 32 characters), e.g. `openssl rand -hex 32`, then recreate the web container so the env is picked up.
-2. Sign in as admin → open `/admin` → **AI BYOK** panel.
-3. Prefer a free OpenAI-compatible endpoint:
-   - **OpenRouter free:** base `https://openrouter.ai/api/v1`, model e.g. `meta-llama/llama-3.2-3b-instruct:free`
-   - **Groq:** base `https://api.groq.com/openai/v1`, model e.g. `llama-3.1-8b-instant`
-   - **Ollama (local):** base `http://host.docker.internal:11434/v1`, model e.g. `llama3.2` (API key can be any non-empty placeholder)
-4. Paste the provider API key → **Save settings** → send a short playground message.
-
-API: `GET/PUT /api/admin/ai-settings`, `POST /api/admin/ai/chat` (admin session cookie required). Keys are AES-256-GCM encrypted at rest; responses never include the raw key. Chat **fails closed** with HTTP 400 when the secret or key is unset, or HTTP 502 with a clear provider error body when the upstream call fails.
-
-Smoke (after save): playground UI should show an assistant reply, or an explicit error such as `AI API key is not configured` / `AI_SETTINGS_SECRET is required` / `AI provider error: …` — never a bare 500.
+`GET/PUT /api/admin/ai-settings` and `POST /api/admin/ai/chat` return **HTTP 410** when `NODE_ENV=production`. The admin UI no longer advertises the BYOK panel. Local/test cores remain for unit tests; do not treat admin AI as a Production operator path.
 
 **Password hash `$` escaping (required):** scrypt hashes contain `$`. Docker Compose interpolates values from `app/.env.docker` (`env_file`). Escape every `$` as `$$` when pasting the hash (e.g. `scrypt$salt$digest` → `scrypt$$salt$$digest`). At runtime the container receives single `$` (verified with Compose v5). The same `$$` rule applies if you ever inline a hash under a service `environment:` key.
 
@@ -164,10 +152,24 @@ curl -s -o /dev/null -w '%{http_code}\n' -b /tmp/sv-cookies http://127.0.0.1:300
 
 Then open `http://127.0.0.1:3000` for the storefront and `http://127.0.0.1:3000/admin` after signing in as the seeded administrator.
 
+### Playwright Chromium smoke (`next start` + Compose Postgres)
+
+TASK-TEST-002 happy/denial paths (Chromium only). Compose **Postgres** must be up and seeded. This starts a host `next start` on port 3100 (does not use the Compose `web` container). Test hooks and the checkout sandbox stub are **off** on Vercel.
+
+From `app/web` after `npm run build`. Local `next start` is not used because this package emits `output: "standalone"` (same as Docker); Playwright starts `node .next/standalone/server.js` via `npm run start:standalone`.
+
+```bash
+npx playwright install chromium   # once per machine
+DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet npm run test:e2e
+```
+
+Optional: `SEED_PASSWORD='…'` if `.seed-password` is absent; `PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100` to reuse an already-running standalone server that has `TEST_HOOKS_ENABLED=1`, `TEST_HOOK_SECRET`, and `CHECKOUT_SANDBOX_STUB=1`. Never `sk_live_` or `PAYPAL_MODE=live`.
+
 Expected local limits:
 
-- **Checkout stops at Stripe when secrets are unset.** `POST /api/checkout` **creates the pending order first**, then returns `400` with `Stripe checkout is not configured.` when `STRIPE_SECRET_KEY`, `STRIPE_SUCCESS_URL`, or `STRIPE_CANCEL_URL` is unset. Confirm via `GET /api/orders` (`pending_payment`). With test-mode secrets in `app/.env.docker` (never commit) + Stripe CLI webhook forwarding, restart the stack and complete a session to reach `paid` and trigger confirmation email (SMTP or recording stub).
-- **Email, Zalo, Meilisearch, and WordPress import** stay on recording stubs / local defaults when their env vars are unset, so the WordPress import panel reports `fixture · none` with no runs.
+- **Local Playwright uses the sandbox checkout stub** (`CHECKOUT_SANDBOX_STUB=1` + `TEST_HOOKS_ENABLED=1`, never on Vercel). `POST /api/checkout` with `provider: "stub"` creates a `pending_payment` order and returns `{ checkout: { provider: "stub", url: "/ecom/orders/:id" } }`. Live Stripe keys and `PAYPAL_MODE=live` are refused.
+- **Without the stub, checkout stops at Stripe when secrets are unset.** `POST /api/checkout` returns `400` with `Stripe checkout is not configured.` when `STRIPE_SECRET_KEY`, `STRIPE_SUCCESS_URL`, or `STRIPE_CANCEL_URL` is unset. With test-mode secrets in `app/.env.docker` (never commit) + Stripe CLI webhook forwarding, restart the stack and complete a session to reach `paid` and trigger confirmation email (SMTP or recording stub).
+- **Email, Zalo, and Meilisearch** stay on recording stubs / local defaults when their env vars are unset. WordPress **fixture** import remains a test-only compatibility path (REBUILD-021); Production `POST /api/admin/wordpress-import/apply` returns 410.
 - Only the admin portal has a populated dashboard. Other portals render the shared shell with an empty table or the pending-policy notice.
 
 ## Docker acceptance checklist (Wave 4)
@@ -178,7 +180,7 @@ Tracked gate before any cloud deploy. Short pointer: [`docs/docker-acceptance-ga
 
 - **Vercel production deploy is forbidden** until every required row below is green with evidence (item **6** may be **deferred** until Stripe is registered — see row).
 - **Vercel preview** may start only after local items **1–5** and **7** pass (item 6 optional/deferred).
-- Wave 5 preview wiring ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md)) does not authorize production or DNS cutover; that still needs an explicit operator instruction (`owner_go_decision` / `separate_deployment_instruction`).
+- Historical Preview “Wave 5” ([`docs/ops/wave5-preview-go.md`](../../docs/ops/wave5-preview-go.md)) is superseded. The **sandbox Production candidate** checklist below is prepare-only and does **not** authorize merge, deploy, Production migrate, or DNS cutover.
 - CapRover/SQLite remains transitional only and is not an escape hatch around this gate.
 
 **Automated smoke** (stack up + seeded; from `app/web`):
@@ -188,21 +190,79 @@ npm run smoke:docker
 # optional: SEED_PASSWORD='…' BASE_URL=http://127.0.0.1:3000 npm run smoke:docker
 ```
 
-`smoke:docker` covers items 1, 3–5, and fail-closed AI settings/chat (7). Item 6 (paid Stripe path) is deferred until Stripe registration. Item 8 is the backup drill doc. Item 9 is quality + CI.
+`smoke:docker` covers items 1 (`/api/health`), **1b (`/api/ready`)**, 3–5, and Production-retired admin AI 410s (7). `/api/ready` requires `CRON_SECRET` (plus `DATABASE_URL` and `AUTH_SESSION_SECRET`) to be present; values are never returned. Item 6 (paid Stripe path) is deferred until Stripe registration. Item 8 is the backup drill doc. Item 9 is quality + CI.
 
 | # | Check | How | Evidence / status |
 |---|---|---|---|
-| 1 | Compose healthy; `/api/health` → Postgres OK | `docker compose up -d --build` from `app/`; `curl -s http://127.0.0.1:3000/api/health` → `{"ok":true,"db":"ok"}`; also `npm run smoke:docker` | **met** — 2026-07-25 acceptance on `main` `ff2363b` (PR #19): health `{"ok":true,"db":"ok"}`; `npm run smoke:docker` item 1 PASS |
+| 1 | Compose healthy; `/api/health` → Postgres OK; `/api/ready` → ready | `docker compose up -d --build` from `app/`; `curl -s http://127.0.0.1:3000/api/health` and `/api/ready`; `npm run smoke:docker` items 1 and 1b | **met** (health) — 2026-07-25 acceptance on `main` `ff2363b` (PR #19). **1b-ready** is in `scripts/smoke-docker.mjs` (TASK-TEST-002); requires `CRON_SECRET` in `app/.env.docker`. **Local 2026-08-13:** Compose `web` was down during Wave 4, so 1b was **not** exercised end-to-end against a running container |
 | 2 | Seed idempotent; no default password stdout leak | `SEED_PASSWORD=… docker compose --profile seed run --rm seed` twice; confirm password not printed (file `.seed-password` or env only) | **met** — 2026-07-25 Compose seed ×2 idempotent; password not printed (SEED_PASSWORD / `.seed-password` path); recorded in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md) session notes |
 | 3 | Login admin + customer | Seeded `admin.seed@sachviet.test` + `khach-hang.seed@sachviet.test`; smoke automates | **met** — smoke 3a/3b PASS (same session / `ff2363b`) |
 | 4 | Catalog search + suggestions | `q=hoang tu be` ranks Hoàng Tử Bé; `/api/catalog/search/suggestions?q=hoang`; smoke automates | **met** — smoke 4a/4b/4c PASS |
 | 5 | Cart → checkout pending path | Customer checkout without Stripe secrets → pending order + `Stripe checkout is not configured.`; smoke automates | **met** — smoke item 5 PASS (non-payment checkout proof while Stripe unset) |
 | 6 | Stripe webhook → outbox path | **Deferred** until Stripe account registration is complete. When ready: Stripe test keys + CLI forward to `/api/webhooks/stripe`, complete Checkout → `paid` + `order_comms_outbox`. Non-payment checkout remains covered by item 5. | **deferred** — Stripe not registered; not a production prerequisite until payment is enabled |
-| 7 | Admin AI BYOK playground | `/admin` AI panel with free-model key → non-500 reply; smoke checks settings + fail-closed chat without key | **met** — smoke 7a/7b PASS (settings + fail-closed chat) |
+| 7 | Admin AI retired on Production | `/api/admin/ai-settings` and `/api/admin/ai/chat` return 410 under `NODE_ENV=production`; UI panel hidden | **met** — smoke 7a/7b expect HTTP 410 |
 | 8 | Postgres backup/restore drill | Follow § Postgres backup and restore; record in [`docs/ops/backup-restore-drill.md`](../../docs/ops/backup-restore-drill.md) | **met** — drill evidence + operator sign-off (plan *Clear production blockers (Stripe deferred)*); see drill doc |
 | 9 | `npm run quality` + CI green | From `app/web` with `DATABASE_URL` set: `npm run quality`; confirm GitHub Actions Postgres CI green on the branch | **met** — CI green on `main` @ `ff2363b`: [actions/runs/30170121638](https://github.com/cyberskill-official/sach-viet/actions/runs/30170121638) (lint/test/verify/build with Postgres) |
 
 Recording checklist evidence clears the Wave 4 gate for non-Stripe scope. It does **not** authorize Vercel Production promote, DNS cutover, or WordPress retirement — those still need an explicit operator go.
+
+## Sandbox Production candidate (Wave 5 — prepare only)
+
+**Status: prepare only. Do not execute from this document.** This section is the operator checklist for a sandbox Production *candidate*. It does **not** authorize push, merge, Vercel deploy, Production migrate, live Stripe/PayPal keys, or WordPress DNS.
+
+Not the same as the superseded Preview note [`docs/ops/wave5-preview-go.md`](../../docs/ops/wave5-preview-go.md). Short golive pointer: [`docs/ops/production-go-2026-07-26.md`](../../docs/ops/production-go-2026-07-26.md) (Phase A already live; this wave is additional).
+
+### HITL — do not advance task status
+
+CyberOS HITL is still required at `reviewing → ready_to_test` and `testing → done`. Agents must not write verdict JSON.
+
+Leave these tasks **`implementing`** until a human records verdict JSON. Do **not** mark `ready_to_test` or `done`:
+
+- Existing eight (PR #28, already on `main`): `TASK-GOV-001`, `TASK-DATA-001`, `TASK-ID-001`, `TASK-SEC-002`, `TASK-COM-001`, `TASK-JOB-001`, `TASK-UI-001`, `TASK-TEST-001`
+- This wave: `TASK-COM-002`, `TASK-PLT-001`, `TASK-JOB-002`, `TASK-OPS-001`, `TASK-API-001`, `TASK-SRCH-002`, `TASK-UI-002`, `TASK-TEST-002`
+
+### Merge / branch
+
+PR #28 audit work is already on `main`. Branch `cursor/local-complete-golive-wave` is **additional**. Merge it only after a **later** operator instruction. Do not push or open a merge from this checklist.
+
+### Operator prepare steps (document now; run only after a later instruction)
+
+Do these on a trusted machine against a **candidate** URL the operator names. Do **not** run them against live Production from this wave.
+
+1. **HITL first.** Wait for human verdict JSON on the sixteen tasks above. Do not treat green local tests as acceptance.
+2. **Merge** `cursor/local-complete-golive-wave` to `main` only when the operator explicitly says to merge. Then (and only then) promote the resulting commit as a Vercel Production candidate.
+3. **Migrate Production schema** via the existing operator path ([`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md) § Apply migrations). From `app/web`, against the Supabase **direct** URL (port 5432), not the pooler:
+
+   ```bash
+   cd app/web
+   export DATABASE_URL='postgresql://postgres.[PROJECT-REF]:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres'
+   npm run migrate
+   ```
+
+   Confirm `schema_migrations` includes shipped `004_identity_jobs_payments` plus additive `005_order_expiry_inventory` and `006_portal_search_fulfillment`. Do **not** run `npm run seed:local` against Production. Do **not** invent tax/shipping/commission/royalty rates.
+4. **Secrets already required by cron / ready.** Vercel Production must have `CRON_SECRET` (Bearer for `GET /api/cron/drain-order-comms` every 5 minutes in `vercel.json`; also required *presence* on `GET /api/ready`). SMTP (`SMTP_HOST`, `SMTP_FROM`, and related) is the Production submitter for identity and order outbox drain; without it, Production mail stays `failed`, not `delivered`. Names only: [`.env.vercel.example`](./.env.vercel.example).
+5. **Optional commerce freeze.** Deploy `COMMERCE_MUTATIONS_ENABLED=0` before promoting the candidate; unset or `1` after smoke if the operator wants writes open. Unset still means allow (Production stays writable until that env is deployed).
+6. **Smoke the candidate URL** (not live Production unless the operator names that URL as the candidate):
+
+   ```bash
+   cd app/web
+   BASE_URL=https://<candidate-host> npm run smoke:production
+   ```
+
+   Optional: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`. Hard-fail ids: `health-postgres`, `catalog-list`, `admin-login`, `checkout-pending-path`.
+7. **Sandbox payments only.** Stripe `sk_test_…` and `PAYPAL_MODE=sandbox`. `commerce-core.mjs` still refuses `sk_live_` and `PAYPAL_MODE=live`. Never set those on Vercel.
+
+### Local leftover (Wave 4)
+
+`npm run smoke:docker` includes check **1b-ready** (`GET /api/ready`). During Wave 4 on this branch, Compose `web` was down, so that check was **not** exercised end-to-end against a running container. Re-run `smoke:docker` with `web` healthy + `CRON_SECRET` in `app/.env.docker` before treating 1b as locally proven.
+
+### What “golive ASAP” will and will not be
+
+**Will be:** customers can register, browse, sandbox-pay, wishlist, and use support; staff, vendor, B2B, institution, publisher, and author can use real pages against real APIs locally and on a Production sandbox.
+
+**Will not be:** taxed/shipped US retail, returns, vendor commission settlement, royalties, Google/MFA, private `app` schema, US data residency, WordPress cutover, or live charges.
+
+Those remain the rest of [`docs/plans/sachviet-full-production-completion-plan.md`](../../docs/plans/sachviet-full-production-completion-plan.md) after signed `DEC-*` records. Empty templates live under `docs/decisions/`; do not fill rates.
 
 ## Vercel + Supabase Production
 
@@ -212,10 +272,12 @@ Full operator steps (create project, pooler `DATABASE_URL`, migrations, Vercel R
 
 **Operator Production go (2026-07-26):** [`docs/ops/production-go-2026-07-26.md`](../../docs/ops/production-go-2026-07-26.md). Cutover gates `owner_go_decision` + `separate_deployment_instruction` are met for greenfield Vercel Production (Stripe deferred). WordPress DNS / retirement is still not authorized.
 
+**Sandbox candidate (this wave):** prepare-only checklist above. Do not migrate Production `005`/`006` or merge `cursor/local-complete-golive-wave` from that section.
+
 **Rules**
 
 - Wave 4 required rows must stay green (item **6** Stripe may stay deferred); unpaid checkout remains the commerce proof.
-- Production env vars + Supabase migrate before relying on the Production URL.
+- Production env vars + Supabase migrate before relying on the Production URL — Wave 5 additive `005`/`006` wait on a later operator instruction.
 - Do not run `seed:local` against a Supabase Production database.
 - Agents need authenticated Vercel/Supabase access (MCP or CLI) to operate the real projects.
 
@@ -327,7 +389,7 @@ DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet node scripts/
 **Production catalog options (operator choose; do not unlock cutover here):**
 
 1. **Admin day-2 entry (recommended)** — create categories/products/offers via admin catalog APIs/UI after bootstrap (`TASK-ADMIN-002`: `/api/admin/catalog/*` and the catalog section on `/admin`). Prefer this for the first Production catalog load.
-2. **Fixture WordPress import** — admin `wordpress-import` apply against an approved fixture JSON remains available for compatibility testing but is **not recommended** as the Day-2 Production load path.
+2. **Fixture WordPress import** — `importWordpressFixture` remains for REBUILD-021 / local tests only. Production `POST /api/admin/wordpress-import/apply` returns 410. **Not recommended** as the Day-2 Production load path.
 3. **Live WP MySQL migration** — still `on_hold` as `TASK-MIGRATION-001` (reconcile unmatched order items / live import). Not part of Phase A default path.
 
 Do not run `seed:local` against a production database.
@@ -363,7 +425,7 @@ Versioned additive migrations live in `app/web/migrations/` (`001_initial_schema
 DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet npm run migrate
 ```
 
-Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids. Dual-owned `CREATE TABLE` definitions were folded into `001_initial_schema`.
+Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids. Dual-owned `CREATE TABLE` definitions were folded into `001_initial_schema`. Current registry includes `004_identity_jobs_payments` plus additive `005_order_expiry_inventory` and `006_portal_search_fulfillment`. Production apply of `005`/`006` is Wave 5 prepare-only — see § *Sandbox Production candidate*; do not run it from this wave.
 
 ## Operator cloud deploy checklist (Phase A — Production authorized)
 

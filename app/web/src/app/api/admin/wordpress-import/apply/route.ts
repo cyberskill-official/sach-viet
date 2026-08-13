@@ -3,8 +3,17 @@ import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
 import { createCommerceStore } from "@/lib/commerce-core.mjs";
 import { applyWordpressImportAsAdmin } from "@/lib/wordpress-import-core.mjs";
 import { commerceMutationsDisabledMessage, commerceMutationsEnabled } from "@/lib/commerce-kill-switch.mjs";
+import { assertNotProductionRetired } from "@/lib/production-retirement.mjs";
 
 export async function POST(request: Request) {
+  try {
+    assertNotProductionRetired("WordPress import apply");
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "WordPress import apply is retired on Production." },
+      { status: 410 },
+    );
+  }
   if (!commerceMutationsEnabled()) {
     return NextResponse.json({ error: commerceMutationsDisabledMessage() }, { status: 503 });
   }

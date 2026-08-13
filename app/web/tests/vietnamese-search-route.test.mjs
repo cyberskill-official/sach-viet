@@ -6,15 +6,17 @@ import test from "node:test";
 const root = resolve(import.meta.dirname, "..");
 
 test("catalog products route wires optional q through vietnamese search", async () => {
-  const listRoute = readFileSync(resolve(root, "src/app/api/catalog/products/route.ts"), "utf8");
-  assert.match(listRoute, /searchPublicProducts/);
-  assert.match(listRoute, /searchParams\.get\("q"\)/);
-  assert.doesNotMatch(listRoute, /readSession/);
+  const listHttp = readFileSync(resolve(root, "src/lib/catalog-http.mjs"), "utf8");
+  assert.match(listHttp, /searchPublicProducts/);
+  assert.match(listHttp, /searchParams\.get\("q"\)/);
+  assert.doesNotMatch(listHttp, /readSession/);
 });
 
 test("suggestions route is public and uses suggestCatalogQueries", async () => {
+  const http = readFileSync(resolve(root, "src/lib/catalog-http.mjs"), "utf8");
   const route = readFileSync(resolve(root, "src/app/api/catalog/search/suggestions/route.ts"), "utf8");
-  assert.match(route, /suggestCatalogQueries/);
+  assert.match(http, /suggestCatalogQueries/);
+  assert.match(route, /handleSuggestCatalogQueries/);
   assert.doesNotMatch(route, /readSession/);
 });
 

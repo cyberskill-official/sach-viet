@@ -21,8 +21,11 @@ test("cart transitions merge offers and keep quantity within checkout bounds", a
 });
 
 test("portal navigation localizes known routes and excludes unknown portals", async () => {
-  assert.equal(navigationForPortal("admin", "vi")[1].label, "Đơn đăng ký nhà bán");
-  assert.equal(navigationForPortal("admin", "en")[3].label, "WordPress import");
+  assert.equal(navigationForPortal("admin", "vi").find((item) => item.key === "vendors")?.label, "Đơn đăng ký nhà bán");
+  assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "catalog"), true);
+  assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "flags"), true);
+  assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "wordpress"), false);
+  assert.deepEqual(navigationForPortal("supplier"), []);
   assert.deepEqual(navigationForPortal("missing"), []);
 });
 

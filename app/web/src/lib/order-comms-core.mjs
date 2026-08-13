@@ -5,6 +5,7 @@ import {
 } from "./email-zalo-integrations-core.mjs";
 import { createNotification } from "./notification-core.mjs";
 import {
+  IDENTITY_COMMS_KINDS,
   claimDueOrderComms,
   ensureOrderCommsOutboxSchema,
   markOrderCommsAbandoned,
@@ -155,13 +156,85 @@ export async function dispatchOrderPaidConfirmation(
   };
 }
 
+function identityCopy(kind, token) {
+  if (kind === "identity.verify") {
+    return {
+      title: "Xác nhận email / Verify your email",
+      body: "Nhấn liên kết để xác nhận tài khoản SachViet. Use this link to verify your account.",
+      deeplinkPath: `/api/auth/verify?token=${encodeURIComponent(token)}`,
+    };
+  }
+  return {
+    title: "Đặt lại mật khẩu / Reset your password",
+    body: "Nhấn liên kết để đặt lại mật khẩu. Use this link to reset your password.",
+    deeplinkPath: `/reset?token=${encodeURIComponent(token)}`,
+  };
+}
+
+/**
+ * Transactional identity email (verify / reset). Production without SMTP stays
+ * `failed`/`recorded`, never `delivered`. Tests inject `submit`.
+ */
+export async function dispatchIdentityEmail(
+  store,
+  entry,
+  {
+    env = process.env,
+    submit,
+    emailTransport = resolveEmailTransport(env, { log: store.log, submit }),
+  } = {},
+) {
+  const kind = entry?.kind;
+  if (!IDENTITY_COMMS_KINDS.includes(kind)) {
+    return { emailed: false, outcome: "failed", reason: "unknown_kind" };
+  }
+  const payload = entry.payload && typeof entry.payload === "object" ? entry.payload : {};
+  const recipient = typeof payload.email === "string" ? payload.email : await lookupUserEmail(store, entry.orderId);
+  const token = typeof payload.token === "string" ? payload.token : "";
+  if (!recipient || !token) {
+    store.log?.("identity_email_skipped", {
+      result: "skipped",
+      reason: "missing_recipient",
+      kind,
+    });
+    return { emailed: false, outcome: "skipped", reason: "missing_recipient", transportMode: emailTransport.mode };
+  }
+
+  const copy = identityCopy(kind, token);
+  const result = await emailTransport.send({
+    notificationId: entry.id || entry.orderId,
+    title: copy.title,
+    body: copy.body,
+    deeplinkPath: copy.deeplinkPath,
+    eventType: kind,
+    recipient,
+  });
+  const outcome = result?.outcome || "failed";
+  store.log?.("identity_email_dispatched", {
+    result: outcome,
+    kind,
+    transport_mode: emailTransport.mode,
+    recipient_hash: redactRecipient(recipient),
+  });
+  return {
+    emailed: outcome === "sent",
+    outcome,
+    reason: result?.reason || (outcome === "recorded" ? "recorded_not_sent" : null),
+    transportMode: emailTransport.mode,
+  };
+}
+
 // Reasons that will never succeed on a later attempt, so retrying only delays the dead letter.
-const TERMINAL_DISPATCH_REASONS = new Set(["order_missing", "not_paid"]);
+const TERMINAL_DISPATCH_REASONS = new Set(["order_missing", "not_paid", "missing_recipient", "unknown_kind"]);
 
 /**
  * Drains due `order_comms_outbox` entries. Runs the same way whether it is called inline by the
  * Stripe webhook or later as a retry sweep: the queue state, not the webhook result, decides what
  * still needs delivering, so an order whose first dispatch failed is picked up on replay.
+ */
+/**
+ * @param {*} store
+ * @param {{ orderId?: string | null, limit?: number, dispatch?: Function, dispatchOptions?: object }} [options]
  */
 export async function processOrderCommsOutbox(
   store,
@@ -175,7 +248,9 @@ export async function processOrderCommsOutbox(
     let result = null;
     let failureReason = null;
     try {
-      result = await dispatch(store, entry.orderId, dispatchOptions);
+      result = IDENTITY_COMMS_KINDS.includes(entry.kind)
+        ? await dispatchIdentityEmail(store, entry, dispatchOptions)
+        : await dispatch(store, entry.orderId, dispatchOptions);
     } catch (error) {
       failureReason = error instanceof Error ? error.message : "dispatch_threw";
     }

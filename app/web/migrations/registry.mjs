@@ -26,6 +26,34 @@ function loadSql(name) {
   return readFileSync(join(migrationsDir(), name), "utf8");
 }
 
+/**
+ * pg_trgm must live in `public`. Isolated test schemas set search_path to
+ * `t_*, public`. Creating the extension while a test schema is first on the
+ * path installs it into that schema; later suites then hit IF NOT EXISTS and
+ * cannot see `%` / gin_trgm_ops. Move or create it in public via the pool
+ * (no test-schema search_path).
+ */
+async function ensurePgTrgmInPublic(db) {
+  const existing = await db.pool.query(`
+    SELECT n.nspname AS schema
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+    WHERE e.extname = 'pg_trgm'
+  `);
+  const schema = existing.rows[0]?.schema;
+  if (!schema) {
+    await db.pool.query("CREATE EXTENSION pg_trgm WITH SCHEMA public");
+    return;
+  }
+  if (schema === "public") return;
+  try {
+    await db.pool.query("ALTER EXTENSION pg_trgm SET SCHEMA public");
+  } catch {
+    await db.pool.query("DROP EXTENSION pg_trgm CASCADE");
+    await db.pool.query("CREATE EXTENSION pg_trgm WITH SCHEMA public");
+  }
+}
+
 export const MIGRATIONS = Object.freeze([
   {
     id: "001_initial_schema",
@@ -49,6 +77,19 @@ export const MIGRATIONS = Object.freeze([
     id: "004_identity_jobs_payments",
     async up(db) {
       await db.exec(loadSql("004_identity_jobs_payments.sql"));
+    },
+  },
+  {
+    id: "005_order_expiry_inventory",
+    async up(db) {
+      await db.exec(loadSql("005_order_expiry_inventory.sql"));
+    },
+  },
+  {
+    id: "006_portal_search_fulfillment",
+    async up(db) {
+      await ensurePgTrgmInPublic(db);
+      await db.exec(loadSql("006_portal_search_fulfillment.sql"));
     },
   },
 ]);

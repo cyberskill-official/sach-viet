@@ -18,6 +18,10 @@
 - CapRover as the Production path (superseded).
 - Running `seed:local` against Supabase Production.
 
+## Sandbox candidate (2026-08-13) — prepare only
+
+Branch `cursor/local-complete-golive-wave` is **additional** to PR #28 (already on `main`). It does **not** authorize merge, Production migrate (`004` + additive `005`/`006`), Vercel promote, or live payment keys. Canonical prepare checklist: [`app/web/OPERATIONS.md`](../../app/web/OPERATIONS.md) § *Sandbox Production candidate (Wave 5 — prepare only)*. HITL still required; leave `TASK-GOV-001`…`TASK-TEST-001` and `TASK-COM-002`…`TASK-TEST-002` at `implementing` until human verdict JSON.
+
 ## Supersedes
 
 - [`docs/ops/wave5-preview-go.md`](wave5-preview-go.md) — Preview-only go is abandoned; Production is the only cloud target.

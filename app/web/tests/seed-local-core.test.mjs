@@ -8,7 +8,7 @@ import { createAuthStore, hashPassword, login, verifyPassword } from "../src/lib
 import { createCatalogStore, getPublicProduct, listPublicProducts } from "../src/lib/catalog-core.mjs";
 import { createCommerceStore, listCustomerOrders } from "../src/lib/commerce-core.mjs";
 import { createNotificationStore, listNotifications } from "../src/lib/notification-core.mjs";
-import { generateSeedPassword, seedLocalData, SEED_PRODUCTS, SEED_USERS } from "../src/lib/seed-local-core.mjs";
+import { assertSeedDatabaseTarget, generateSeedPassword, seedLocalData, SEED_PRODUCTS, SEED_USERS } from "../src/lib/seed-local-core.mjs";
 import { createVendorCommerceStore, getVendorDashboard, listAdminPayouts } from "../src/lib/vendor-commerce-core.mjs";
 
 const SESSION_SECRET = "seed-local-test-session-secret-value";
@@ -75,8 +75,9 @@ test("seeded commerce records give the admin dashboard and vendor dashboard real
   try {
     const customer = await auth.db.prepare("SELECT id, role FROM users WHERE email = ?").get(userByRole(summary, "customer").email);
     const orders = await listCustomerOrders(commerce, customer);
-    assert.equal(orders.length, 2);
-    assert.deepEqual([...orders].map((order) => order.status).sort(), ["paid", "pending_payment"]);
+    assert.equal(orders.items.length, 2);
+    assert.deepEqual([...orders.items].map((order) => order.status).sort(), ["paid", "pending_payment"]);
+    assert.ok(orders.items.every((order) => Array.isArray(order.timeline)));
 
     const admin = await auth.db.prepare("SELECT id, role FROM users WHERE email = ?").get(userByRole(summary, "admin").email);
     const dashboard = await getAdminCommerceDashboard(adminCommerce, admin);
@@ -126,6 +127,8 @@ test("re-seeding is idempotent and refreshes the seed password", async () => wit
   assert.deepEqual(second.created, {
     users: 0, categories: 0, products: 0, variants: 0, media: 0, offers: 0,
     orders: 0, payouts: 0, vendorApplications: 0, notifications: 0, reviews: 0, tickets: 0,
+    addresses: 0, assignedTickets: 0, fulfillments: 0, organizations: 0, quotes: 0,
+    b2bOrders: 0, purchaseOrders: 0, publishingRequests: 0, marcRecords: 0, manuscriptRequests: 0,
   });
   assert.equal(second.totals.products, SEED_PRODUCTS.length);
   assert.equal(second.totals.orders, 2);
@@ -167,6 +170,46 @@ test("generated seed passwords are unique and long enough for the password polic
   assert.ok(first.length >= 8);
   assert.doesNotThrow(() => hashPassword(first));
 });
+
+test("seed fingerprint refuses production and non-local DATABASE_URL hosts", () => {
+  assert.throws(
+    () => assertSeedDatabaseTarget({ env: { NODE_ENV: "production" }, dbPath: "/tmp/x" }),
+    /NODE_ENV=production/,
+  );
+  assert.throws(
+    () => assertSeedDatabaseTarget({ env: { NODE_ENV: "development" }, databaseUrl: "postgres://user:pass@db.example.com:5432/sachviet" }),
+    /loopback or Compose db/,
+  );
+  assert.doesNotThrow(() => assertSeedDatabaseTarget({ env: { NODE_ENV: "test" }, dbPath: "/tmp/isolated" }));
+  assert.doesNotThrow(() => assertSeedDatabaseTarget({ env: { NODE_ENV: "development" }, databaseUrl: "postgres://sachviet:sachviet@127.0.0.1:5432/sachviet" }));
+  assert.doesNotThrow(() => assertSeedDatabaseTarget({ env: { NODE_ENV: "development" }, databaseUrl: "postgres://sachviet:sachviet@db:5432/sachviet" }));
+});
+
+test("seed walkthrough covers the nine current portals", async () => withDatabase(async (dbPath) => {
+  const summary = await seed(dbPath);
+  assert.equal(summary.created.addresses, 1);
+  assert.equal(summary.created.assignedTickets, 1);
+  assert.ok(summary.created.fulfillments >= 1);
+  assert.equal(summary.created.organizations, 1);
+  assert.equal(summary.created.quotes, 1);
+  assert.equal(summary.created.b2bOrders, 1);
+  assert.equal(summary.created.purchaseOrders, 1);
+  assert.equal(summary.created.publishingRequests, 1);
+  assert.equal(summary.created.marcRecords, 1);
+  assert.equal(summary.created.manuscriptRequests, 1);
+  assert.equal(summary.walkthrough.customer.locale, "en");
+  assert.ok(summary.walkthrough.customer.addressId);
+  assert.ok(summary.walkthrough.vendor.orderItemId);
+  assert.ok(summary.walkthrough.employee.assignedTicketId);
+  assert.ok(summary.walkthrough.retail.paidOrderId);
+  assert.ok(summary.walkthrough.b2b.quoteId);
+  assert.ok(summary.walkthrough.institution.orderId);
+  assert.ok(summary.walkthrough.publisher.requestId);
+  assert.ok(summary.walkthrough.author.requestId);
+  assert.deepEqual(Object.keys(summary.walkthrough).sort(), [
+    "admin", "author", "b2b", "customer", "employee", "institution", "publisher", "retail", "vendor",
+  ]);
+}));
 
 test("the seed dataset references only declared categories and vendors", async () => {
   const categorySlugs = new Set(["van-hoc", "thieu-nhi", "ky-nang"]);

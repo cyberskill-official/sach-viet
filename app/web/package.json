@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:standalone": "node scripts/start-standalone.mjs",
     "lint": "eslint",
     "test": "NODE_ENV=test node --test tests/*.test.mjs",
     "test:coverage": "NODE_ENV=test node --test --experimental-test-coverage tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "playwright:install": "playwright install chromium",
     "quality": "npm run lint && npm run test && npm run verify && npm run build",
     "prepare:preview": "node scripts/prepare-preview-release.mjs",
     "hash-password": "node scripts/hash-password.mjs",
@@ -30,6 +33,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",

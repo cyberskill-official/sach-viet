@@ -15,6 +15,10 @@ for (const required of [
   "normalizeCheckoutProvider",
   "assertStripeTestSecret",
   "assertPayPalSandboxMode",
+  "assertSandboxPaymentsOnly",
+  "sandboxCheckoutStubEnabled",
+  "createSandboxStubCheckout",
+  "expirePendingOrders",
 ]) {
   if (!source.includes(required)) throw new Error(`Commerce core is missing ${required}.`);
 }

@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-import { openDatabase } from "./db.mjs";
+import { beginImmediateWithRetry, openDatabase } from "./db.mjs";
 import { isKnownRole } from "./access.mjs";
+import { enqueueIdentityComms } from "./order-comms-outbox-core.mjs";
 
 const PHPASS_ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -132,7 +133,7 @@ export function ensureLoginAttemptsSchema() {}
 
 export async function createAuthStore({ dbPath, databaseUrl, now = defaultNow, log = defaultLog } = {}) {
   const db = await openDatabase(dbPath, { databaseUrl });
-  return { db, now, log, close: () => db.close() };
+  return { db, now, clock: now, log, close: () => db.close() };
 }
 
 export async function getAuthStore() {
@@ -349,12 +350,27 @@ export async function registerCustomer(store, { email, password }) {
   if (existing) throw new Error("An account with this email already exists.");
   const id = randomBytes(16).toString("hex");
   const verifyToken = newSecretToken();
-  await store.db
-    .prepare(
-      `INSERT INTO users (id, email, password_hash, role, created_at, email_verified_at, email_verify_token, email_verify_expires_at)
-       VALUES (?, ?, ?, 'customer', ?, 0, ?, ?)`,
-    )
-    .run(id, normalizedEmail, passwordHash, store.now(), hashSecretToken(verifyToken), store.now() + VERIFY_TTL_MS);
+  await beginImmediateWithRetry(store.db);
+  try {
+    await store.db
+      .prepare(
+        `INSERT INTO users (id, email, password_hash, role, created_at, email_verified_at, email_verify_token, email_verify_expires_at)
+         VALUES (?, ?, ?, 'customer', ?, 0, ?, ?)`,
+      )
+      .run(id, normalizedEmail, passwordHash, store.now(), hashSecretToken(verifyToken), store.now() + VERIFY_TTL_MS);
+    await enqueueIdentityComms(store, id, {
+      kind: "identity.verify",
+      payload: { email: normalizedEmail, token: verifyToken },
+    });
+    await store.db.exec("COMMIT");
+  } catch (error) {
+    try {
+      await store.db.exec("ROLLBACK");
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
   store.log("auth_register_completed", { result: "accepted" });
   return { user: { id, email: normalizedEmail, role: "customer" }, verifyToken };
 }
@@ -382,9 +398,24 @@ export async function requestPasswordReset(store, email) {
   const user = await store.db.prepare("SELECT id FROM users WHERE email = ?").get(normalizedEmail);
   if (!user) return { accepted: true };
   const resetToken = newSecretToken();
-  await store.db
-    .prepare("UPDATE users SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?")
-    .run(hashSecretToken(resetToken), store.now() + RESET_TTL_MS, user.id);
+  await beginImmediateWithRetry(store.db);
+  try {
+    await store.db
+      .prepare("UPDATE users SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?")
+      .run(hashSecretToken(resetToken), store.now() + RESET_TTL_MS, user.id);
+    await enqueueIdentityComms(store, user.id, {
+      kind: "identity.reset",
+      payload: { email: normalizedEmail, token: resetToken },
+    });
+    await store.db.exec("COMMIT");
+  } catch (error) {
+    try {
+      await store.db.exec("ROLLBACK");
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
   store.log("auth_password_reset_requested", { result: "accepted" });
   return { accepted: true, resetToken };
 }

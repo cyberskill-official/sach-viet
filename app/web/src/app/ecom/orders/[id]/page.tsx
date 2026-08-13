@@ -1,6 +1,6 @@
-import { OrderHistory } from "@/components/order-history";
+import { OrderDetail } from "@/components/order-detail";
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <OrderHistory highlightId={id} />;
+  return <OrderDetail orderId={id} />;
 }

@@ -10,7 +10,9 @@ const isProd = process.env.NODE_ENV === "production";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'sha256-${THEME_SCRIPT_SHA256}'`,
+  // 'unsafe-inline' is required for Next.js App Router RSC flight payloads (`self.__next_f`).
+  // The theme boot hash remains so the inline theme script is explicitly allowed.
+  `script-src 'self' 'unsafe-inline' 'sha256-${THEME_SCRIPT_SHA256}'`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

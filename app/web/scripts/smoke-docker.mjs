@@ -4,7 +4,7 @@
  *
  * Automates safe local checks against a running Compose stack
  * (http://127.0.0.1:3000 by default). Prints MANUAL steps for
- * seed hygiene, Stripe webhook/outbox, AI playground with a real key,
+ * seed hygiene, Stripe webhook/outbox, retired admin AI 410s,
  * backup_verified drill, and quality/CI.
  *
  * Usage (from app/web, stack up + seeded):
@@ -24,6 +24,15 @@ const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL || "admin.seed@sachviet.test";
 const CUSTOMER_EMAIL = process.env.SMOKE_CUSTOMER_EMAIL || "khach-hang.seed@sachviet.test";
 
 /** @typedef {{ ok: boolean, id: string, detail?: string, automated: boolean }} SmokeCheck */
+
+/**
+ * GET /api/ready must be 200 with ok + db (TASK-PLT-001 / TASK-TEST-002).
+ * @param {number} status
+ * @param {Record<string, unknown> | null} body
+ */
+export function evaluateReady(status, body) {
+  return status === 200 && body?.ok === true && body?.db === "ok";
+}
 
 /** @type {SmokeCheck[]} */
 const results = [];
@@ -86,15 +95,35 @@ async function runAutomated() {
   // 1. Health → Postgres
   try {
     const { response, body } = await fetchJson("/api/health");
-    const ok = response.status === 200 && body?.ok === true && body?.db === "ok";
+    const ok = response.status === 200 && body?.ok === true;
     record(
       "1-health-postgres",
       ok,
-      ok ? `HTTP ${response.status} db=${body.db}` : `HTTP ${response.status} body=${JSON.stringify(body)}`,
+      ok ? `HTTP ${response.status} live` : `HTTP ${response.status} body=${JSON.stringify(body)}`,
     );
   } catch (error) {
     record("1-health-postgres", false, error instanceof Error ? error.message : String(error));
     return;
+  }
+
+  try {
+    const { response, body } = await fetchJson("/api/ready");
+    const ok = evaluateReady(response.status, body);
+    const latest = body?.migration?.latest ? ` latest=${body.migration.latest}` : "";
+    record(
+      "1b-ready",
+      ok,
+      ok
+        ? `HTTP ${response.status} ready${latest}`
+        : `HTTP ${response.status} body=${JSON.stringify({
+            ok: body?.ok,
+            db: body?.db,
+            env: body?.env,
+            migration: body?.migration,
+          })}`,
+    );
+  } catch (error) {
+    record("1b-ready", false, error instanceof Error ? error.message : String(error));
   }
 
   const password = resolveSeedPassword();
@@ -130,7 +159,11 @@ async function runAutomated() {
 
     // 4. Catalog search + suggestions
     const search = await fetchJson("/api/catalog/products?q=hoang%20tu%20be");
-    const products = Array.isArray(search.body?.products) ? search.body.products : [];
+    const products = Array.isArray(search.body?.items)
+      ? search.body.items
+      : Array.isArray(search.body?.products)
+        ? search.body.products
+        : [];
     const searchOk =
       search.response.status === 200 &&
       products.length > 0 &&
@@ -144,9 +177,11 @@ async function runAutomated() {
     );
 
     const suggestions = await fetchJson("/api/catalog/search/suggestions?q=hoang");
-    const suggestionList = Array.isArray(suggestions.body?.suggestions)
-      ? suggestions.body.suggestions
-      : [];
+    const suggestionList = Array.isArray(suggestions.body?.items)
+      ? suggestions.body.items
+      : Array.isArray(suggestions.body?.suggestions)
+        ? suggestions.body.suggestions
+        : [];
     const suggestionsOk = suggestions.response.status === 200 && suggestionList.length > 0;
     record(
       "4b-catalog-suggestions",
@@ -164,7 +199,11 @@ async function runAutomated() {
       let offerId = products.find((p) => p?.primaryOffer?.id)?.primaryOffer?.id;
       if (!offerId) {
         const catalog = await fetchJson("/api/catalog/products");
-        const all = Array.isArray(catalog.body?.products) ? catalog.body.products : [];
+        const all = Array.isArray(catalog.body?.items)
+          ? catalog.body.items
+          : Array.isArray(catalog.body?.products)
+            ? catalog.body.products
+            : [];
         offerId = all.find((p) => p?.primaryOffer?.id)?.primaryOffer?.id;
       }
       if (!offerId) {
@@ -183,7 +222,11 @@ async function runAutomated() {
         const orders = await fetchJson("/api/orders", {
           headers: { cookie: customer.cookie },
         });
-        const orderList = Array.isArray(orders.body?.orders) ? orders.body.orders : [];
+        const orderList = Array.isArray(orders.body?.items)
+          ? orders.body.items
+          : Array.isArray(orders.body?.orders)
+            ? orders.body.orders
+            : [];
         const hasPending = orderList.some((o) => o?.status === "pending_payment");
         const ok = stripeUnset && hasPending;
         record(
@@ -198,17 +241,18 @@ async function runAutomated() {
       record("5-checkout-pending", false, "Skipped (customer login failed)");
     }
 
-    // 7. Admin AI BYOK — fail-closed without key is acceptable; 401/403/500 are not
+    // 7. Admin AI retired on Production-like Compose (NODE_ENV=production → 410)
     if (adminOk && admin.cookie) {
       const settings = await fetchJson("/api/admin/ai-settings", {
         headers: { cookie: admin.cookie },
       });
-      const settingsOk = settings.response.status === 200 && settings.body?.settings;
+      const settingsOk =
+        settings.response.status === 410 && /retired on Production/i.test(String(settings.body?.error || ""));
       record(
         "7a-admin-ai-settings",
         settingsOk,
         settingsOk
-          ? `configured=${Boolean(settings.body.settings.hasApiKey)}`
+          ? "HTTP 410 retired"
           : `HTTP ${settings.response.status} ${settings.body?.error || ""}`.trim(),
       );
 
@@ -218,19 +262,17 @@ async function runAutomated() {
         body: JSON.stringify({ message: "ping" }),
       });
       const chatOk =
-        chat.response.status === 200 ||
-        (chat.response.status === 400 &&
-          /not configured|AI_SETTINGS_SECRET|required|API key/i.test(String(chat.body?.error || "")));
+        chat.response.status === 410 && /retired on Production/i.test(String(chat.body?.error || ""));
       record(
-        "7b-admin-ai-chat-failclosed",
+        "7b-admin-ai-chat-retired",
         chatOk,
         chatOk
-          ? `HTTP ${chat.response.status}${chat.body?.reply ? " reply" : ` ${chat.body?.error || ""}`}`
+          ? "HTTP 410 retired"
           : `HTTP ${chat.response.status} ${chat.body?.error || ""}`.trim(),
       );
     } else {
       record("7a-admin-ai-settings", false, "Skipped (admin login failed)");
-      record("7b-admin-ai-chat-failclosed", false, "Skipped (admin login failed)");
+      record("7b-admin-ai-chat-retired", false, "Skipped (admin login failed)");
     }
   }
 }
@@ -245,7 +287,7 @@ function printManual() {
       "6-stripe-webhook-outbox: With Stripe test keys + CLI forwarding to /api/webhooks/stripe,",
       "  complete a Checkout Session → order paid → order_comms_outbox row; or stub path:",
       "  DATABASE_URL=… node scripts/drain-order-comms-outbox.mjs after a paid transition.",
-      "7-admin-ai-playground: In /admin AI BYOK panel, save a free-model key and confirm a non-500 reply.",
+      "7-admin-ai-retired: Confirm /admin no longer shows AI BYOK or WordPress import; APIs 410 in Production.",
       "8-backup-restore-drill: Record evidence in docs/ops/backup-restore-drill.md",
       "  (`backup_verified` stays unmet until an operator fills that file).",
       "9-quality-ci: From app/web: `npm run quality` with DATABASE_URL set; confirm CI green on the branch.",

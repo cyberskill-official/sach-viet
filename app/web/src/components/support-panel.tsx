@@ -14,7 +14,14 @@ async function readJson(url: string, init?: RequestInit) {
     window.location.assign("/login?redirect=/support");
     throw new Error("Unauthenticated.");
   }
-  if (!response.ok) throw new Error(body.error || `Request failed (${response.status}).`);
+  const error = body.error;
+  const message =
+    error && typeof error === "object" && error !== null && "message" in error
+      ? String((error as { message: string }).message)
+      : typeof error === "string"
+        ? error
+        : `Request failed (${response.status}).`;
+  if (!response.ok) throw new Error(message);
   return body;
 }
 
@@ -35,7 +42,7 @@ export function SupportPanel() {
         readJson("/api/support/tickets"),
         readJson("/api/support/goods-requests"),
       ]);
-      setTickets(Array.isArray(ticketBody.tickets) ? ticketBody.tickets : []);
+      setTickets(Array.isArray(ticketBody.items) ? ticketBody.items : Array.isArray(ticketBody.tickets) ? ticketBody.tickets : []);
       setGoodsRequests(Array.isArray(goodsBody.goodsRequests) ? goodsBody.goodsRequests : []);
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "Unauthenticated.") {

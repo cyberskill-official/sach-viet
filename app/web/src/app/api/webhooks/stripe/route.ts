@@ -53,6 +53,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Webhook rejected." }, { status: 400 });
     }
 
+    if (result.rejected) {
+      return NextResponse.json(
+        { error: { code: "order_expired", message: "Order is no longer payable.", requestId: result.orderId }, ...result },
+        { status: 409 },
+      );
+    }
+
     let comms = null;
     if (result.handled && result.orderId) {
       try {

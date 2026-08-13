@@ -3,32 +3,73 @@ export const CART_KEY = "sv_cart_v1";
 export const portalNavigation = Object.freeze({
   admin: [
     { href: "/admin", key: "overview" },
+    { href: "/admin#catalog", key: "catalog" },
     { href: "/admin#vendors", key: "vendors" },
     { href: "/admin#payouts", key: "payouts" },
-    { href: "/admin#import", key: "wordpress" },
+    { href: "/admin#flags", key: "flags" },
   ],
-  vendor: [{ href: "/vendor", key: "overview" }],
-  publisher: [{ href: "/publisher", key: "overview" }],
-  author: [{ href: "/author", key: "overview" }],
-  institution: [{ href: "/institution", key: "overview" }],
-  employee: [{ href: "/employee", key: "overview" }],
-  retail: [{ href: "/retail", key: "overview" }],
-  b2b: [{ href: "/b2b", key: "overview" }],
-  supplier: [{ href: "/supplier", key: "overview" }],
+  vendor: [
+    { href: "/vendor", key: "overview" },
+    { href: "/vendor#offers", key: "offers" },
+    { href: "/vendor#orders", key: "orders" },
+  ],
+  publisher: [
+    { href: "/publisher", key: "overview" },
+    { href: "/publisher#requests", key: "requests" },
+    { href: "/publisher#marc", key: "marc" },
+  ],
+  author: [
+    { href: "/author", key: "overview" },
+    { href: "/author#requests", key: "requests" },
+  ],
+  institution: [
+    { href: "/institution", key: "overview" },
+    { href: "/institution#quotes", key: "quotes" },
+    { href: "/institution#orders", key: "orders" },
+  ],
+  employee: [
+    { href: "/employee", key: "overview" },
+    { href: "/employee#tickets", key: "tickets" },
+  ],
+  retail: [
+    { href: "/retail", key: "overview" },
+    { href: "/retail#orders", key: "orders" },
+  ],
+  b2b: [
+    { href: "/b2b", key: "overview" },
+    { href: "/b2b#pipeline", key: "pipeline" },
+  ],
+  supplier: [],
 });
 
 const portalMessages = Object.freeze({
   vi: {
     overview: "Tổng quan",
+    catalog: "Danh mục",
     vendors: "Đơn đăng ký nhà bán",
     payouts: "Thanh toán đối tác",
-    wordpress: "Nhập dữ liệu WordPress",
+    flags: "Cờ vận hành",
+    offers: "Chào bán",
+    orders: "Đơn hàng",
+    requests: "Yêu cầu",
+    marc: "MARC",
+    quotes: "Báo giá",
+    tickets: "Hỗ trợ",
+    pipeline: "Pipeline",
   },
   en: {
     overview: "Overview",
+    catalog: "Catalog",
     vendors: "Vendor applications",
     payouts: "Vendor payouts",
-    wordpress: "WordPress import",
+    flags: "Ops flags",
+    offers: "Offers",
+    orders: "Orders",
+    requests: "Requests",
+    marc: "MARC",
+    quotes: "Quotes",
+    tickets: "Support",
+    pipeline: "Pipeline",
   },
 });
 
