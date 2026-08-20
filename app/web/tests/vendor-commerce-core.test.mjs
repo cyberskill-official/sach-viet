@@ -71,6 +71,7 @@ test("administrators create payouts with explicit amounts and vendors read only 
   await assert.rejects(async () => await createVendorPayout(stores.vendorStore, { id: "vendor-a", role: "vendor" }, { vendorId: "vendor-a", amountUsd: "15.00", orderItemIds: [vendorAItem.id] }), /Administrator/);
   await assert.rejects(async () => await createVendorPayout(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a", amountUsd: "15.00", orderItemIds: [foreign.id] }), /belong to this vendor/);
   await assert.rejects(async () => await createVendorPayout(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a", orderItemIds: [vendorAItem.id] }), /Money must/);
+  await assert.rejects(async () => await createVendorPayout(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a", amountUsd: "15.00", orderItemIds: [vendorAItem.id], commissionRate: 0.15 }), /DEC-SET-001|Commission-rate/);
   const payout = await createVendorPayout(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a", amountUsd: "15", orderItemIds: [vendorAItem.id] });
   assert.equal(payout.amountUsd, "15.0000");
   await assert.rejects(async () => await createVendorPayout(stores.vendorStore, { id: "admin", role: "admin" }, { vendorId: "vendor-a", amountUsd: "1.00", orderItemIds: [vendorAItem.id] }), /already included/);

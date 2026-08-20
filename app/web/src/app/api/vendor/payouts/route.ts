@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { SETTLEMENT_POLICY } from "@/lib/finance-policy-core.mjs";
 import { createVendorCommerceStore, listVendorPayouts } from "@/lib/vendor-commerce-core.mjs";
 
 export async function GET(request: Request) {
@@ -9,6 +10,17 @@ export async function GET(request: Request) {
     if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
     const vendorId = new URL(request.url).searchParams.get("vendorId") || undefined;
     const store = await createVendorCommerceStore();
-    try { return NextResponse.json({ payouts: await listVendorPayouts(store, session.user, { vendorId }) }); } finally { await store.close(); }
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Vendor payouts are unavailable." }, { status: 403 }); }
+    try {
+      return NextResponse.json({
+        payouts: await listVendorPayouts(store, session.user, { vendorId }),
+        settlementPolicy: SETTLEMENT_POLICY,
+        note: "Operational payout ledger only; commission computation refused until DEC-SET-001.",
+      });
+    } finally {
+      await store.close();
+    }
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Vendor payouts are unavailable." }, { status: 403 });
+  }
 }
+
