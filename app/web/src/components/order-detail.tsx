@@ -11,6 +11,11 @@ type Order = {
   status: string;
   currency: string;
   subtotalUsd: string;
+  taxUsd?: string;
+  shippingUsd?: string;
+  totalUsd?: string;
+  expiresAt?: number | null;
+  returnsPolicy?: string;
   createdAt: number;
   items: Line[];
   timeline: TimelineEvent[];
@@ -49,6 +54,11 @@ export function OrderDetail({ orderId }: { orderId: string }) {
     return () => controller.abort();
   }, [orderId]);
 
+  const pendingHold =
+    order?.status === "pending_payment" && typeof order.expiresAt === "number"
+      ? new Date(order.expiresAt).toLocaleString("vi-VN")
+      : null;
+
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
       <Link className="text-sm text-accent-strong hover:underline" href="/ecom/orders">← Đơn hàng</Link>
@@ -63,9 +73,34 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">#{order.id.slice(0, 10)}</p>
               <p className="mt-2 font-bold">{order.status}</p>
               <p className="mt-1 text-sm text-muted">{new Date(order.createdAt).toLocaleString("vi-VN")}</p>
+              {pendingHold ? (
+                <p className="mt-2 text-sm text-muted">
+                  Giữ hàng đến {pendingHold}. Hết hạn sẽ hủy thanh toán và trả tồn kho.
+                </p>
+              ) : null}
             </div>
-            <strong className="text-2xl">{formatUsd(order.subtotalUsd)}</strong>
+            <strong className="text-2xl">{formatUsd(order.totalUsd ?? order.subtotalUsd)}</strong>
           </div>
+          <dl className="grid gap-2 text-sm sm:grid-cols-3">
+            <div className="rounded-xl border border-border p-3">
+              <dt className="text-muted">Tạm tính</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.subtotalUsd)}</dd>
+            </div>
+            <div className="rounded-xl border border-border p-3">
+              <dt className="text-muted">Thuế</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.taxUsd ?? "0")}</dd>
+            </div>
+            <div className="rounded-xl border border-border p-3">
+              <dt className="text-muted">Vận chuyển</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.shippingUsd ?? "0")}</dd>
+            </div>
+          </dl>
+          <p className="text-sm text-muted">
+            Interim DEC-COM: USD, thuế = 0, không ship. Thanh toán sandbox only.
+            {order.returnsPolicy === "deferred"
+              ? " Đổi trả / hoàn tiền: deferred (DEC-RET) — chưa có cửa sổ tự phục vụ."
+              : ""}
+          </p>
           <div>
             <h2 className="text-xl font-bold">Dòng hàng</h2>
             <ul className="mt-3 space-y-2">
@@ -88,6 +123,11 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               ))}
             </ol>
           </div>
+          <p className="text-sm text-muted">
+            Cần hỗ trợ? <Link className="text-accent-strong hover:underline" href="/support">Mở ticket hỗ trợ</Link>
+            {" · "}
+            <Link className="text-accent-strong hover:underline" href="/account">Tài khoản</Link>
+          </p>
         </section>
       ) : null}
     </main>

@@ -1,12 +1,25 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { handleCheckout } from "../src/lib/commerce-http.mjs";
+import { handleCheckout, handleQuote } from "../src/lib/commerce-http.mjs";
 import { commerceMutationsEnabled } from "../src/lib/commerce-kill-switch.mjs";
 
 test("commerce kill-switch allows mutations when unset and freezes on 0", async () => {
   assert.equal(commerceMutationsEnabled({}), true);
   assert.equal(commerceMutationsEnabled({ COMMERCE_MUTATIONS_ENABLED: "0" }), false);
   assert.equal(commerceMutationsEnabled({ COMMERCE_MUTATIONS_ENABLED: "1" }), true);
+});
+
+test("quote HTTP handler rejects empty carts", async () => {
+  const empty = await handleQuote(
+    new Request("http://sachviet.test/api/quote", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ items: [] }),
+    }),
+  );
+  assert.equal(empty.status, 400);
+  const body = await empty.json();
+  assert.match(body.error, /Cart cannot be empty/);
 });
 
 test("checkout HTTP handler refuses unauthenticated and frozen mutations", async () => {

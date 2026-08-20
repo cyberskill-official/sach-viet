@@ -4,9 +4,11 @@
 **Baseline:** current `main` vs [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md)  
 **Stack default:** stay on **Vercel + Supabase** (Production project in use). Keep **custom `sv_session` + public schema** until a dedicated migration package is scheduled — do **not** force Supabase Auth or US-region move in Waves 0–3 unless `DEC-OPS-001` / identity DECs require it.
 
-**Blocking prerequisite (updated 2026-08-20):** interim Accepted values are on `main` via PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35) (`5df30cd`). See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). Owner may still revise. **Do not invent rates.** Phase 3 tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
+**Blocking prerequisite (updated 2026-08-20):** interim Accepted values are on `main` via PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35) (`5df30cd`). See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). Owner may still revise. **Do not invent rates.** Phase 3 physical tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
 
 **Phase 2 foundations delta (TASK-PLT-002):** Storage registry scaffold + Auth/`app` schema plans + probe fingerprints — see [`docs/ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md), [`docs/ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md), [`docs/ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md). US-region remains deferred.
+
+**Phase 3 B2C interim (TASK-COM-003):** Server `POST /api/quote` + cart/order UI under DEC-COM interim (USD, tax 0, no shipping, 30m reservation); sandbox payments only; returns deferred note (DEC-RET). Taxed retail / carriers / full returns / live PV3 remain deferred until DEC revision.
 
 Statuses below mean:
 
@@ -47,8 +49,8 @@ Statuses below mean:
 | `PKG-10` | Retire WP import, supplier, admin AI, CapRover/SQLite | **partial** | Paths largely sidelined; dependency proof / full retirement remaining |
 | `PKG-11` | Shared schemas, error envelope, cursors, typed client | **partial** | Some API contracts; not universal across portals |
 | `PKG-20` | Home, catalog, FTS, product/offers, wishlist base | **partial** | Storefront + FTS + catalog/product surfaces; completeness vs `FL-B2C-01`…`07` still open |
-| `PKG-21` | Quote, reservation, checkout, Stripe/PayPal reconcile | **partial** | Sandbox checkout/webhooks; **tax/shipping/reservation policy blocked** (`DEC-COM-001`); live keys refused (`DEC-PV3-001`) |
-| `PKG-22` | Orders, shipment, returns, refunds, timeline | **partial** | Order list/detail + fulfillment fragments; returns/refund allocation **DEC-RET-001** gated |
+| `PKG-21` | Quote, reservation, checkout, Stripe/PayPal reconcile | **partial** | Interim server quote + 30m reservation + tax/shipping=0 on cart/order (`TASK-COM-003`); sandbox checkout/webhooks; **taxed retail / carriers blocked** until DEC-COM revision; live keys refused (`DEC-PV3-001`) |
+| `PKG-22` | Orders, shipment, returns, refunds, timeline | **partial** | Order list/detail + fulfillment fragments + expiresAt/totals; returns/refund allocation **DEC-RET-001 deferred** (thin UX note only) |
 | `PKG-23` | Reviews, support, goods requests, notifications | **partial** | Support/account shells; depth remaining |
 | `PKG-30` | Vendor portal depth | **partial** | Shell + narrow APIs; full `FL-VEN-*` remaining |
 | `PKG-31` | Vendor settlement / payouts | **remaining** | Blocked on `DEC-SET-001` |
@@ -72,7 +74,7 @@ Statuses below mean:
 | `FL-PLT-*` | **partial** | Health/ready, shell, email wiring; Storage, audit, privacy, Zalo remaining |
 | `FL-ID-*` | **partial** | Register/login/recovery via custom session; Supabase Auth / MFA / privacy deletion remaining |
 | `FL-B2C-01`…`05` | **partial** | Storefront/catalog/search/product largely usable |
-| `FL-B2C-06`…`12` | **partial / DEC-gated** | Cart/checkout sandbox present; tax/shipping/returns **blocked** |
+| `FL-B2C-06`…`12` | **partial / DEC-gated** | Cart + server quote + sandbox checkout; interim tax=0 / no-ship / 30m TTL shipped; physical tax/shipping/returns still blocked until DEC revision |
 | `FL-B2C-13`…`14` | **partial** | Support/review surfaces incomplete vs plan |
 | `FL-VEN-*` | **partial** | Shells; settlement **DEC-SET** gated |
 | `FL-ADM-*` | **partial** | Shells + partial APIs |
@@ -87,7 +89,7 @@ Statuses below mean:
 | 0 | CDS Thủy · ocean + auth UI parity | Allowed now (platform UI) |
 | 1 | Fill DEC Accepted values in-repo | **Interim on `main` (#35); owner may revise** |
 | 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **Delta shipped (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
-| 3 | B2C completeness (quote/tax/shipping/reservation, returns) | After `DEC-COM-001`, `DEC-RET-001`; sandbox payments until `DEC-PV3-001` |
+| 3 | B2C completeness (quote/tax/shipping/reservation, returns) | **Interim slice shipped (TASK-COM-003)** — USD/tax0/no-ship/30m + sandbox; taxed retail, carriers, full returns await DEC revision |
 | 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | After domain DECs |
 | 5 | Finance — settlement then royalties | After `DEC-SET-001`, `DEC-ROY-001` |
 | 6 | Hardening + TC matrix (`PKG-71`…`73`) | After interfaces stabilize |

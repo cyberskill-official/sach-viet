@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CART_KEY, formatUsd, normalizeCart, updateCartQuantity } from "@/lib/portal-ui-core.mjs";
 
 type CartItem = {
@@ -13,6 +13,16 @@ type CartItem = {
   giftWrap: boolean;
 };
 type CheckoutProvider = "stripe" | "paypal";
+type Quote = {
+  currency: string;
+  subtotalUsd: string;
+  taxUsd: string;
+  shippingUsd: string;
+  totalUsd: string;
+  reservationTtlMs: number;
+  policy?: { returnsPolicy?: string; paymentsMode?: string };
+  lines?: Array<{ vendorOfferId: string; title: string; unitPriceUsd: string; quantity: number }>;
+};
 
 function loadCart(): CartItem[] {
   try {
@@ -22,23 +32,70 @@ function loadCart(): CartItem[] {
   }
 }
 
+function reservationMinutes(ttlMs: number) {
+  return Math.max(1, Math.round(ttlMs / 60_000));
+}
+
 export function CartPanel() {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quoteError, setQuoteError] = useState("");
+  const [quoting, setQuoting] = useState(false);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState<CheckoutProvider | null>(null);
+
   useEffect(() => {
     const timer = window.setTimeout(() => setItems(loadCart()), 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  const refreshQuote = useCallback(async (cart: CartItem[]) => {
+    if (cart.length === 0) {
+      setQuote(null);
+      setQuoteError("");
+      return;
+    }
+    setQuoting(true);
+    setQuoteError("");
+    try {
+      const response = await fetch("/api/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: cart }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.quote) {
+        setQuote(null);
+        setQuoteError(result?.error ?? "Không thể báo giá từ máy chủ.");
+        return;
+      }
+      setQuote(result.quote);
+    } catch {
+      setQuote(null);
+      setQuoteError("Không thể báo giá từ máy chủ.");
+    } finally {
+      setQuoting(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void refreshQuote(items);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [items, refreshQuote]);
+
   const totalItems = useMemo(() => items.reduce((total, item) => total + item.quantity, 0), [items]);
   const estimatedTotal = useMemo(
     () => items.reduce((total, item) => total + (Number(item.priceUsd) || 0) * item.quantity, 0),
     [items],
   );
+
   function update(next: CartItem[]) {
     setItems(next);
     window.localStorage.setItem(CART_KEY, JSON.stringify(next));
   }
+
   async function checkout(provider: CheckoutProvider) {
     setMessage("");
     setSubmitting(provider);
@@ -57,12 +114,17 @@ export function CartPanel() {
         setMessage(result?.error ?? "Thanh toán hiện chưa khả dụng.");
         return;
       }
+      window.localStorage.setItem(CART_KEY, "[]");
       window.location.assign(result.checkout.url);
     } finally {
       setSubmitting(null);
     }
   }
+
   const busy = submitting !== null;
+  const displayTotal = quote?.totalUsd ?? String(estimatedTotal);
+  const ttlMinutes = quote ? reservationMinutes(quote.reservationTtlMs) : 30;
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
       <Link className="text-sm text-accent-strong hover:underline" href="/">
@@ -128,24 +190,52 @@ export function CartPanel() {
           )}
         </div>
         <aside className="cs-surface-heavy h-fit rounded-2xl p-6">
-          <p className="cs-eyebrow">Tạm tính</p>
-          <p className="mt-2 text-3xl font-extrabold">{formatUsd(estimatedTotal)}</p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Giá và tình trạng hàng được xác nhận lại an toàn trước khi tạo đơn.
+          <p className="cs-eyebrow">Báo giá máy chủ</p>
+          <p className="mt-2 text-3xl font-extrabold">{formatUsd(displayTotal)}</p>
+          <dl className="mt-4 space-y-1 text-sm text-muted">
+            <div className="flex justify-between gap-3">
+              <dt>Tạm tính</dt>
+              <dd>{formatUsd(quote?.subtotalUsd ?? estimatedTotal)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Thuế</dt>
+              <dd>{formatUsd(quote?.taxUsd ?? "0")}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt>Vận chuyển</dt>
+              <dd>{formatUsd(quote?.shippingUsd ?? "0")}</dd>
+            </div>
+            <div className="flex justify-between gap-3 font-semibold text-foreground">
+              <dt>Tổng (USD)</dt>
+              <dd>{formatUsd(displayTotal)}</dd>
+            </div>
+          </dl>
+          <p className="mt-3 text-sm leading-6 text-muted">
+            {quoting
+              ? "Đang xác nhận giá và tồn kho…"
+              : `Interim: thuế = 0, không ship. Giữ hàng ${ttlMinutes} phút sau khi tạo đơn chờ thanh toán (sandbox).`}
           </p>
+          <p className="mt-2 text-sm leading-6 text-muted">
+            Đổi trả / hoàn tiền: chưa mở (DEC-RET deferred). Liên hệ hỗ trợ nếu cần trợ giúp.
+          </p>
+          {quoteError ? (
+            <p role="alert" className="cs-alert cs-alert--danger mt-3">
+              {quoteError}
+            </p>
+          ) : null}
           <button
             className="cs-button mt-6 w-full"
-            disabled={items.length === 0 || busy}
+            disabled={items.length === 0 || busy || Boolean(quoteError)}
             onClick={() => checkout("stripe")}
           >
-            {submitting === "stripe" ? "Đang chuẩn bị…" : "Thanh toán Stripe"}
+            {submitting === "stripe" ? "Đang chuẩn bị…" : "Thanh toán Stripe (sandbox)"}
           </button>
           <button
             className="cs-button cs-button--secondary mt-3 w-full"
-            disabled={items.length === 0 || busy}
+            disabled={items.length === 0 || busy || Boolean(quoteError)}
             onClick={() => checkout("paypal")}
           >
-            {submitting === "paypal" ? "Đang chuẩn bị…" : "Thanh toán PayPal"}
+            {submitting === "paypal" ? "Đang chuẩn bị…" : "Thanh toán PayPal (sandbox)"}
           </button>
           {message ? (
             <p role="alert" className="cs-alert cs-alert--danger mt-4">

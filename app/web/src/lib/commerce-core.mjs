@@ -11,8 +11,29 @@ export const STRIPE_WEBHOOK_MAX_BODY_BYTES = 64 * 1024;
 export const PAYPAL_WEBHOOK_MAX_BODY_BYTES = 64 * 1024;
 /** Abandoned pending_payment rows release reserved stock after this TTL. */
 export const PENDING_ORDER_TTL_MS = 30 * 60 * 1000;
+/** Interim DEC-COM-001: tax and shipping are not charged (4-dp money string). */
+export const ZERO_MONEY_USD = "0.0000";
 export const INVENTORY_REASON_RESERVE = "reserve";
 export const INVENTORY_REASON_EXPIRE_RESTOCK = "expire_restock";
+
+/**
+ * Interim retail commerce policy from DEC-COM-001 / DEC-RET-001 / DEC-PV3-001.
+ * Do not invent tax jurisdictions, carrier rates, or return windows here.
+ */
+export function interimCommercePolicy() {
+  return {
+    version: "interim-defaults-2026-08-20",
+    currency: "USD",
+    taxCharged: false,
+    shippingCharged: false,
+    taxUsd: ZERO_MONEY_USD,
+    shippingUsd: ZERO_MONEY_USD,
+    reservationTtlMs: PENDING_ORDER_TTL_MS,
+    paymentsMode: "sandbox",
+    returnsPolicy: "deferred",
+    shippingPreference: "NO_SHIPPING",
+  };
+}
 
 const PAYPAL_SANDBOX_API = "https://api-m.sandbox.paypal.com";
 const PAYPAL_LIVE_API = "https://api-m.paypal.com";
@@ -124,6 +145,73 @@ export function normalizeCartItem(item) {
   return { vendorOfferId: required(item?.vendorOfferId, "Vendor offer ID"), quantity, plasticCover: item.plasticCover === true, giftWrap: item.giftWrap === true };
 }
 
+/**
+ * Server-side B2C quote against live offers. Does not reserve stock (checkout does).
+ * Tax and shipping are always zero under interim DEC-COM-001.
+ * @param {{ db: unknown }} store
+ * @param {unknown[]} items
+ */
+export async function quoteRetailCart(store, items) {
+  if (!Array.isArray(items) || items.length === 0) throw new Error("Cart cannot be empty.");
+  const normalizedItems = items.map(normalizeCartItem);
+  const lines = [];
+  let subtotalUsd = 0n;
+  for (const item of normalizedItems) {
+    const offer = await store.db
+      .prepare(
+        `SELECT vendor_offers.id, vendor_offers.product_id, vendor_offers.price_usd, vendor_offers.stock_quantity, products.title
+         FROM vendor_offers JOIN products ON products.id = vendor_offers.product_id
+         WHERE vendor_offers.id = ? AND vendor_offers.is_active = 1`,
+      )
+      .get(item.vendorOfferId);
+    if (!offer) throw new Error("One cart offer is no longer available.");
+    const stockAvailable = Number(offer.stock_quantity);
+    if (!Number.isFinite(stockAvailable) || stockAvailable < item.quantity) {
+      throw new Error("One cart offer is no longer available.");
+    }
+    const lineSubtotal = moneyUnits(offer.price_usd) * BigInt(item.quantity);
+    subtotalUsd += lineSubtotal;
+    lines.push({
+      vendorOfferId: offer.id,
+      productId: offer.product_id,
+      title: offer.title,
+      unitPriceUsd: offer.price_usd,
+      quantity: item.quantity,
+      lineSubtotalUsd: moneyString(lineSubtotal),
+      stockAvailable,
+      plasticCover: item.plasticCover,
+      giftWrap: item.giftWrap,
+    });
+  }
+  const policy = interimCommercePolicy();
+  const subtotal = moneyString(subtotalUsd);
+  return {
+    currency: policy.currency,
+    lines,
+    subtotalUsd: subtotal,
+    taxUsd: policy.taxUsd,
+    shippingUsd: policy.shippingUsd,
+    totalUsd: subtotal,
+    reservationTtlMs: policy.reservationTtlMs,
+    policy,
+  };
+}
+
+function retailTotalsFromSubtotal(subtotalUsd) {
+  const policy = interimCommercePolicy();
+  const subtotal = typeof subtotalUsd === "string" ? subtotalUsd : moneyString(subtotalUsd);
+  return {
+    currency: policy.currency,
+    subtotalUsd: subtotal,
+    taxUsd: policy.taxUsd,
+    shippingUsd: policy.shippingUsd,
+    totalUsd: subtotal,
+    reservationTtlMs: policy.reservationTtlMs,
+    returnsPolicy: policy.returnsPolicy,
+    policy,
+  };
+}
+
 export async function createPendingOrder(store, user, items) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
   if (!Array.isArray(items) || items.length === 0) throw new Error("Cart cannot be empty.");
@@ -195,12 +283,12 @@ export async function createPendingOrder(store, user, items) {
     throw error;
   }
   store.log("checkout_order_created", { result: "accepted", order_id: order.id, item_count: normalizedItems.length });
+  const subtotal = moneyString(order.subtotalUsd);
   return {
     id: order.id,
-    currency: order.currency,
-    subtotalUsd: moneyString(order.subtotalUsd),
     status: "pending_payment",
     expiresAt,
+    ...retailTotalsFromSubtotal(subtotal),
   };
 }
 
@@ -765,16 +853,27 @@ export function orderTimeline(order, items = []) {
   return events;
 }
 
+function enrichCustomerOrder(order, lines) {
+  const totals = retailTotalsFromSubtotal(order.subtotalUsd);
+  return {
+    ...order,
+    ...totals,
+    items: lines,
+    timeline: orderTimeline(order, lines),
+  };
+}
+
 export async function getCustomerOrder(store, user, orderId) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
   if (typeof orderId !== "string" || !orderId.trim()) throw new Error("Order ID is required.");
   const order = await store.db.prepare(`
-    SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt
+    SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt,
+           expires_at AS expiresAt
     FROM orders WHERE id = ? AND user_id = ?
   `).get(orderId.trim(), user.id);
   if (!order) throw new Error("Order does not exist.");
   const items = await listOrderItems(store, order.id);
-  return { ...order, items, timeline: orderTimeline(order, items) };
+  return enrichCustomerOrder(order, items);
 }
 
 export async function listCustomerOrders(store, user, { after, limit } = {}) {
@@ -792,7 +891,8 @@ export async function listCustomerOrders(store, user, { after, limit } = {}) {
   }
   const capped = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 50;
   const rows = await store.db.prepare(
-    `SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt
+    `SELECT id, status, currency, subtotal_usd AS subtotalUsd, created_at AS createdAt, updated_at AS updatedAt,
+            expires_at AS expiresAt
      FROM orders WHERE ${clauses.join(" AND ")} ORDER BY created_at DESC, id DESC LIMIT ?`,
   ).all(...params, capped + 1);
   const hasMore = rows.length > capped;
@@ -800,7 +900,7 @@ export async function listCustomerOrders(store, user, { after, limit } = {}) {
   const items = [];
   for (const order of page) {
     const lines = await listOrderItems(store, order.id);
-    items.push({ ...order, items: lines, timeline: orderTimeline(order, lines) });
+    items.push(enrichCustomerOrder(order, lines));
   }
   return { items, nextCursor: hasMore ? page[page.length - 1].id : null };
 }

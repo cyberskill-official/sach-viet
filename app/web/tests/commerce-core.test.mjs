@@ -16,14 +16,19 @@ import {
   createSandboxStubCheckout,
   createStripeCheckoutSession,
   expirePendingOrders,
+  getCustomerOrder,
+  interimCommercePolicy,
   listCustomerOrders,
   normalizeCheckoutProvider,
+  PENDING_ORDER_TTL_MS,
   processPayPalWebhook,
   processStripeWebhook,
+  quoteRetailCart,
   sandboxCheckoutStubEnabled,
   STRIPE_FETCH_TIMEOUT_MS,
   verifyPayPalWebhookSignature,
   verifyStripeSignature,
+  ZERO_MONEY_USD,
 } from "../src/lib/commerce-core.mjs";
 
 async function withStores(run) {
@@ -44,12 +49,50 @@ test("checkout snapshots an eligible offer and preserves cart add-ons", async ()
   const { user, offer } = await fixture(catalog);
   const order = await createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 2, plasticCover: true, giftWrap: true }]);
   assert.equal(order.subtotalUsd, "25.0000");
+  assert.equal(order.taxUsd, ZERO_MONEY_USD);
+  assert.equal(order.shippingUsd, ZERO_MONEY_USD);
+  assert.equal(order.totalUsd, "25.0000");
+  assert.equal(order.reservationTtlMs, PENDING_ORDER_TTL_MS);
+  assert.equal(order.returnsPolicy, "deferred");
   const item = await commerce.db.prepare("SELECT unit_price_usd, quantity, plastic_cover, gift_wrap FROM order_items WHERE order_id = ?").get(order.id);
   assert.equal(item.unit_price_usd, "12.5000");
   assert.equal(item.quantity, 2);
   assert.equal(item.plastic_cover, 1);
   assert.equal(item.gift_wrap, 1);
   assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 0);
+}));
+
+test("quoteRetailCart returns interim zero tax/shipping without reserving stock", async () => withStores(async ({ catalog, commerce }) => {
+  const { offer } = await fixture(catalog);
+  const quote = await quoteRetailCart(commerce, [{ vendorOfferId: offer.id, quantity: 2, plasticCover: true }]);
+  assert.equal(quote.currency, "USD");
+  assert.equal(quote.subtotalUsd, "25.0000");
+  assert.equal(quote.taxUsd, ZERO_MONEY_USD);
+  assert.equal(quote.shippingUsd, ZERO_MONEY_USD);
+  assert.equal(quote.totalUsd, "25.0000");
+  assert.equal(quote.reservationTtlMs, PENDING_ORDER_TTL_MS);
+  assert.equal(quote.policy.paymentsMode, "sandbox");
+  assert.equal(quote.policy.returnsPolicy, "deferred");
+  assert.equal(quote.lines.length, 1);
+  assert.equal(quote.lines[0].title, "A Book");
+  assert.equal(quote.lines[0].stockAvailable, 2);
+  assert.equal((await catalog.db.prepare("SELECT stock_quantity FROM vendor_offers WHERE id = ?").get(offer.id)).stock_quantity, 2);
+  assert.deepEqual(interimCommercePolicy().taxUsd, ZERO_MONEY_USD);
+  await assert.rejects(() => quoteRetailCart(commerce, []), /Cart cannot be empty/);
+  await assert.rejects(() => quoteRetailCart(commerce, [{ vendorOfferId: "missing", quantity: 1 }]), /no longer available/);
+}));
+
+test("customer order detail exposes expiresAt and interim totals", async () => withStores(async ({ catalog, commerce }) => {
+  const { user, offer } = await fixture(catalog);
+  const pending = await createPendingOrder(commerce, user, [{ vendorOfferId: offer.id, quantity: 1 }]);
+  const detail = await getCustomerOrder(commerce, user, pending.id);
+  assert.equal(detail.expiresAt, pending.expiresAt);
+  assert.equal(detail.taxUsd, ZERO_MONEY_USD);
+  assert.equal(detail.shippingUsd, ZERO_MONEY_USD);
+  assert.equal(detail.totalUsd, pending.subtotalUsd);
+  assert.equal(detail.returnsPolicy, "deferred");
+  const listed = await listCustomerOrders(commerce, user, { limit: 10 });
+  assert.equal(listed.items[0].expiresAt, pending.expiresAt);
 }));
 
 test("checkout rejects unavailable offers and invalid cart quantities", async () => withStores(async ({ catalog, commerce }) => {
