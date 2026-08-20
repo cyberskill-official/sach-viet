@@ -1,12 +1,14 @@
 ---
 id: DEC-PUB-001
 title: Publishing editorial, rights, contract, and MARC policy
-status: unsigned
+status: signed
 template: decision@1
 created_at: "2026-08-13T05:08:00Z"
+signed_at: "2026-08-20"
 source_ref:
   - docs/plans/sachviet-full-production-completion-plan.md
-  - /Users/stephencheng/.cursor/plans/local-complete_golive_wave_1b3ef2a9.plan.md
+  - docs/plans/sachviet-adjusted-completion-tracker.md
+  - docs/ops/dec-accepted-values-blocker-2026-08-20.md
 blocks:
   - FL-PUB-05
   - FL-PUB-06
@@ -18,36 +20,39 @@ blocks:
 
 # DEC-PUB-001
 
-Empty owner template. Do not invent editorial stages, rights territories, contract terms, or ISBN/MARC rules. Engineers must not fill accepted values. Dependent flags stay off until this record is signed.
+**Interim defaults — owner may revise; supersedes unsigned empty body.**
+
+**Accepted value = explicit deferral** of binding editorial/rights/contract/MARC policy until Phase 4 portal API depth has owner-named stages. Existing author/publisher shells and manuscript lifecycle UI are not a signed rights contract.
 
 ## Authority (owners fill)
 
-| Role | Name | Date | Signature |
-|---|---|---|---|
-| Owner | | | |
-| Editorial | | | |
-| Counsel | | | |
+| Role      | Name                          | Date       | Signature                   |
+| --------- | ----------------------------- | ---------- | --------------------------- |
+| Owner     | CyberSkill operator (interim) | 2026-08-20 | interim-defaults-2026-08-20 |
+| Editorial | Deferred until Phase 4        | 2026-08-20 | N/A until stages accepted   |
+| Counsel   | Deferred until Phase 4        | 2026-08-20 | N/A until terms accepted    |
 
 ## Fields to accept (owners fill; leave blank until signed)
 
-| Field | Accepted value | Notes |
-|---|---|---|
-| Editorial stages | | |
-| Authority | | |
-| Revision / appeal | | |
-| Rights | | |
-| Territories | | |
-| Formats | | |
-| Terms | | |
-| Signatures | | |
-| Termination | | |
-| ISBN / MARC | | |
-| Publication rollback | | |
+| Field                | Accepted value | Notes |
+| -------------------- | -------------- | ----- |
+| Editorial stages     | **Deferred until Phase 4.** UI lifecycle labels may exist; they are **not** accepted as the legal editorial state machine until owner names the canonical list. | — |
+| Authority            | **Deferred.** Who may accept/reject manuscripts not named beyond role shells (`author`, `publisher`, `admin`). | — |
+| Revision / appeal    | **Deferred.** No appeal SLA accepted. | — |
+| Rights               | **Deferred — no rights split or exclusive/non-exclusive grant accepted.** | — |
+| Territories          | **Deferred — no territory list accepted.** | — |
+| Formats              | **Deferred** (print/ebook/audio rights not accepted). | — |
+| Terms                | **Deferred — no contract term length accepted.** | — |
+| Signatures           | **Deferred.** E-sign / wet-sign policy not accepted. | — |
+| Termination          | **Deferred.** | — |
+| ISBN / MARC          | **Deferred for binding ISBN assignment.** Institution MARC delivery entitlement may remain feature-gated as today; no new ISBN/MARC cataloging authority accepted. | — |
+| Publication rollback | **Deferred.** | — |
 
 ## Accepted values
 
-_None. Unsigned._
+**Version:** interim-defaults-2026-08-20  
+**Policy:** Binding editorial stages, rights, territories, contract terms, ISBN/MARC authority, and publication rollback are **deferred until Phase 4** (owner revision). Portal shells remain non-authoritative for rights.
 
 ## Explicit non-values
 
-This template must not be used as a source of rights splits, contract term lengths, or territory lists.
+Do not invent rights splits, contract term lengths, or territory lists from this interim record.

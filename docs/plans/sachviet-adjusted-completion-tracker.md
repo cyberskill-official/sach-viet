@@ -4,7 +4,7 @@
 **Baseline:** current `main` vs [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md)  
 **Stack default:** stay on **Vercel + Supabase** (Production project in use). Keep **custom `sv_session` + public schema** until a dedicated migration package is scheduled — do **not** force Supabase Auth or US-region move in Waves 0–3 unless `DEC-OPS-001` / identity DECs require it.
 
-**Blocking prerequisite:** all ten `DEC-*` bodies still have empty Accepted values. See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). **Phase 2+ commerce/finance is blocked** until those values are filled (no invented rates).
+**Blocking prerequisite (updated 2026-08-20):** interim Accepted values landed in all ten `DEC-*` bodies (PR `docs/dec-interim-accepted-defaults`) — **pending operator review**. See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). **Do not invent rates.** Phase 3 tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
 
 Statuses below mean:
 
@@ -30,7 +30,7 @@ Statuses below mean:
 | Package | Scope (short) | Status | Notes vs current `main` |
 | --- | --- | --- | --- |
 | `PKG-00` | Reconcile flows → tasks | **partial** | Local-complete + rebuild tasks exist; full 99-flow task set / production-mode matrix not closed |
-| `PKG-01` | Signed DEC Accepted values | **remaining** | Templates exist; Accepted values empty — **blocker** |
+| `PKG-01` | Signed DEC Accepted values | **partial** | Interim Accepted values filled (Production policy + explicit deferrals); **operator PR review** before treating as final |
 | `PKG-02` | Protect main / CI / HITL / env approvals | **partial** | CyberOS gates + HITL wave done; full release-governance / proving-PR matrix still open |
 | `PKG-03` | US-region topology, staging Vercel, fingerprints, backups, obs | **partial** | Vercel + Supabase Production exist (APAC); **US-region move**, dedicated staging topology, obs base gated by `DEC-OPS-001` |
 | `PKG-04` | Async `pg` repositories / transactions | **done** | Async pool replaced synckit/child-process path for current domains |
@@ -80,7 +80,7 @@ Statuses below mean:
 | Phase | Focus | Gate |
 | --- | --- | --- |
 | 0 | CDS Thủy · ocean + auth UI parity | Allowed now (platform UI) |
-| 1 | Fill DEC Accepted values in-repo | **Owners; this is the blocker** |
+| 1 | Fill DEC Accepted values in-repo | **Interim filled; operator review of PR** |
 | 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | After Phase 1 for DEC-OPS/PRIV/COMMS as needed |
 | 3 | B2C completeness (quote/tax/shipping/reservation, returns) | After `DEC-COM-001`, `DEC-RET-001`; sandbox payments until `DEC-PV3-001` |
 | 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | After domain DECs |
