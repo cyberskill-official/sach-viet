@@ -19,15 +19,23 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     window.location.assign(body.redirectTo);
   }
 
-  return <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
-    <label className="grid gap-2 text-sm">Email<input required name="email" type="email" autoComplete="email" className="rounded border border-zinc-600 bg-zinc-950 px-3 py-2" /></label>
-    <label className="grid gap-2 text-sm">Password<input required name="password" type="password" autoComplete="current-password" className="rounded border border-zinc-600 bg-zinc-950 px-3 py-2" /></label>
-    {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
-    <button disabled={pending} className="rounded bg-zinc-100 px-3 py-2 font-medium text-zinc-950 disabled:opacity-60" type="submit">{pending ? "Signing in..." : "Sign in"}</button>
-    <p className="text-sm text-zinc-400">
-      <Link className="underline" href="/register">Create an account</Link>
-      {" · "}
-      <Link className="underline" href="/forgot">Forgot password</Link>
-    </p>
-  </form>;
+  return (
+    <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
+      <label className="cs-field">
+        <span className="cs-field__label">Email</span>
+        <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />
+      </label>
+      <label className="cs-field">
+        <span className="cs-field__label">Password</span>
+        <input required name="password" type="password" autoComplete="current-password" className="cs-field__control w-full" />
+      </label>
+      {error ? <p role="alert" className="cs-alert cs-alert--danger">{error}</p> : null}
+      <button disabled={pending} className="cs-button w-full" type="submit">{pending ? "Signing in..." : "Sign in"}</button>
+      <p className="text-sm text-muted">
+        <Link className="underline" href="/register">Create an account</Link>
+        {" · "}
+        <Link className="underline" href="/forgot">Forgot password</Link>
+      </p>
+    </form>
+  );
 }
