@@ -94,6 +94,11 @@ export async function setOrderItemFulfillment(store, actor, input = {}) {
 
 export async function createVendorPayout(store, actor, input) {
   adminOnly(actor);
+  if (input?.commissionRate != null || input?.commissionPercent != null || input?.rate != null) {
+    throw new Error(
+      "Commission-rate settlement is refused until DEC-SET-001 accepts rates. Provide an explicit amountUsd for operational ledger entries only.",
+    );
+  }
   const vendorId = required(input?.vendorId, "Vendor ID");
   const amountUsd = normalizeMoney(input?.amountUsd);
   if (!Array.isArray(input?.orderItemIds) || input.orderItemIds.length === 0) throw new Error("At least one order item is required.");

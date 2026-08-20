@@ -25,6 +25,11 @@ test("portal navigation localizes known routes and excludes unknown portals", as
   assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "catalog"), true);
   assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "flags"), true);
   assert.equal(navigationForPortal("admin", "en").some((item) => item.key === "wordpress"), false);
+  assert.equal(navigationForPortal("vendor", "en").some((item) => item.key === "payouts"), true);
+  assert.equal(navigationForPortal("publisher", "en").some((item) => item.key === "finance"), true);
+  assert.equal(navigationForPortal("author", "en").some((item) => item.key === "finance"), true);
+  assert.equal(navigationForPortal("employee", "en").some((item) => item.key === "home"), true);
+  assert.equal(navigationForPortal("institution", "en").some((item) => item.key === "budget"), true);
   assert.deepEqual(navigationForPortal("supplier"), []);
   assert.deepEqual(navigationForPortal("missing"), []);
 });

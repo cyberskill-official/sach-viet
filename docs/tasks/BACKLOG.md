@@ -12,6 +12,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 - [done] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock
 - [done] TASK-PLT-001-ready-probe-liveness-health - Add GET /api/ready; keep /api/health liveness-only
+- [ready_to_review] TASK-UI-004-phase4-portals-hardening - Phase 4 portal depth + finance refuse + TC/evidence docs
 - [ready_to_review] TASK-COM-003-phase3-b2c-interim-quote - Phase 3 B2C interim quote/checkout under DEC-COM
 - [ready_to_review] TASK-PLT-002-phase2-foundations-delta - Phase 2 foundations delta: Storage scaffold, Auth/app-schema plans, observability
 - [done] TASK-JOB-002-enqueue-identity-mail-on-leased-outbox - Enqueue register, verify, and reset mail on the leased outbox

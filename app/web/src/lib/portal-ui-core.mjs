@@ -12,24 +12,29 @@ export const portalNavigation = Object.freeze({
     { href: "/vendor", key: "overview" },
     { href: "/vendor#offers", key: "offers" },
     { href: "/vendor#orders", key: "orders" },
+    { href: "/vendor#payouts", key: "payouts" },
   ],
   publisher: [
     { href: "/publisher", key: "overview" },
     { href: "/publisher#requests", key: "requests" },
     { href: "/publisher#marc", key: "marc" },
+    { href: "/publisher#finance", key: "finance" },
   ],
   author: [
     { href: "/author", key: "overview" },
     { href: "/author#requests", key: "requests" },
+    { href: "/author#finance", key: "finance" },
   ],
   institution: [
     { href: "/institution", key: "overview" },
     { href: "/institution#quotes", key: "quotes" },
     { href: "/institution#orders", key: "orders" },
+    { href: "/institution#budget", key: "budget" },
   ],
   employee: [
     { href: "/employee", key: "overview" },
     { href: "/employee#tickets", key: "tickets" },
+    { href: "/employee#home", key: "home" },
   ],
   retail: [
     { href: "/retail", key: "overview" },
@@ -56,6 +61,9 @@ const portalMessages = Object.freeze({
     quotes: "Báo giá",
     tickets: "Hỗ trợ",
     pipeline: "Pipeline",
+    finance: "Tài chính (chờ DEC)",
+    budget: "Ngân sách",
+    home: "Trang chủ",
   },
   en: {
     overview: "Overview",
@@ -70,6 +78,9 @@ const portalMessages = Object.freeze({
     quotes: "Quotes",
     tickets: "Support",
     pipeline: "Pipeline",
+    finance: "Finance (DEC pending)",
+    budget: "Budget",
+    home: "Home sections",
   },
 });
 

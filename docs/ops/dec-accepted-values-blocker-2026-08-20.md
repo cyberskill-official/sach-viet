@@ -50,6 +50,5 @@ Canonical tracker: [`docs/plans/sachviet-adjusted-completion-tracker.md`](../pla
 | 1 — Fill DEC Accepted values | **Interim on `main` (#35); owner may revise** |
 | 2 — Foundations delta (Storage / Auth plan / `app` schema strategy / obs); US-region still deferred per `DEC-OPS-001` | **Delta via TASK-PLT-002** — cutovers still later packages |
 | 3 — B2C tax/shipping/returns | **Only after owner revises COM/RET** where concrete rates/windows are required (tax 0 interim ≠ taxed retail) |
-| 4+ — portal depth / finance / live PV3 | Follow per-DEC deferral triggers |
-
+| 4+ — portal depth / finance / live PV3 | Operational portal depth + refuse-compute finance scaffold allowed; rates / Net-N / live PV3 still follow per-DEC deferral |
 **Phase 2+ that needs invented rates remains blocked.** Interim deferrals unblock documentation honesty and non-rate foundation work; they do not authorize fake tax/shipping/commission/royalty/live-pay numbers.

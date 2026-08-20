@@ -10,6 +10,8 @@
 
 **Phase 3 B2C interim (TASK-COM-003):** Server `POST /api/quote` + cart/order UI under DEC-COM interim (USD, tax 0, no shipping, 30m reservation); sandbox payments only; returns deferred note (DEC-RET). Taxed retail / carriers / full returns / live PV3 remain deferred until DEC revision.
 
+**Phase 4 portal depth + hardening slice (TASK-UI-004):** Role portals wired to operational APIs (orders/offers/tickets/pipeline/requests/dashboards/payout ledger/home sections/budget) under ocean chrome; finance scaffolding refuses SET/ROY rate computation; TC progress + staging evidence checklist docs. Settlement/royalty **rates** and B2B Net-N still DEC-gated.
+
 Statuses below mean:
 
 | Status | Meaning |
@@ -52,21 +54,20 @@ Statuses below mean:
 | `PKG-21` | Quote, reservation, checkout, Stripe/PayPal reconcile | **partial** | Interim server quote + 30m reservation + tax/shipping=0 on cart/order (`TASK-COM-003`); sandbox checkout/webhooks; **taxed retail / carriers blocked** until DEC-COM revision; live keys refused (`DEC-PV3-001`) |
 | `PKG-22` | Orders, shipment, returns, refunds, timeline | **partial** | Order list/detail + fulfillment fragments + expiresAt/totals; returns/refund allocation **DEC-RET-001 deferred** (thin UX note only) |
 | `PKG-23` | Reviews, support, goods requests, notifications | **partial** | Support/account shells; depth remaining |
-| `PKG-30` | Vendor portal depth | **partial** | Shell + narrow APIs; full `FL-VEN-*` remaining |
-| `PKG-31` | Vendor settlement / payouts | **remaining** | Blocked on `DEC-SET-001` |
-| `PKG-40` | Admin portal split / depth | **partial** | Shell + partial admin APIs; full `FL-ADM-*` remaining |
-| `PKG-41` | Employee + retail depth | **partial** | Shells; queues/fulfillment depth remaining |
-| `PKG-50` | B2B + institution pipeline | **partial** | Shells; quote/PO/invoice terms **DEC-B2B-001** gated |
-| `PKG-60` | Publisher + author editorial | **partial** | Shells; editorial/rights **DEC-PUB-001** gated |
-| `PKG-61` | Royalties / statements | **remaining** | Blocked on `DEC-ROY-001` |
+| `PKG-30` | Vendor portal depth | **partial** | Offers/orders/dashboard + payout ledger read; settlement math **DEC-SET** gated (`TASK-UI-004`) |
+| `PKG-31` | Vendor settlement / payouts | **remaining** | Blocked on `DEC-SET-001` rates; refuse-compute scaffold shipped |
+| `PKG-40` | Admin portal split / depth | **partial** | Commerce/catalog/vendors/payouts/flags wired; DEC-SET banner on payouts |
+| `PKG-41` | Employee + retail depth | **partial** | Tickets + home sections + retail fulfillment overlay (`TASK-UI-004`) |
+| `PKG-50` | B2B + institution pipeline | **partial** | Pipeline/quotes/orders/PO/budget wired; Net-N **DEC-B2B** gated |
+| `PKG-60` | Publisher + author editorial | **partial** | Requests/MARC/dashboards wired; rights/royalty **DEC-PUB/ROY** gated |
+| `PKG-61` | Royalties / statements | **remaining** | Blocked on `DEC-ROY-001`; refuse-compute scaffold shipped |
 | `PKG-70` | Shared shell, i18n, a11y, privacy exports | **partial** | Portal shell + locale/theme base; WCAG/privacy completeness remaining (`DEC-PRIV-001`) |
-| `PKG-71` | Fixtures / seed / verification registry | **partial** | Local/docker smoke seeds; production verification registry remaining |
-| `PKG-72` | Full TC matrix harness | **partial** | Unit/smoke/docker evidence for local-complete wave; full `TC-*` release suite remaining |
+| `PKG-71` | Fixtures / seed / verification registry | **partial** | Local/docker smoke seeds; TC progress doc; production verification registry remaining |
+| `PKG-72` | Full TC matrix harness | **partial** | Unit/smoke/docker + `TC-FIN-*` refuse paths; full `TC-*` release suite remaining — see [`../ops/tc-matrix-progress-2026-08-20.md`](../ops/tc-matrix-progress-2026-08-20.md) |
 | `PKG-73` | SAST, a11y, load, backup/restore drills | **partial** | Some ops drills documented; capacity/RPO gates remaining |
-| `PKG-80` | Staging full rehearsal | **remaining** | Operator-gated; needs DEC-OPS + domain packages |
+| `PKG-80` | Staging full rehearsal | **remaining** | Operator checklist: [`../ops/staging-prod-evidence-checklist-2026-08-20.md`](../ops/staging-prod-evidence-checklist-2026-08-20.md); needs DEC-OPS + domain packages |
 | `PKG-81` | Production candidate + live checks | **remaining** | No live Stripe/PayPal; needs `DEC-PV3-001` + operator deploy |
 | `PKG-82` | Stabilize + final acceptance | **remaining** | After production candidate |
-
 ## Major FL groups (rollup)
 
 | Flow group | Status | Notes |
@@ -76,12 +77,11 @@ Statuses below mean:
 | `FL-B2C-01`…`05` | **partial** | Storefront/catalog/search/product largely usable |
 | `FL-B2C-06`…`12` | **partial / DEC-gated** | Cart + server quote + sandbox checkout; interim tax=0 / no-ship / 30m TTL shipped; physical tax/shipping/returns still blocked until DEC revision |
 | `FL-B2C-13`…`14` | **partial** | Support/review surfaces incomplete vs plan |
-| `FL-VEN-*` | **partial** | Shells; settlement **DEC-SET** gated |
-| `FL-ADM-*` | **partial** | Shells + partial APIs |
-| `FL-EMP-*` / `FL-RET-*` | **partial** | Shells; returns policy gated |
-| `FL-B2B-*` / `FL-INS-*` | **partial** | Shells; terms gated by `DEC-B2B-001` |
-| `FL-PUB-*` / `FL-AUT-*` | **partial** | Shells; editorial/royalty gated by `DEC-PUB-001` / `DEC-ROY-001` |
-
+| `FL-VEN-*` | **partial** | Offers/orders/payout ledger; settlement **DEC-SET** gated |
+| `FL-ADM-*` | **partial** | Commerce/catalog/vendors/payouts/flags wired |
+| `FL-EMP-*` / `FL-RET-*` | **partial** | Tickets/home sections + retail fulfillment; returns policy gated |
+| `FL-B2B-*` / `FL-INS-*` | **partial** | Pipeline/PO/budget wired; terms gated by `DEC-B2B-001` |
+| `FL-PUB-*` / `FL-AUT-*` | **partial** | Requests/MARC/dashboards; editorial/royalty gated by `DEC-PUB-001` / `DEC-ROY-001` |
 ## Adjusted roadmap phases
 
 | Phase | Focus | Gate |
@@ -90,11 +90,10 @@ Statuses below mean:
 | 1 | Fill DEC Accepted values in-repo | **Interim on `main` (#35); owner may revise** |
 | 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **Delta shipped (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
 | 3 | B2C completeness (quote/tax/shipping/reservation, returns) | **Interim slice shipped (TASK-COM-003)** — USD/tax0/no-ship/30m + sandbox; taxed retail, carriers, full returns await DEC revision |
-| 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | After domain DECs |
-| 5 | Finance — settlement then royalties | After `DEC-SET-001`, `DEC-ROY-001` |
-| 6 | Hardening + TC matrix (`PKG-71`…`73`) | After interfaces stabilize |
-| 7–9 | Staging / Production evidence / stabilize | Operator-gated; never `sk_live_` until PV3 |
-
+| 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | **Operational depth shipped (TASK-UI-004)** — finance rates / Net-N / binding rights still DEC-gated |
+| 5 | Finance — settlement then royalties | After `DEC-SET-001`, `DEC-ROY-001` (refuse-compute scaffold on `main` once TASK-UI-004 merges) |
+| 6 | Hardening + TC matrix (`PKG-71`…`73`) | **Partial progress doc** — full matrix after interfaces stabilize |
+| 7–9 | Staging / Production evidence / stabilize | Operator checklist shipped; never `sk_live_` until PV3; no auto-deploy |
 ## Explicit non-goals (until DEC says otherwise)
 
 - Inventing tax / shipping / commission / royalty tables
@@ -110,4 +109,6 @@ Statuses below mean:
 - Storage scaffold: [`../ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md)
 - Auth migration plan: [`../ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md)
 - `app` schema strategy: [`../ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md)
+- TC matrix progress: [`../ops/tc-matrix-progress-2026-08-20.md`](../ops/tc-matrix-progress-2026-08-20.md)
+- Staging/prod evidence checklist: [`../ops/staging-prod-evidence-checklist-2026-08-20.md`](../ops/staging-prod-evidence-checklist-2026-08-20.md)
 - Local-complete HITL: [`../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md`](../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md)

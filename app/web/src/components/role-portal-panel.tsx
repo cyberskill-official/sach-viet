@@ -54,6 +54,9 @@ export function RolePortalPanel({
 }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [summary, setSummary] = useState("");
+  const [policyNote, setPolicyNote] = useState("");
+  const [financeNote, setFinanceNote] = useState("");
+  const [extraRows, setExtraRows] = useState<Row[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -65,19 +68,28 @@ export function RolePortalPanel({
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setPolicyNote("");
+    setFinanceNote("");
+    setExtraRows([]);
     try {
+      const policy = await readJson("/api/finance/policy").catch(() => null);
       if (portal === "vendor") {
-        const [dashboard, orders, offers] = await Promise.all([
+        const [dashboard, orders, offers, payouts] = await Promise.all([
           readJson("/api/vendor/dashboard"),
           readJson("/api/vendor/orders"),
           readJson("/api/vendor/offers"),
+          readJson("/api/vendor/payouts").catch(() => ({ payouts: [] })),
         ]);
         const dash = dashboard.dashboard || {};
         setSummary(
           vi
-            ? `Đơn vào: ${dash.incomingOrderLineCount ?? 0} · Đã trả: ${formatUsd(dash.paidLineTotalUsd || "0")} · Chi trả: ${dash.payoutCount ?? 0}`
-            : `Incoming lines: ${dash.incomingOrderLineCount ?? 0} · Paid: ${formatUsd(dash.paidLineTotalUsd || "0")} · Payouts: ${dash.payoutCount ?? 0}`,
+            ? `Đơn vào: ${dash.incomingOrderLineCount ?? 0} · Đã trả: ${formatUsd(dash.paidLineTotalUsd || "0")} · Sổ chi trả: ${dash.payoutCount ?? 0}`
+            : `Incoming lines: ${dash.incomingOrderLineCount ?? 0} · Paid: ${formatUsd(dash.paidLineTotalUsd || "0")} · Payout ledger: ${dash.payoutCount ?? 0}`,
         );
+        setPolicyNote(policy?.policy?.settlement?.message
+          || (vi
+            ? "Đối soát / hoa hồng: deferred (DEC-SET) — không tính % tại đây. Sổ chi trả chỉ là dữ liệu vận hành."
+            : "Settlement/commission: deferred (DEC-SET) — no rates computed here. Payout rows are operational ledger only."));
         setRows([
           ...listItems(offers, ["offers"]).map((item) => ({
             id: String(item.id),
@@ -90,10 +102,16 @@ export function RolePortalPanel({
             label: `${item.title || item.orderId} · ${item.status} · ${item.fulfillmentStatus || "—"} · ×${item.quantity}`,
           })),
         ]);
+        setExtraRows(listItems(payouts, ["payouts"]).map((item) => ({
+          id: String(item.id),
+          kind: "order" as const,
+          label: `payout · ${formatUsd(String(item.amountUsd || "0"))} · ${Array.isArray(item.orderItemIds) ? item.orderItemIds.length : 0} lines`,
+        })));
       } else if (portal === "employee") {
-        const [dashboard, tickets] = await Promise.all([
+        const [dashboard, tickets, sections] = await Promise.all([
           readJson("/api/employee/dashboard"),
           readJson("/api/support/tickets"),
+          readJson("/api/employee/home-sections").catch(() => ({ sections: [] })),
         ]);
         const dash = dashboard.dashboard || {};
         setSummary(
@@ -105,6 +123,10 @@ export function RolePortalPanel({
           id: String(item.id),
           kind: "ticket" as const,
           label: `${item.subject} · ${item.status} · assignee ${item.assigneeId || "—"}`,
+        })));
+        setExtraRows(listItems(sections, ["sections"]).map((item, index) => ({
+          id: String(item.id || item.key || item.slug || `section-${index}`),
+          label: `home · ${item.title || item.key || item.id}`,
         })));
       } else if (portal === "retail") {
         const body = await readJson("/api/retail/orders");
@@ -121,7 +143,9 @@ export function RolePortalPanel({
           }));
         }));
       } else if (portal === "b2b") {
-        const body = await readJson("/api/b2b/quotes/pipeline");
+        const [body] = await Promise.all([
+          readJson("/api/b2b/quotes/pipeline"),
+        ]);
         const pipeline = body.pipeline || {};
         const combined = Object.entries(pipeline).flatMap(([status, list]) =>
           (Array.isArray(list) ? list : []).map((item) => ({
@@ -129,39 +153,83 @@ export function RolePortalPanel({
             label: `${status} · ${(item as { id: string }).id}`,
           })),
         );
-        setSummary(vi ? "Pipeline báo giá B2B" : "B2B quote pipeline");
+        setSummary(vi ? "Pipeline báo giá B2B (vận hành)" : "B2B quote pipeline (operational)");
+        setPolicyNote(policy?.policy?.b2b?.message
+          || (vi
+            ? "Net-N / chiết khấu / hiệu lực báo giá: deferred (DEC-B2B) — không invent điều khoản thanh toán."
+            : "Net-N / discount / quote validity: deferred (DEC-B2B) — no invented payment terms."));
         setRows(combined);
       } else if (portal === "institution") {
-        const [quotes, orders] = await Promise.all([
+        const [quotes, orders, budget] = await Promise.all([
           readJson("/api/institution/quotes"),
           readJson("/api/institution/orders").catch(() => ({ orders: [], items: [] })),
+          readJson("/api/institution/budget").catch(() => ({ budget: null })),
         ]);
+        const budgetRow = budget.budget;
         setSummary(vi ? "Báo giá và đơn tổ chức" : "Institution quotes and orders");
+        setPolicyNote(policy?.policy?.b2b?.message
+          || (vi
+            ? "Điều khoản thương mại B2B/institution: deferred (DEC-B2B)."
+            : "B2B/institution commercial terms: deferred (DEC-B2B)."));
+        if (budgetRow) {
+          setFinanceNote(vi
+            ? `Ngân sách (informational): ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"))}`
+            : `Budget (informational): ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"))}`);
+        }
         setRows([
-          ...listItems(quotes, ["quotes"]).map((item) => ({ id: String(item.id), label: `quote · ${item.status} · ${item.id}` })),
-          ...listItems(orders, ["orders"]).map((item) => ({ id: String(item.id), label: `order · ${item.status} · ${item.id}` })),
+          ...listItems(quotes, ["quotes"]).map((item) => ({ id: String(item.id), kind: "quote" as const, label: `quote · ${item.status} · ${item.id}` })),
+          ...listItems(orders, ["orders"]).map((item) => ({ id: String(item.id), kind: "order" as const, label: `order · ${item.status} · ${item.id}` })),
         ]);
       } else if (portal === "publisher") {
-        const [requests, marc] = await Promise.all([
+        const [requests, marc, dashboard] = await Promise.all([
           readJson("/api/publisher/publishing-requests"),
           readJson("/api/publisher/marc").catch(() => ({ marcRecords: [] })),
+          readJson("/api/publisher/dashboard").catch(() => ({ dashboard: null })),
         ]);
-        setSummary(vi ? "Yêu cầu xuất bản và MARC (tài chính đang chờ DEC)" : "Publishing requests and MARC (finance gated)");
+        const dash = dashboard.dashboard || {};
+        setSummary(vi
+          ? `Yêu cầu: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`
+          : `Requests: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`);
+        setPolicyNote(policy?.policy?.royalty?.message
+          || (vi
+            ? "Royalty / doanh số / hợp đồng: deferred (DEC-ROY) — không có số liệu tính toán."
+            : "Royalties / sales / contracts: deferred (DEC-ROY) — no computed amounts."));
+        if (dash.royalties?.policyPending || dash.sales?.policyPending) {
+          setFinanceNote(vi
+            ? "Dashboard tài chính: policyPending — không hiển thị tỷ lệ hoặc số liệu giả."
+            : "Finance dashboard: policyPending — no rates or invented figures shown.");
+        }
         setRows([
           ...(Array.isArray(requests.publishingRequests) ? requests.publishingRequests : []).map((item: { id: string; title: string; status: string }) => ({
             id: item.id,
+            kind: "request" as const,
             label: `${item.title} · ${item.status}`,
           })),
           ...(Array.isArray(marc.marcRecords) ? marc.marcRecords : []).map((item: { productId: string }) => ({
             id: item.productId,
+            kind: "marc" as const,
             label: `MARC · ${item.productId}`,
           })),
         ]);
       } else if (portal === "author") {
-        const body = await readJson("/api/author/manuscript-requests");
-        setSummary(vi ? "Bản thảo (thu nhập đang chờ DEC)" : "Manuscripts (earnings gated)");
+        const [body, dashboard] = await Promise.all([
+          readJson("/api/author/manuscript-requests"),
+          readJson("/api/author/dashboard").catch(() => ({ dashboard: null })),
+        ]);
+        const dash = dashboard.dashboard || {};
+        setSummary(vi ? "Bản thảo (vận hành)" : "Manuscripts (operational)");
+        setPolicyNote(policy?.policy?.royalty?.message
+          || (vi
+            ? "Thu nhập / royalty: deferred (DEC-ROY) — không tính earnings."
+            : "Earnings / royalties: deferred (DEC-ROY) — no earnings computation."));
+        if (dash.earnings?.policyPending || dash.stages?.policyPending) {
+          setFinanceNote(vi
+            ? "Earnings & stages: policyPending — không có số liệu tài chính."
+            : "Earnings & stages: policyPending — no financial amounts.");
+        }
         setRows((Array.isArray(body.manuscriptRequests) ? body.manuscriptRequests : []).map((item: { id: string; title: string; status: string }) => ({
           id: item.id,
+          kind: "request" as const,
           label: `${item.title} · ${item.status}`,
         })));
       } else if (portal === "supplier") {
@@ -342,6 +410,13 @@ export function RolePortalPanel({
   return (
     <div className="mt-5 space-y-6">
       {summary ? <p className="text-sm text-muted">{summary}</p> : null}
+      {policyNote ? (
+        <div className="cs-alert cs-alert--warning" id="finance">
+          <strong>{vi ? "Chính sách tài chính đang chờ DEC" : "Finance policy pending DEC"}</strong>
+          <p className="mt-1 text-sm">{policyNote}</p>
+        </div>
+      ) : null}
+      {financeNote ? <p className="text-sm text-muted" id="budget">{financeNote}</p> : null}
 
       {portal === "vendor" ? (
         <form id="offers" className="cs-surface-standard space-y-3 rounded-2xl p-4" onSubmit={(event) => { void saveOffer(event); }}>
@@ -375,6 +450,20 @@ export function RolePortalPanel({
               {vi ? "Gán cho tôi" : "Assign to me"} · {row.id.slice(0, 8)}
             </button>
           ))}
+        </div>
+      ) : null}
+
+      {portal === "employee" && extraRows.length ? (
+        <div id="home" className="space-y-2">
+          <h3 className="font-semibold">{vi ? "Cấu hình trang chủ (đọc)" : "Home sections (read)"}</h3>
+          <DataTable labels={{ empty: emptyLabel, previous: previousLabel, next: nextLabel }} rows={extraRows} />
+        </div>
+      ) : null}
+
+      {portal === "vendor" && extraRows.length ? (
+        <div id="payouts" className="space-y-2">
+          <h3 className="font-semibold">{vi ? "Sổ chi trả (vận hành, không phải settlement DEC-SET)" : "Payout ledger (operational, not DEC-SET settlement)"}</h3>
+          <DataTable labels={{ empty: emptyLabel, previous: previousLabel, next: nextLabel }} rows={extraRows} />
         </div>
       ) : null}
 

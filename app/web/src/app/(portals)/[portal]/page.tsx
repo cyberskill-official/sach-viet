@@ -40,20 +40,29 @@ export default async function PortalPage({
     );
   }
 
-  const policyPending = portal === "publisher" || portal === "author";
+  const financeDeferred = portal === "publisher" || portal === "author" || portal === "vendor" || portal === "b2b" || portal === "institution";
+  const financeCopy =
+    portal === "vendor"
+      ? locale === "vi"
+        ? "Đối soát nhà bán / hoa hồng (DEC-SET) đang deferred — cổng chỉ hiển thị đơn, chào bán và sổ chi trả vận hành."
+        : "Vendor settlement/commission (DEC-SET) is deferred — this portal shows offers, orders, and operational payout ledger only."
+      : portal === "b2b" || portal === "institution"
+        ? locale === "vi"
+          ? "Điều khoản Net-N / chiết khấu B2B (DEC-B2B) đang deferred — pipeline và PO vẫn là vận hành."
+          : "B2B Net-N / discount terms (DEC-B2B) are deferred — pipeline and PO flows remain operational only."
+        : locale === "vi"
+          ? "Royalty / thu nhập (DEC-ROY) đang deferred — không có tỷ lệ hoặc số liệu tính toán tại đây."
+          : "Royalty / earnings (DEC-ROY) are deferred — no rates or computed financial amounts here.";
+
   return (
     <PortalShell portal={portal} locale={locale} user={user}>
       <section className="cs-surface-standard rounded-2xl p-6">
         <p className="cs-eyebrow text-accent-strong">{config.label}</p>
         <h1 className="mt-3 text-3xl font-extrabold">{translate(locale, "overview")}</h1>
-        {policyPending ? (
+        {financeDeferred ? (
           <div className="cs-alert cs-alert--warning mt-5">
             <strong>{locale === "vi" ? "Chính sách đang chờ quyết định" : "Policy decision pending"}</strong>
-            <p className="mt-1">
-              {locale === "vi"
-                ? "Thông tin tài chính, bản quyền và thu nhập chỉ được hiển thị sau khi chính sách được phê duyệt. Không có thao tác kích hoạt tại đây."
-                : "Financial, royalty, and earnings information remains unavailable until policy approval. No activation action is offered here."}
-            </p>
+            <p className="mt-1">{financeCopy}</p>
           </div>
         ) : null}
         <RolePortalPanel
