@@ -92,4 +92,10 @@ export const MIGRATIONS = Object.freeze([
       await db.exec(loadSql("006_portal_search_fulfillment.sql"));
     },
   },
+  {
+    id: "007_storage_object_registry",
+    async up(db) {
+      await db.exec(loadSql("007_storage_object_registry.sql"));
+    },
+  },
 ]);

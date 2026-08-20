@@ -4,7 +4,9 @@
 **Baseline:** current `main` vs [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md)  
 **Stack default:** stay on **Vercel + Supabase** (Production project in use). Keep **custom `sv_session` + public schema** until a dedicated migration package is scheduled — do **not** force Supabase Auth or US-region move in Waves 0–3 unless `DEC-OPS-001` / identity DECs require it.
 
-**Blocking prerequisite (updated 2026-08-20):** interim Accepted values landed in all ten `DEC-*` bodies (PR `docs/dec-interim-accepted-defaults`) — **pending operator review**. See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). **Do not invent rates.** Phase 3 tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
+**Blocking prerequisite (updated 2026-08-20):** interim Accepted values are on `main` via PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35) (`5df30cd`). See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). Owner may still revise. **Do not invent rates.** Phase 3 tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
+
+**Phase 2 foundations delta (TASK-PLT-002):** Storage registry scaffold + Auth/`app` schema plans + probe fingerprints — see [`docs/ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md), [`docs/ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md), [`docs/ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md). US-region remains deferred.
 
 Statuses below mean:
 
@@ -18,11 +20,14 @@ Statuses below mean:
 
 - Vercel + Supabase APAC project `eskazygpnygqsrcwlszz`
 - Custom `sv_session`, public schema, async `pg` pool
-- Migrations through `006_portal_search_fulfillment` (`app/web/migrations/001`…`006`)
+- Migrations through `007_storage_object_registry` (`app/web/migrations/001`…`007`)
 - Sandbox Stripe / PayPal webhooks and checkout paths
 - Resend SMTP wiring
 - Nine portal shells under `/(portals)/[portal]` + storefront/account surfaces
 - Postgres FTS / portal search (migration `006`)
+- Storage object registry metadata scaffold (migration `007`; BYTEA backend still active)
+- Auth migration plan + `app` schema strategy docs (no cutover)
+- Probe fingerprints on `/api/health` + `/api/ready` (release SHA, schema, storage mode)
 - Local-complete HITL wave tasks accepted (`docs/ops/hitl-*-local-complete-wave-2026-08-20.md`)
 
 ## PKG-* map
@@ -30,14 +35,14 @@ Statuses below mean:
 | Package | Scope (short) | Status | Notes vs current `main` |
 | --- | --- | --- | --- |
 | `PKG-00` | Reconcile flows → tasks | **partial** | Local-complete + rebuild tasks exist; full 99-flow task set / production-mode matrix not closed |
-| `PKG-01` | Signed DEC Accepted values | **partial** | Interim Accepted values filled (Production policy + explicit deferrals); **operator PR review** before treating as final |
+| `PKG-01` | Signed DEC Accepted values | **partial** | Interim Accepted on `main` (#35); owner may revise; not final business sign-off |
 | `PKG-02` | Protect main / CI / HITL / env approvals | **partial** | CyberOS gates + HITL wave done; full release-governance / proving-PR matrix still open |
-| `PKG-03` | US-region topology, staging Vercel, fingerprints, backups, obs | **partial** | Vercel + Supabase Production exist (APAC); **US-region move**, dedicated staging topology, obs base gated by `DEC-OPS-001` |
+| `PKG-03` | US-region topology, staging Vercel, fingerprints, backups, obs | **partial** | APAC Production stays; **US-region deferred**; release/schema/storage fingerprints on probes (Phase 2); staging topology still open |
 | `PKG-04` | Async `pg` repositories / transactions | **done** | Async pool replaced synckit/child-process path for current domains |
-| `PKG-05` | Safe migrations, private `app` schema, expand/contract | **partial** | Runner + migrations through `006` on public schema; **private `app` schema / least-privilege roles remaining** |
-| `PKG-06` | Supabase Auth (email/Google/MFA) | **remaining** | Custom session auth in use; Auth migration deferred until dedicated package + DEC |
+| `PKG-05` | Safe migrations, private `app` schema, expand/contract | **partial** | Runner + migrations through `007` on public schema; **strategy documented**; private `app` cutover remaining |
+| `PKG-06` | Supabase Auth (email/Google/MFA) | **remaining** | Custom `sv_session` kept; **migration plan documented**; cutover deferred |
 | `PKG-07` | Orgs, roles, policy, CSRF, rate limits, audit | **partial** | Role shells / basic authz present; full matrix + immutable audit remaining |
-| `PKG-08` | Private Supabase Storage | **remaining** | Not delivered as private upload/scan/quarantine lifecycle |
+| `PKG-08` | Private Supabase Storage | **partial** | Registry metadata + backend scaffold (`007`); BYTEA active; signed URL/scan/quarantine remaining |
 | `PKG-09` | Outbox, jobs, provider ledger, email, Zalo | **partial** | Jobs + Resend + payment webhooks exist; full leased outbox / Realtime / Zalo OA remaining (`DEC-COMMS-001`) |
 | `PKG-10` | Retire WP import, supplier, admin AI, CapRover/SQLite | **partial** | Paths largely sidelined; dependency proof / full retirement remaining |
 | `PKG-11` | Shared schemas, error envelope, cursors, typed client | **partial** | Some API contracts; not universal across portals |
@@ -80,8 +85,8 @@ Statuses below mean:
 | Phase | Focus | Gate |
 | --- | --- | --- |
 | 0 | CDS Thủy · ocean + auth UI parity | Allowed now (platform UI) |
-| 1 | Fill DEC Accepted values in-repo | **Interim filled; operator review of PR** |
-| 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | After Phase 1 for DEC-OPS/PRIV/COMMS as needed |
+| 1 | Fill DEC Accepted values in-repo | **Interim on `main` (#35); owner may revise** |
+| 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **Delta shipped (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
 | 3 | B2C completeness (quote/tax/shipping/reservation, returns) | After `DEC-COM-001`, `DEC-RET-001`; sandbox payments until `DEC-PV3-001` |
 | 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | After domain DECs |
 | 5 | Finance — settlement then royalties | After `DEC-SET-001`, `DEC-ROY-001` |
@@ -100,4 +105,7 @@ Statuses below mean:
 
 - Full plan: [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md) (§9 packages, §24 decisions)
 - DEC blocker: [`../ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md)
+- Storage scaffold: [`../ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md)
+- Auth migration plan: [`../ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md)
+- `app` schema strategy: [`../ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md)
 - Local-complete HITL: [`../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md`](../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md)
