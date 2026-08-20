@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" data-theme="light" data-cs-element="thuy" className="h-full" suppressHydrationWarning>
+    <html lang="vi" data-theme="light" data-cs-element="thuy" data-cs-variant="ocean" className="h-full" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
