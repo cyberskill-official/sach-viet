@@ -1,8 +1,8 @@
 # DEC Accepted values blocker — 2026-08-20
 
-**Status:** interim values landed — **pending operator review of the PR**  
+**Status:** interim values on `main` (PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35), merge `5df30cd`) — **owner may revise**  
 **Scope:** all ten `docs/decisions/DEC-*.md` records  
-**Branch / PR:** `docs/dec-interim-accepted-defaults` (do **not** merge without operator review of the numbers)
+**Merged branch:** `docs/dec-interim-accepted-defaults`
 
 ## What changed
 
@@ -32,10 +32,10 @@ Engineers must **not** invent tax jurisdictions, carrier rate cards, commission/
 | `DEC-OPS-001` | Ops / region | `signed` (interim) | Stay APAC `eskazygpnygqsrcwlszz`; US deferred; `sv_session`; public schema; WP DNS refused; CyberSkill operator interim; SLO/$ deferred | US-region / Auth / `app` schema until dedicated packages |
 | `DEC-PV3-001` | Live pay verification | `signed` (interim) | **Live refused**; sandbox only; no live max amount | Live go needs later revision + operator deploy |
 
-## Owner checklist after PR merge (or on revise)
+## Owner checklist after merge (or on revise)
 
 1. Review every Accepted value; override any interim default that is wrong for the business.
-2. Before Phase 3 tax/shipping: revise `DEC-COM-001` (and align `DEC-B2B-001` tax/shipping).
+2. Before Phase 3 tax/shipping: revise `DEC-COM-001` (and align `DEC-B2B-001` tax/shipping). Until then, COM interim **tax 0** means “taxed retail” stays deferred.
 3. Before Phase 5 settlement/royalties: revise `DEC-SET-001` / `DEC-ROY-001` with concrete rates.
 4. Before live pay: revise `DEC-PV3-001` with max amount, accounts, reviewers — **then** explicit operator deploy. Never treat interim PV3 as go.
 5. Keep dependent flags off where the DEC still says deferred.
@@ -46,10 +46,10 @@ Canonical tracker: [`docs/plans/sachviet-adjusted-completion-tracker.md`](../pla
 
 | Adjusted phase | Allowed under interim DECs? |
 | --- | --- |
-| 0 — CDS ocean + auth UI parity | Yes |
-| 1 — Fill DEC Accepted values | **Interim complete pending operator PR review** |
-| 2 — Foundations delta (Storage / Auth plan / `app` schema strategy / obs); US-region still deferred per `DEC-OPS-001` | Yes for non-rate work aligned with OPS/PRIV/COMMS interim |
-| 3 — B2C tax/shipping/returns | **Only after owner revises COM/RET** where concrete rates/windows are required |
+| 0 — CDS ocean + auth UI parity | Yes (on `main`) |
+| 1 — Fill DEC Accepted values | **Interim on `main` (#35); owner may revise** |
+| 2 — Foundations delta (Storage / Auth plan / `app` schema strategy / obs); US-region still deferred per `DEC-OPS-001` | **Delta via TASK-PLT-002** — cutovers still later packages |
+| 3 — B2C tax/shipping/returns | **Only after owner revises COM/RET** where concrete rates/windows are required (tax 0 interim ≠ taxed retail) |
 | 4+ — portal depth / finance / live PV3 | Follow per-DEC deferral triggers |
 
 **Phase 2+ that needs invented rates remains blocked.** Interim deferrals unblock documentation honesty and non-rate foundation work; they do not authorize fake tax/shipping/commission/royalty/live-pay numbers.

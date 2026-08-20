@@ -1,13 +1,20 @@
 import { createHash } from "node:crypto";
 import { openDatabase } from "./db.mjs";
+import { resolveStorageMode, STORAGE_MODES } from "./storage-backend.mjs";
 
 function sha256Hex(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-export async function createStorageStore({ dbPath, clock = () => Date.now(), log = () => {} } = {}) {
+export async function createStorageStore({ dbPath, clock = () => Date.now(), log = () => {}, env = process.env } = {}) {
+  const mode = resolveStorageMode(env);
+  if (mode === STORAGE_MODES.supabase) {
+    // Scaffold only: Supabase object I/O is deferred to the dedicated PKG-08 package.
+    // Refuse writes so Production cannot silently claim supabase mode without implementation.
+    throw new Error("Supabase Storage backend is scaffolded but not enabled. Unset STORAGE_BACKEND or use postgres.");
+  }
   const db = await openDatabase(dbPath);
-  return { db, clock, log, close: () => db.close() };
+  return { db, clock, log, mode, close: () => db.close() };
 }
 
 export async function putStoredObject(store, { bytes, contentType = "application/octet-stream", ownerId = null, key = null }) {
@@ -21,13 +28,14 @@ export async function putStoredObject(store, { bytes, contentType = "application
   }
   await store.db
     .prepare(
-      `INSERT INTO stored_objects (key, content_type, byte_length, sha256, owner_id, body, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO stored_objects
+         (key, content_type, byte_length, sha256, owner_id, body, created_at, backend, scan_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'postgres', 'unscanned')
        ON CONFLICT (key) DO NOTHING`,
     )
     .run(objectKey, contentType, buffer.length, digest, ownerId, buffer, store.clock());
-  store.log?.("stored_object_put", { result: "accepted", key: objectKey });
-  return { key: objectKey, sha256: digest, byteLength: buffer.length, contentType };
+  store.log?.("stored_object_put", { result: "accepted", key: objectKey, backend: "postgres" });
+  return { key: objectKey, sha256: digest, byteLength: buffer.length, contentType, backend: "postgres" };
 }
 
 export async function requireStoredObjectKey(store, storageKey) {

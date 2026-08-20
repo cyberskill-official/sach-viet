@@ -239,7 +239,7 @@ Do these on a trusted machine against a **candidate** URL the operator names. Do
    npm run migrate
    ```
 
-   Confirm `schema_migrations` includes shipped `004_identity_jobs_payments` plus additive `005_order_expiry_inventory` and `006_portal_search_fulfillment`. Do **not** run `npm run seed:local` against Production. Do **not** invent tax/shipping/commission/royalty rates.
+   Confirm `schema_migrations` includes shipped ids through `007_storage_object_registry`. Do **not** run `npm run seed:local` against Production. Do **not** invent tax/shipping/commission/royalty rates.
 4. **Secrets already required by cron / ready.** Vercel Production must have `CRON_SECRET` (Bearer for `GET /api/cron/drain-order-comms` every 5 minutes in `vercel.json`; also required *presence* on `GET /api/ready`). SMTP (`SMTP_HOST`, `SMTP_FROM`, and related) is the Production submitter for identity and order outbox drain; without it, Production mail stays `failed`, not `delivered`. Names only: [`.env.vercel.example`](./.env.vercel.example).
 5. **Optional commerce freeze.** Deploy `COMMERCE_MUTATIONS_ENABLED=0` before promoting the candidate; unset or `1` after smoke if the operator wants writes open. Unset still means allow (Production stays writable until that env is deployed).
 6. **Smoke the candidate URL** (not live Production unless the operator names that URL as the candidate):
@@ -425,7 +425,7 @@ Versioned additive migrations live in `app/web/migrations/` (`001_initial_schema
 DATABASE_URL=postgres://sachviet:sachviet@127.0.0.1:54329/sachviet npm run migrate
 ```
 
-Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids. Dual-owned `CREATE TABLE` definitions were folded into `001_initial_schema`. Current registry includes `004_identity_jobs_payments` plus additive `005_order_expiry_inventory` and `006_portal_search_fulfillment`. Production apply of `005`/`006` is Wave 5 prepare-only — see § *Sandbox Production candidate*; do not run it from this wave.
+Add new `{ id, up(db) }` entries at the end of `MIGRATIONS` only — never rewrite shipped ids. Dual-owned `CREATE TABLE` definitions were folded into `001_initial_schema`. Current registry includes additive migrations through `007_storage_object_registry` (Storage metadata scaffold; Postgres BYTEA remains the active backend). Production apply of new migrations is operator-gated — see § *Sandbox Production candidate*; do not invent cutovers.
 
 ## Operator cloud deploy checklist (Phase A — Production authorized)
 

@@ -1,6 +1,8 @@
 import { MIGRATIONS } from "../../migrations/registry.mjs";
 import { openDatabase } from "./db.mjs";
 import { listAppliedMigrations } from "./migrate.mjs";
+import { releaseFingerprint, schemaFingerprint } from "./obs-fingerprint.mjs";
+import { storageFingerprint } from "./storage-backend.mjs";
 
 /** Env keys whose *presence* is required for readiness (values never returned). */
 export const REQUIRED_READY_ENV = Object.freeze(["DATABASE_URL", "AUTH_SESSION_SECRET", "CRON_SECRET"]);
@@ -19,18 +21,22 @@ function envPresence(env, keys) {
 
 /**
  * Readiness snapshot: DB ping, latest applied migration id, oldest pending
- * outbox age, required env presence. Never includes secret values or raw DB errors.
+ * outbox age, required env presence, plus safe release/schema/storage fingerprints.
+ * Never includes secret values or raw DB errors.
  */
 export async function getReadiness({ env = process.env, db = null, now = Date.now } = {}) {
   const required = envPresence(env, REQUIRED_READY_ENV);
   const expectedLatest = MIGRATIONS[MIGRATIONS.length - 1]?.id || null;
-  /** @type {{ ok: boolean, db: string, migration: { latest: string | null }, outbox: { oldestPendingAgeMs: number | null }, env: Record<string, boolean> }} */
+  /** @type {{ ok: boolean, db: string, migration: { latest: string | null }, outbox: { oldestPendingAgeMs: number | null }, env: Record<string, boolean>, release: { sha: string | null, deploymentEnv: string | null }, schema: { name: string, targetDeferred: string }, storage: { mode: string, supabaseEnvPresent: Record<string, boolean> } }} */
   const snapshot = {
     ok: false,
     db: "error",
     migration: { latest: null },
     outbox: { oldestPendingAgeMs: null },
     env: required.presence,
+    release: releaseFingerprint(env),
+    schema: schemaFingerprint(),
+    storage: storageFingerprint(env),
   };
 
   if (!db && !required.presence.DATABASE_URL) {

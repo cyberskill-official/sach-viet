@@ -40,7 +40,7 @@ export DATABASE_URL='postgresql://postgres.[PROJECT-REF]:[PASSWORD]@db.[PROJECT-
 npm run migrate
 ```
 
-Confirm `schema_migrations` contains the registry ids (`001_initial_schema` … `004_identity_jobs_payments`, plus additive `005_order_expiry_inventory` and `006_portal_search_fulfillment` on the golive-wave branch). Migrations also apply automatically the first time the app opens the database; an explicit `npm run migrate` is preferred so failures are visible before traffic.
+Confirm `schema_migrations` contains the registry ids (`001_initial_schema` … `007_storage_object_registry`). Migrations also apply automatically the first time the app opens the database; an explicit `npm run migrate` is preferred so failures are visible before traffic.
 
 **Wave 5:** document this path; do **not** run `npm run migrate` against live Production until a later operator instruction. See [`app/web/OPERATIONS.md`](../app/web/OPERATIONS.md) § *Sandbox Production candidate*.
 

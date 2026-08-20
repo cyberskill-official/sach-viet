@@ -38,11 +38,18 @@ test("getReadiness reports db, latest migration, outbox age, and env presence wi
         DATABASE_URL: "postgres://example",
         AUTH_SESSION_SECRET: "x".repeat(32),
         CRON_SECRET: "cron",
+        VERCEL_GIT_COMMIT_SHA: "deadbeef",
+        VERCEL_ENV: "preview",
       },
       now: () => 2_000,
     });
     assert.equal(ready.ok, true);
     assert.deepEqual(REQUIRED_READY_ENV, ["DATABASE_URL", "AUTH_SESSION_SECRET", "CRON_SECRET"]);
+    assert.equal(ready.release.sha, "deadbeef");
+    assert.equal(ready.release.deploymentEnv, "preview");
+    assert.equal(ready.schema.name, "public");
+    assert.equal(ready.storage.mode, "postgres_bytea");
+    assert.equal(JSON.stringify(ready).includes("x".repeat(32)), false);
   } finally {
     await db.close();
     rmSync(directory, { recursive: true, force: true });

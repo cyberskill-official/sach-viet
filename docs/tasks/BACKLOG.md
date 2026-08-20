@@ -12,6 +12,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 - [done] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock
 - [done] TASK-PLT-001-ready-probe-liveness-health - Add GET /api/ready; keep /api/health liveness-only
+- [ready_to_review] TASK-PLT-002-phase2-foundations-delta - Phase 2 foundations delta: Storage scaffold, Auth/app-schema plans, observability
 - [done] TASK-JOB-002-enqueue-identity-mail-on-leased-outbox - Enqueue register, verify, and reset mail on the leased outbox
 - [done] TASK-OPS-001-retire-wp-ai-supplier-from-production-ui - Retire WP-import apply, admin AI, and supplier portal from Production UI (improvement)
 - [done] TASK-API-001-error-envelope-and-cursor-lists - Adopt error envelope and cursor lists on hot paths (improvement)
