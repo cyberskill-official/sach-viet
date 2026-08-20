@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "gate": "review",
+  "from": "reviewing",
+  "to": "ready_to_test",
+  "verdict": "accepted",
+  "actor": {
+    "type": "human",
+    "name": "operator"
+  },
+  "decidedAt": "2026-08-20T04:50:00Z",
+  "reason": "Accepted batch review for the local-complete golive wave; evidence in docs/ops/hitl-review-acceptance-local-complete-wave-2026-08-20.md (smoke:docker 10/10 including 1b-ready).",
+  "taskId": "TASK-COM-001"
+}
