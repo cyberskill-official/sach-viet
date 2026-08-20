@@ -10,22 +10,22 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 ## ready_to_implement
 
-- [ready_to_implement] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock
-- [ready_to_implement] TASK-PLT-001-ready-probe-liveness-health - Add GET /api/ready; keep /api/health liveness-only
-- [ready_to_implement] TASK-JOB-002-enqueue-identity-mail-on-leased-outbox - Enqueue register, verify, and reset mail on the leased outbox
-- [implementing] TASK-OPS-001-retire-wp-ai-supplier-from-production-ui - Retire WP-import apply, admin AI, and supplier portal from Production UI (improvement)
-- [ready_to_implement] TASK-API-001-error-envelope-and-cursor-lists - Adopt error envelope and cursor lists on hot paths (improvement)
-- [ready_to_implement] TASK-SRCH-002-postgres-fts-trigram - Postgres FTS/trigram search; stop hydrate-all then rank
-- [ready_to_implement] TASK-UI-002-account-support-vendor-fulfillment - Customer account, support assignment, vendor offer editor, fulfillment overlay
-- [implementing] TASK-TEST-002-playwright-next-start-smoke - Playwright and next start smoke of FL happy paths (improvement)
-- [implementing] TASK-GOV-001-audit-queue-docs-and-kill-switch - Author audit task queue, honest docs, and commerce kill-switch (improvement)
-- [implementing] TASK-DATA-001-async-pg-transactions - Replace spawnSync DB adapter with async pg transactions (improvement)
-- [implementing] TASK-ID-001-register-verify-reset - Customer register, email verify, and password reset
-- [implementing] TASK-SEC-002-csrf-rbac-ai-allowlist - CSRF origin checks, vendor-offer RBAC, and AI URL allowlist (improvement)
-- [implementing] TASK-COM-001-idempotent-checkout-and-payment-ledger - Idempotent checkout, stock reservation, and payment event ledger
-- [implementing] TASK-JOB-001-leased-outbox-smtp-notifications - Leased outbox, real email submitter, and durable notifications (improvement)
-- [implementing] TASK-UI-001-portals-wishlist-storage-seed - Wire portals, wishlist, private storage, and multi-role seed
-- [implementing] TASK-TEST-001-http-suites-and-hard-smoke - HTTP handler tests and hard production smoke gate (improvement)
+- [done] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock
+- [done] TASK-PLT-001-ready-probe-liveness-health - Add GET /api/ready; keep /api/health liveness-only
+- [done] TASK-JOB-002-enqueue-identity-mail-on-leased-outbox - Enqueue register, verify, and reset mail on the leased outbox
+- [done] TASK-OPS-001-retire-wp-ai-supplier-from-production-ui - Retire WP-import apply, admin AI, and supplier portal from Production UI (improvement)
+- [done] TASK-API-001-error-envelope-and-cursor-lists - Adopt error envelope and cursor lists on hot paths (improvement)
+- [done] TASK-SRCH-002-postgres-fts-trigram - Postgres FTS/trigram search; stop hydrate-all then rank
+- [done] TASK-UI-002-account-support-vendor-fulfillment - Customer account, support assignment, vendor offer editor, fulfillment overlay
+- [done] TASK-TEST-002-playwright-next-start-smoke - Playwright and next start smoke of FL happy paths (improvement)
+- [done] TASK-GOV-001-audit-queue-docs-and-kill-switch - Author audit task queue, honest docs, and commerce kill-switch (improvement)
+- [done] TASK-DATA-001-async-pg-transactions - Replace spawnSync DB adapter with async pg transactions (improvement)
+- [done] TASK-ID-001-register-verify-reset - Customer register, email verify, and password reset
+- [done] TASK-SEC-002-csrf-rbac-ai-allowlist - CSRF origin checks, vendor-offer RBAC, and AI URL allowlist (improvement)
+- [done] TASK-COM-001-idempotent-checkout-and-payment-ledger - Idempotent checkout, stock reservation, and payment event ledger
+- [done] TASK-JOB-001-leased-outbox-smtp-notifications - Leased outbox, real email submitter, and durable notifications (improvement)
+- [done] TASK-UI-001-portals-wishlist-storage-seed - Wire portals, wishlist, private storage, and multi-role seed
+- [done] TASK-TEST-001-http-suites-and-hard-smoke - HTTP handler tests and hard production smoke gate (improvement)
 - [on_hold] TASK-ADMIN-001-consolidate-dashboard-stats - Consolidate duplicate dashboard statistics endpoints (improvement)
 - [done] TASK-ADMIN-002-admin-catalog-writes - Add admin catalog write APIs and thin dashboard UI
 - [done] TASK-AUTH-001-align-role-guards - Align frontend and API role guards (improvement)
@@ -81,7 +81,7 @@ Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> rev
 
 ## in flight
 
-- [implementing] TASK-GOV-001, TASK-DATA-001, TASK-ID-001, TASK-SEC-002, TASK-COM-001, TASK-JOB-001, TASK-UI-001, TASK-TEST-001 — 2026-08-13 audit implementation (HITL not yet requested)
+- (nothing remaining — local-complete golive wave HITL accepted 2026-08-20; see docs/ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md)
 
 ## done
 

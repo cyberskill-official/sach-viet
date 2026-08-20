@@ -1,0 +1,7 @@
+{
+  "schema": "cyberos.transition@1",
+  "task_id": "TASK-SRCH-002",
+  "from": "ready_to_implement",
+  "to": "implementing",
+  "receipt_sha256": "488618b98579be638952f5ca1d3ba9b52d4f58eff371aa4bcf3bfd637b56454a"
+}

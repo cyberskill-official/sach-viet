@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-08-20T04:59:18Z",
+  "task_id": "TASK-UI-001",
+  "from": "reviewing",
+  "to": "ready_to_test",
+  "evidence_path": "docs/ops/hitl-review-acceptance-local-complete-wave-2026-08-20.md",
+  "evidence_sha256": "e78809b599ad352542f2da5b4e66d4cb658954904f930a42677dcd6452df5caf",
+  "artifact_sha256": "9b61cb61420d53e656292b45a83814349766bfac69d9e665e1de4e7b27c14a5c"
+}

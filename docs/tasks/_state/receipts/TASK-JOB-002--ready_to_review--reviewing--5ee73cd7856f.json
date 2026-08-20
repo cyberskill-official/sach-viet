@@ -1,0 +1,7 @@
+{
+  "schema": "cyberos.transition@1",
+  "task_id": "TASK-JOB-002",
+  "from": "ready_to_review",
+  "to": "reviewing",
+  "receipt_sha256": "5ee73cd7856f865d21f94c9da8f773027b6ca7ce818e85f4e241d659ad83875d"
+}

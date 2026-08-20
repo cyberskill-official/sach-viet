@@ -6,7 +6,7 @@ type: improvement
 module: governance
 author: "@cursor"
 department: engineering
-status: implementing
+status: done
 entered_via: audit
 priority: p0
 created_at: "2026-08-12T20:00:00Z"
