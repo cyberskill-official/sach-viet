@@ -155,7 +155,10 @@ export function AccountPanel() {
       <Link className="text-sm text-accent-strong hover:underline" href="/">← Về cửa hàng</Link>
       <p className="cs-eyebrow mt-8 text-accent-strong">Tài khoản</p>
       <h1 className="mt-2 text-4xl font-extrabold">Hồ sơ và địa chỉ</h1>
-      <p className="mt-2 text-sm text-muted">Địa chỉ được lưu nhưng chưa dùng khi báo giá hoặc thanh toán.</p>
+      <p className="mt-2 text-sm text-muted">
+        Địa chỉ được lưu nhưng chưa dùng khi báo giá hoặc thanh toán (interim: không ship, thuế = 0).
+        Đổi trả tự phục vụ: deferred (DEC-RET) — dùng hỗ trợ nếu cần.
+      </p>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
       {notice ? <p className="cs-alert mt-8" role="status">{notice}</p> : null}

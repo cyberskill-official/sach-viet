@@ -9,6 +9,7 @@ import {
   createSandboxStubCheckout,
   createStripeCheckoutSession,
   normalizeCheckoutProvider,
+  quoteRetailCart,
   sandboxCheckoutStubEnabled,
 } from "./commerce-core.mjs";
 import { commerceMutationsDisabledMessage, commerceMutationsEnabled } from "./commerce-kill-switch.mjs";
@@ -30,6 +31,22 @@ function assertProviderConfigured(provider, environment = process.env) {
     throw new Error("Stripe checkout is not configured.");
   }
   assertStripeTestSecret(environment.STRIPE_SECRET_KEY);
+}
+
+/**
+ * POST /api/quote — server retail quote (USD, tax 0, shipping 0). Read-only; no auth required.
+ */
+export async function handleQuote(request) {
+  const body = await request.json().catch(() => null);
+  const store = await createCommerceStore();
+  try {
+    const quote = await quoteRetailCart(store, body?.items);
+    return Response.json({ quote }, { status: 200 });
+  } catch (error) {
+    return jsonError(error instanceof Error ? error.message : "Quote failed.", 400);
+  } finally {
+    await store.close();
+  }
 }
 
 export async function handleCheckout(request, environment = process.env) {
@@ -79,7 +96,19 @@ export async function handleCheckout(request, environment = process.env) {
         : provider === "paypal"
           ? await createPayPalCheckoutOrder(store, order.id, environment)
           : await createStripeCheckoutSession(store, order.id, environment);
-    const payload = { order, checkout };
+    const payload = {
+      order,
+      checkout,
+      quote: {
+        currency: order.currency,
+        subtotalUsd: order.subtotalUsd,
+        taxUsd: order.taxUsd,
+        shippingUsd: order.shippingUsd,
+        totalUsd: order.totalUsd,
+        reservationTtlMs: order.reservationTtlMs,
+        policy: order.policy,
+      },
+    };
     if (idempotencyKey) {
       try {
         await store.db
