@@ -1,0 +1,7 @@
+{
+  "schema": "cyberos.transition@1",
+  "task_id": "TASK-API-001",
+  "from": "ready_to_implement",
+  "to": "implementing",
+  "receipt_sha256": "0b1cfe81fd8f9661aa9c51573765a3e6c2f0e2201e5f0d074da760f7991f85f4"
+}

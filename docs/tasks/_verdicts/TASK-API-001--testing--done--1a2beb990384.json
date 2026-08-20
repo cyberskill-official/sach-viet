@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-08-20T05:01:16Z",
+  "task_id": "TASK-API-001",
+  "from": "testing",
+  "to": "done",
+  "evidence_path": "docs/ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md",
+  "evidence_sha256": "1a2beb99038448be482ea23c3c954c827fa6e694e8b366db3155ca2b2b3448ad",
+  "artifact_sha256": "d5b53acb7b791481c5211f0889254a4017ccf48aa0f74139c3b5f56693d2a126"
+}
