@@ -1,13 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ACTIONS, EVENTS, Joyride, STATUS } from "react-joyride";
 import type { EventData } from "react-joyride";
 import { useLocale } from "@/components/locale-provider";
 import {
   joyrideStepsFor,
   isTerminalTourStatus,
+  pathForTourId,
   resolveTourIdForPath,
   shouldAutoStartTour,
   TOUR_IDS,
@@ -41,6 +42,7 @@ function prefersReducedMotion() {
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const { locale, t } = useLocale();
   const pathname = usePathname();
+  const router = useRouter();
   const [progress, setProgress] = useState(() => readLocalTourProgress());
   const [run, setRun] = useState(false);
   const [tourId, setTourId] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const progressRef = useRef(progress);
   const autoStartedRef = useRef<Set<string>>(new Set());
+  const queryTourHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
     progressRef.current = progress;
@@ -95,12 +98,21 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const startTour = useCallback((id: string) => {
     if (!TOUR_IDS.includes(id)) return;
     const steps = joyrideStepsFor(id, locale);
-    if (!steps.length) return;
+    if (!steps.length) {
+      const targetPath = pathForTourId(id);
+      const here = typeof window !== "undefined" ? window.location.pathname : pathname || "";
+      if (targetPath && targetPath !== here) {
+        const url = `${targetPath}${targetPath.includes("?") ? "&" : "?"}tour=${encodeURIComponent(id)}`;
+        router.push(url);
+        return;
+      }
+      return;
+    }
     setTourId(id);
     setStepIndex(0);
     setRun(true);
     void persistStatus(id, "in_progress");
-  }, [locale, persistStatus]);
+  }, [locale, pathname, persistStatus, router]);
 
   const restartTour = useCallback((id: string) => {
     void persistStatus(id, "pending").then(() => startTour(id));
@@ -112,8 +124,26 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setTourId(null);
   }, [persistStatus, tourId]);
 
+  // Deep-link / Features off-page launch: ?tour=tour.features
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get("tour");
+    if (!requested || !TOUR_IDS.includes(requested)) return;
+    if (queryTourHandledRef.current === `${pathname}:${requested}`) return;
+    queryTourHandledRef.current = `${pathname}:${requested}`;
+    const timer = window.setTimeout(() => {
+      startTour(requested);
+      params.delete("tour");
+      const qs = params.toString();
+      router.replace(`${pathname || "/"}${qs ? `?${qs}` : ""}`);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [pathname, router, startTour]);
+
   // Auto-start once per tour id when route matches and status is pending (not completed/dismissed).
   useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tour")) return;
     const id = resolveTourIdForPath(pathname || "");
     if (!id || !shouldAutoStartTour(id)) return;
     if (autoStartedRef.current.has(id)) return;
@@ -175,6 +205,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           buttons: ["back", "close", "primary", "skip"],
           overlayClickAction: "close",
           skipScroll: prefersReducedMotion(),
+          skipBeacon: true,
           // Keep page usable: do not trap focus behind the spotlight overlay.
           disableFocusTrap: true,
           primaryColor: "var(--cs-accent, #0e7490)",

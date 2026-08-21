@@ -180,6 +180,13 @@ export function resolveTourIdForPath(pathname) {
   return null;
 }
 
+/** Primary route to open when launching a tour from another page (Features index, etc.). */
+export function pathForTourId(tourId) {
+  const def = getTourDefinition(tourId);
+  if (!def?.routeHints?.length) return null;
+  return def.routeHints[0];
+}
+
 export function shouldAutoStartTour(tourId) {
   const def = getTourDefinition(tourId);
   if (!def) return false;
@@ -206,7 +213,8 @@ export function joyrideStepsFor(tourId, locale, options = {}) {
       target: step.target,
       content: translate(locale, step.contentKey),
       placement: step.placement || "auto",
-      disableBeacon: true,
+      // react-joyride v3 renamed disableBeacon → skipBeacon (disableBeacon is ignored).
+      skipBeacon: true,
     }));
   return steps;
 }
