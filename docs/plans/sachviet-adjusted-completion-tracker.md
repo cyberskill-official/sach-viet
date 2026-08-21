@@ -66,7 +66,7 @@ Statuses below mean:
 | `PKG-50` | B2B + institution pipeline | **partial** | Pipeline/quotes/orders/PO/budget; **Net-30 / 30d validity / admin max 20%** from DEC-B2B |
 | `PKG-60` | Publisher + author editorial | **partial** | Requests/MARC/dashboards; stages draft→review→published per DEC-PUB; royalty compute interim |
 | `PKG-61` | Royalties / statements | **partial** | DEC-ROY interim compute (10% author / quarterly) shipped; payout still manual |
-| `PKG-70` | Shared shell, i18n, a11y, privacy exports | **partial** | **TASK-UI-005** EN default + LocaleProvider + Joyride + `/features` on PR #45; polish pass: admin/role chrome bilingual, tour a11y (no focus trap), responsive headers; PRIV TTLs filled — purge jobs later |
+| `PKG-70` | Shared shell, i18n, a11y, privacy exports | **partial** | **TASK-UI-005** platform-wide tours (every role portal + B2C) + EN/VI + Features tour index on PR #45; PRIV TTLs filled — purge jobs later |
 | `PKG-71` | Fixtures / seed / verification registry | **partial** | Local/docker smoke seeds; TC progress doc; production verification registry remaining |
 | `PKG-72` | Full TC matrix harness | **partial** | Unit/smoke/docker + `TC-FIN-*` compute paths; full `TC-*` release suite remaining |
 | `PKG-73` | SAST, a11y, load, backup/restore drills | **partial** | Some ops drills documented; capacity/RPO gates remaining |
@@ -96,7 +96,7 @@ Statuses below mean:
 | 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **HITL done (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
 | 3 | B2C completeness (quote/tax/shipping/reservation, returns) | **HITL done (TASK-COM-003)** — tax>0 / physical carriers still blocked |
 | 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | **HITL done (TASK-UI-004)** — operational depth + DEC-backed finance/B2B terms |
-| 4b | Storefront/portal i18n + tours + Features (`TASK-UI-005`) | **In review on PR #45** — polish pass pushed; HITL still open |
+| 4b | Storefront/portal i18n + tours + Features (`TASK-UI-005`) | **In review on PR #45** — platform-wide tour coverage; HITL still open |
 | 5 | Finance — settlement then royalties | **Interim compute on `main`**; live rails still out |
 | 6 | Hardening + TC matrix (`PKG-71`…`73`) | **Partial progress doc** — full matrix after interfaces stabilize |
 | 7–9 | Staging / Production evidence / stabilize | Operator checklist shipped; never `sk_live_` until PV3; no auto-deploy |

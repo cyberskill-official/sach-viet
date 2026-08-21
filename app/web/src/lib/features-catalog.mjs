@@ -67,7 +67,7 @@ export const featureCatalog = Object.freeze([
     titleKey: "features.item.wishlistSupport.title",
     descriptionKey: "features.item.wishlistSupport.description",
     href: "/wishlist",
-    tourId: null,
+    tourId: "tour.wishlist",
   },
   {
     id: "role-portals",
@@ -76,7 +76,7 @@ export const featureCatalog = Object.freeze([
     titleKey: "features.item.rolePortals.title",
     descriptionKey: "features.item.rolePortals.description",
     href: "/admin",
-    tourId: "tour.portal_overview",
+    tourId: "tour.portal_admin",
   },
   {
     id: "settlement-royalty",

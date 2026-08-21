@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { featureCatalog, featuresByCategory, featureTitle, featureDescription } from "@/lib/features-catalog.mjs";
+import { TOUR_IDS, tourTitleKey } from "@/lib/tours/registry.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 
@@ -79,6 +80,19 @@ export function FeaturesCatalog() {
             </section>
           ))}
         </div>
+
+        <section className="mt-16" data-tour="features-tour-index">
+          <h2 className="text-xl font-bold sm:text-2xl">{t("tours.indexTitle")}</h2>
+          <p className="mt-3 max-w-2xl text-sm text-muted">{t("tours.indexIntro")}</p>
+          <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {TOUR_IDS.map((tourId) => (
+              <li key={tourId} className="cs-surface-standard flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+                <span className="min-w-0 font-medium">{t(tourTitleKey(tourId))}</span>
+                <TourLauncher tourId={tourId} className="cs-button cs-button--secondary shrink-0" />
+              </li>
+            ))}
+          </ul>
+        </section>
 
         <p className="mt-16">
           <Link className="cs-button" href="/">{t("features.footerCta")}</Link>

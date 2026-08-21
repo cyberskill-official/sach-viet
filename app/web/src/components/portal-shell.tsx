@@ -9,6 +9,7 @@ import { useLocale } from "./locale-provider";
 import { TourLauncher } from "./tours/tour-provider";
 import { themes } from "@/lib/web-foundations.mjs";
 import { navigationForPortal } from "@/lib/portal-ui-core.mjs";
+import { tourIdForPortal } from "@/lib/tours/registry.mjs";
 
 export function PortalShell({ portal, locale: localeProp, user, children }: { portal: string; locale?: string; user?: { id: string; role: string } | null; children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
@@ -16,6 +17,7 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
   const locale = localeProp === "en" || localeProp === "vi" ? localeProp : ctxLocale;
   const pathname = usePathname();
   const links = navigationForPortal(portal, locale) as Array<{ href: string; key: string; label: string }>;
+  const tourId = tourIdForPortal(portal);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -39,7 +41,7 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
         <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm">
           <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
           {user ? <NotificationCenter locale={locale} /> : null}
-          <TourLauncher tourId="tour.portal_overview" />
+          <TourLauncher tourId={tourId} />
           <Link
             className="cs-button cs-button--ghost"
             data-tour="portal-lang"

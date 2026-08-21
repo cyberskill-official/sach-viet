@@ -409,8 +409,8 @@ function AdminFlagsPanel() {
 export function AdminDashboard() {
   const { t } = useLocale();
   return (
-    <div className="space-y-8">
-      <section>
+    <div className="space-y-8" data-tour="portal-panel">
+      <section data-tour="portal-primary">
         <p className="cs-eyebrow text-accent-strong">{t("common.overview")}</p>
         <h1 className="mt-2 text-4xl font-extrabold">{t("portals.adminTitle")}</h1>
       </section>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 type Ticket = { id: string; subject: string; status: string; createdAt: number };
 type Message = { id: string; body: string; createdAt: number; userId: string };
@@ -27,7 +28,7 @@ async function readJson(url: string, init?: RequestInit) {
 }
 
 export function SupportPanel() {
-  const { t } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [goodsRequests, setGoodsRequests] = useState<GoodsRequest[]>([]);
   const [activeId, setActiveId] = useState("");
@@ -155,15 +156,27 @@ export function SupportPanel() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">{t("support.title")}</p>
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="font-bold">{t("common.brand")}</Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
+            <TourLauncher tourId="tour.support" />
+            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
+              {locale === "en" ? "VI" : "EN"}
+            </button>
+          </nav>
+        </div>
+      </header>
+      <div className="mx-auto max-w-4xl px-6 py-12">
+      <p className="cs-eyebrow text-accent-strong" data-tour="support-heading">{t("support.title")}</p>
       <h1 className="mt-2 text-4xl font-extrabold">{t("support.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
 
       <section className="mt-10 grid gap-8 lg:grid-cols-2">
-        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={createTicket}>
+        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" data-tour="support-ticket-form" onSubmit={createTicket}>
           <h2 className="text-xl font-bold">{t("support.openTicket")}</h2>
           <label className="grid gap-2 text-sm">
             {t("support.subject")}
@@ -178,8 +191,8 @@ export function SupportPanel() {
             <textarea required name="details" className="cs-field__control min-h-24" maxLength={2000} />
           </label>
           <label className="grid gap-2 text-sm">
-            productId
-            <input name="productId" className="cs-field__control" />
+            {t("portals.productId")}
+            <input name="productId" className="cs-field__control" aria-label={t("portals.productId")} />
           </label>
           <button className="cs-button cs-button--secondary" disabled={pending} type="submit">{t("support.submitTicket")}</button>
         </form>
@@ -236,6 +249,7 @@ export function SupportPanel() {
           ))}
         </ul>
       </section>
+      </div>
     </main>
   );
 }

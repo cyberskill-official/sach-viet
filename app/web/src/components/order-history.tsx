@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 type TimelineEvent = { at: number; kind: string; label: string; status: string };
 type Order = { id: string; status: string; currency: string; subtotalUsd: string; createdAt: number; timeline?: TimelineEvent[] };
@@ -22,7 +23,7 @@ function orderItems(body: Record<string, unknown>): Order[] {
 }
 
 export function OrderHistory({ highlightId }: { highlightId?: string } = {}) {
-  const { locale, t } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -79,19 +80,31 @@ export function OrderHistory({ highlightId }: { highlightId?: string } = {}) {
   const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">{t("nav.account")}</p>
-      <h1 className="mt-2 text-4xl font-extrabold">{t("orders.title")}</h1>
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="font-bold">{t("common.brand")}</Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
+            <TourLauncher tourId="tour.orders" />
+            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
+              {locale === "en" ? "VI" : "EN"}
+            </button>
+          </nav>
+        </div>
+      </header>
+      <div className="mx-auto max-w-5xl px-6 py-12">
+      <p className="cs-eyebrow text-accent-strong">{t("nav.account")}</p>
+      <h1 className="mt-2 text-4xl font-extrabold" data-tour="orders-heading">{t("orders.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-48 rounded-2xl" /> : null}
       {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert">{error}</div> : null}
       {!loading && !error && orders.length === 0 ? (
-        <div className="cs-empty-state cs-surface-standard mt-8 rounded-2xl p-10">
+        <div className="cs-empty-state cs-surface-standard mt-8 rounded-2xl p-10" data-tour="orders-list">
           <h2>{t("orders.empty")}</h2>
           <Link className="cs-button" href="/">{t("nav.home")}</Link>
         </div>
       ) : null}
-      <div className="mt-8 space-y-4">
+      <div className="mt-8 space-y-4" data-tour="orders-list">
         {orders.map((order) => (
           <article
             className={`cs-surface-standard flex flex-wrap items-center justify-between gap-5 rounded-2xl p-6${highlightId === order.id ? " ring-2 ring-accent-strong" : ""}`}
@@ -117,6 +130,7 @@ export function OrderHistory({ highlightId }: { highlightId?: string } = {}) {
           </button>
         </div>
       ) : null}
+      </div>
     </main>
   );
 }

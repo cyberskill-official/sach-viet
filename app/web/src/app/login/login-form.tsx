@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const { setLocale, t } = useLocale();
+  const { locale, setLocale, t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -27,10 +28,25 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
 
   return (
     <section className="cs-surface-heavy w-full rounded-2xl p-7">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <Link className="cs-button cs-button--ghost text-sm" href="/features">{t("nav.features")}</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <TourLauncher tourId="tour.auth" />
+          <button
+            type="button"
+            className="cs-button cs-button--ghost"
+            data-tour="auth-lang"
+            aria-label={t("common.language")}
+            onClick={() => setLocale(locale === "en" ? "vi" : "en")}
+          >
+            {locale === "en" ? "VI" : "EN"}
+          </button>
+        </div>
+      </div>
       <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
       <h1 className="mt-3 text-3xl font-extrabold">{t("auth.signIn")}</h1>
       <p className="mt-2 text-sm text-muted">{t("auth.signInHint")}</p>
-      <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
+      <form className="mt-8 grid gap-4" method="post" data-tour="auth-form" onSubmit={submit}>
         <label className="cs-field">
           <span className="cs-field__label">{t("common.email")}</span>
           <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />

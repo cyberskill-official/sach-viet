@@ -220,7 +220,7 @@ export function RolePortalPanel({
         setRows([]);
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Portal data is unavailable.");
+      setError(reason instanceof Error ? reason.message : t("portals.dataUnavailable"));
     } finally {
       setLoading(false);
     }
@@ -250,7 +250,7 @@ export function RolePortalPanel({
       setOfferForm({ id: "", productId: "", priceUsd: "", stockQuantity: "1" });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Offer write failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.offerWriteFailed"));
     } finally {
       setBusy("");
     }
@@ -267,7 +267,7 @@ export function RolePortalPanel({
       });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Fulfillment update failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.fulfillmentFailed"));
     } finally {
       setBusy("");
     }
@@ -285,7 +285,7 @@ export function RolePortalPanel({
       });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Assignment failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.assignmentFailed"));
     } finally {
       setBusy("");
     }
@@ -299,7 +299,7 @@ export function RolePortalPanel({
       setQuoteDetail(body.quote || null);
     } catch (reason) {
       setQuoteDetail(null);
-      setError(reason instanceof Error ? reason.message : "Quote is unavailable.");
+      setError(reason instanceof Error ? reason.message : t("portals.quoteUnavailable"));
     }
   }
 
@@ -315,7 +315,7 @@ export function RolePortalPanel({
       });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Convert failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.convertFailed"));
     } finally {
       setBusy("");
     }
@@ -339,7 +339,7 @@ export function RolePortalPanel({
       });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "PO upload failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.poUploadFailed"));
     } finally {
       setBusy("");
     }
@@ -364,7 +364,7 @@ export function RolePortalPanel({
       form.reset();
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Request failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.requestFailed"));
     } finally {
       setBusy("");
     }
@@ -380,16 +380,16 @@ export function RolePortalPanel({
       await readJson(url, { method: "POST" });
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Withdraw failed.");
+      setError(reason instanceof Error ? reason.message : t("portals.withdrawFailed"));
     } finally {
       setBusy("");
     }
   }
 
-  if (loading) return <p className="mt-5 text-sm text-muted">{t("common.loading")}</p>;
-  if (error) return <p className="cs-alert cs-alert--danger mt-5" role="alert">{error}</p>;
+  if (loading) return <p className="mt-5 text-sm text-muted" data-tour="portal-panel">{t("common.loading")}</p>;
+  if (error) return <p className="cs-alert cs-alert--danger mt-5" role="alert" data-tour="portal-panel">{error}</p>;
   return (
-    <div className="mt-5 space-y-6">
+    <div className="mt-5 space-y-6" data-tour="portal-panel">
       {summary ? <p className="text-sm text-muted">{summary}</p> : null}
       {policyNote ? (
         <div className="cs-alert cs-alert--warning" id="finance">
@@ -400,37 +400,39 @@ export function RolePortalPanel({
       {financeNote ? <p className="text-sm text-muted" id="budget">{financeNote}</p> : null}
 
       {portal === "vendor" ? (
-        <form id="offers" className="cs-surface-standard space-y-3 rounded-2xl p-4" onSubmit={(event) => { void saveOffer(event); }}>
+        <form id="offers" className="cs-surface-standard space-y-3 rounded-2xl p-4" data-tour="portal-primary" onSubmit={(event) => { void saveOffer(event); }}>
           <h3 className="font-semibold">{t("portals.createEditOffer")}</h3>
-          <input aria-label="Offer ID" className="cs-field__control w-full" placeholder="Offer ID (edit)" value={offerForm.id} onChange={(event) => setOfferForm((current) => ({ ...current, id: event.target.value }))} />
-          <input required aria-label="Product ID" className="cs-field__control w-full" placeholder="Product ID" value={offerForm.productId} onChange={(event) => setOfferForm((current) => ({ ...current, productId: event.target.value }))} />
-          <input required aria-label="Price USD" className="cs-field__control w-full" placeholder="Price USD" value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />
-          <input required aria-label="Stock" className="cs-field__control w-full" placeholder="Stock" value={offerForm.stockQuantity} onChange={(event) => setOfferForm((current) => ({ ...current, stockQuantity: event.target.value }))} />
+          <input aria-label={t("portals.offerId")} className="cs-field__control w-full" placeholder={t("portals.offerId")} value={offerForm.id} onChange={(event) => setOfferForm((current) => ({ ...current, id: event.target.value }))} />
+          <input required aria-label={t("portals.productId")} className="cs-field__control w-full" placeholder={t("portals.productId")} value={offerForm.productId} onChange={(event) => setOfferForm((current) => ({ ...current, productId: event.target.value }))} />
+          <input required aria-label={t("portals.priceUsd")} className="cs-field__control w-full" placeholder={t("portals.priceUsd")} value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />
+          <input required aria-label={t("portals.stock")} className="cs-field__control w-full" placeholder={t("portals.stock")} value={offerForm.stockQuantity} onChange={(event) => setOfferForm((current) => ({ ...current, stockQuantity: event.target.value }))} />
           <button disabled={busy === "offer"} className="cs-button" type="submit">{t("portals.saveOffer")}</button>
         </form>
       ) : null}
 
       {portal === "vendor" || portal === "retail" ? (
-        <div id="orders" className="space-y-2">
+        <div id="orders" className="space-y-2" data-tour={portal === "retail" ? "portal-primary" : undefined}>
           <p className="text-sm text-muted">{t("portals.fulfillmentNote")}</p>
           {rows.filter((row) => row.kind === "order").slice(0, 12).map((row) => (
             <div className="flex flex-wrap gap-2" key={`f-${row.id}`}>
-              <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "packing", portal === "retail" ? "/api/retail/orders" : "/api/vendor/orders")}>packing</button>
-              <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "shipped", portal === "retail" ? "/api/retail/orders" : "/api/vendor/orders")}>shipped</button>
-              {portal === "retail" ? <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "delivered", "/api/retail/orders")}>delivered</button> : null}
+              <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "packing", portal === "retail" ? "/api/retail/orders" : "/api/vendor/orders")}>{t("portals.packing")}</button>
+              <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "shipped", portal === "retail" ? "/api/retail/orders" : "/api/vendor/orders")}>{t("portals.shipped")}</button>
+              {portal === "retail" ? <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "delivered", "/api/retail/orders")}>{t("portals.delivered")}</button> : null}
             </div>
           ))}
+          {!rows.some((row) => row.kind === "order") ? <p className="text-sm text-muted">{emptyLabel}</p> : null}
         </div>
       ) : null}
 
       {portal === "employee" ? (
-        <div id="tickets" className="space-y-2">
+        <div id="tickets" className="space-y-2" data-tour="portal-primary">
           <p className="text-sm text-muted">{t("portals.assignTicketHint")}</p>
           {rows.map((row) => (
             <button key={`a-${row.id}`} className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void assignSelected(row.id)}>
               {t("portals.assignToMe")} · {row.id.slice(0, 8)}
             </button>
           ))}
+          {!rows.length ? <p className="text-sm text-muted">{emptyLabel}</p> : null}
         </div>
       ) : null}
 
@@ -449,10 +451,10 @@ export function RolePortalPanel({
       ) : null}
 
       {portal === "b2b" ? (
-        <div id="pipeline" className="space-y-3">
+        <div id="pipeline" className="space-y-3" data-tour="portal-primary">
           <label className="block text-sm">
             {t("portals.quoteDetail")}
-            <select aria-label="Quote" className="cs-field__control mt-1 w-full" value={selectedQuote} onChange={(event) => { void loadQuote(event.target.value); }}>
+            <select aria-label={t("portals.quoteSelect")} className="cs-field__control mt-1 w-full" value={selectedQuote} onChange={(event) => { void loadQuote(event.target.value); }}>
               <option value="">{t("portals.selectQuote")}</option>
               {rows.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}
             </select>
@@ -463,20 +465,20 @@ export function RolePortalPanel({
       ) : null}
 
       {portal === "institution" ? (
-        <form id="orders" className="space-y-3" onSubmit={(event) => { void uploadPo(event); }}>
+        <form id="orders" className="space-y-3" data-tour="portal-primary" onSubmit={(event) => { void uploadPo(event); }}>
           <h3 className="font-semibold">{t("portals.uploadPo")}</h3>
-          <input required aria-label="Order ID" name="orderId" className="cs-field__control w-full" placeholder="Order ID" />
-          <input required aria-label="PO reference" name="referenceNumber" className="cs-field__control w-full" placeholder="PO-1001" />
-          <input required aria-label="PO file" name="po" type="file" className="cs-field__control w-full" />
+          <input required aria-label={t("portals.orderIdLabel")} name="orderId" className="cs-field__control w-full" placeholder={t("portals.orderIdLabel")} />
+          <input required aria-label={t("portals.poReference")} name="referenceNumber" className="cs-field__control w-full" placeholder="PO-1001" />
+          <input required aria-label={t("portals.poFile")} name="po" type="file" className="cs-field__control w-full" />
           <button disabled={busy === "po"} className="cs-button" type="submit">{t("portals.submitPo")}</button>
         </form>
       ) : null}
 
       {portal === "publisher" || portal === "author" ? (
-        <div id="requests" className="space-y-3">
+        <div id="requests" className="space-y-3" data-tour="portal-primary">
           <form className="space-y-3" onSubmit={(event) => { void createPublisherRequest(event); }}>
-            <input required aria-label="Title" name="title" className="cs-field__control w-full" placeholder={t("portals.titlePlaceholder")} />
-            <input required aria-label="Asset" name="asset" type="file" className="cs-field__control w-full" />
+            <input required aria-label={t("portals.titlePlaceholder")} name="title" className="cs-field__control w-full" placeholder={t("portals.titlePlaceholder")} />
+            <input required aria-label={t("portals.assetFile")} name="asset" type="file" className="cs-field__control w-full" />
             <button disabled={busy === "request"} className="cs-button" type="submit">{t("portals.submitRequest")}</button>
           </form>
           {rows.filter((row) => !row.label.startsWith("MARC")).map((row) => (

@@ -1,10 +1,17 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ACTIONS, EVENTS, Joyride, STATUS } from "react-joyride";
 import type { EventData } from "react-joyride";
 import { useLocale } from "@/components/locale-provider";
-import { joyrideStepsFor, isTerminalTourStatus, TOUR_IDS } from "@/lib/tours/registry.mjs";
+import {
+  joyrideStepsFor,
+  isTerminalTourStatus,
+  resolveTourIdForPath,
+  shouldAutoStartTour,
+  TOUR_IDS,
+} from "@/lib/tours/registry.mjs";
 import {
   mergeTourProgress,
   patchLocalTourStatus,
@@ -33,11 +40,18 @@ function prefersReducedMotion() {
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const { locale, t } = useLocale();
+  const pathname = usePathname();
   const [progress, setProgress] = useState(() => readLocalTourProgress());
   const [run, setRun] = useState(false);
   const [tourId, setTourId] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
   const [authenticated, setAuthenticated] = useState(false);
+  const progressRef = useRef(progress);
+  const autoStartedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,11 +94,13 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
 
   const startTour = useCallback((id: string) => {
     if (!TOUR_IDS.includes(id)) return;
+    const steps = joyrideStepsFor(id, locale);
+    if (!steps.length) return;
     setTourId(id);
     setStepIndex(0);
     setRun(true);
     void persistStatus(id, "in_progress");
-  }, [persistStatus]);
+  }, [locale, persistStatus]);
 
   const restartTour = useCallback((id: string) => {
     void persistStatus(id, "pending").then(() => startTour(id));
@@ -95,6 +111,25 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setRun(false);
     setTourId(null);
   }, [persistStatus, tourId]);
+
+  // Auto-start once per tour id when route matches and status is pending (not completed/dismissed).
+  useEffect(() => {
+    const id = resolveTourIdForPath(pathname || "");
+    if (!id || !shouldAutoStartTour(id)) return;
+    if (autoStartedRef.current.has(id)) return;
+    const status = progressRef.current[id]?.status || "pending";
+    if (isTerminalTourStatus(status) || status === "in_progress") return;
+    const timer = window.setTimeout(() => {
+      const steps = joyrideStepsFor(id, locale);
+      if (!steps.length) return;
+      autoStartedRef.current.add(id);
+      setTourId(id);
+      setStepIndex(0);
+      setRun(true);
+      void persistStatus(id, "in_progress");
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, [pathname, locale, persistStatus]);
 
   const steps = useMemo(() => (tourId ? joyrideStepsFor(tourId, locale) : []), [tourId, locale]);
 
@@ -170,4 +205,11 @@ export function TourLauncher({ tourId, className }: { tourId: string; className?
       {label}
     </button>
   );
+}
+
+/** Resolves the best tour for the current pathname (storefront / portal / B2C). */
+export function RouteTourLauncher({ className, fallbackTourId }: { className?: string; fallbackTourId?: string }) {
+  const pathname = usePathname();
+  const tourId = resolveTourIdForPath(pathname || "") || fallbackTourId || "tour.storefront";
+  return <TourLauncher tourId={tourId} className={className} />;
 }
