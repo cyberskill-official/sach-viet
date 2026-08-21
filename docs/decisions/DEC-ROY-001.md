@@ -4,11 +4,12 @@ title: Royalty rates, splits, recognition, and statement policy
 status: signed
 template: decision@1
 created_at: "2026-08-13T05:08:00Z"
-signed_at: "2026-08-20"
+signed_at: "2026-08-21"
 source_ref:
   - docs/plans/sachviet-full-production-completion-plan.md
   - docs/plans/sachviet-adjusted-completion-tracker.md
   - docs/ops/dec-accepted-values-blocker-2026-08-20.md
+  - docs/ops/next-dec-revisions-checklist-2026-08-21.md
 blocks:
   - FL-PUB-07
   - FL-PUB-08
@@ -19,40 +20,51 @@ blocks:
 
 # DEC-ROY-001
 
-**Interim defaults — owner may revise; supersedes unsigned empty body.**
+**Interim owner defaults 2026-08-21** — revisable. Supersedes interim-defaults-2026-08-20 (full deferral).
 
-**Accepted value = explicit deferral until Phase 5 (finance — royalties).** No royalty rate, split, advance, or statement period is invented. Portal earnings shells may remain display-only.
+Unlocks royalty **statement compute** for sandbox/staging using interim rates. Portal shells may show computed previews; not final legal contracts.
 
 ## Authority (owners fill)
 
-| Role    | Name                          | Date       | Signature                   |
-| ------- | ----------------------------- | ---------- | --------------------------- |
-| Owner   | CyberSkill operator (interim) | 2026-08-20 | interim-defaults-2026-08-20 |
-| Finance | Deferred until Phase 5        | 2026-08-20 | N/A until rates accepted    |
-| Counsel | Deferred until Phase 5        | 2026-08-20 | N/A until rates accepted    |
+| Role    | Name                           | Date       | Signature                         |
+| ------- | ------------------------------ | ---------- | --------------------------------- |
+| Owner   | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Finance | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Counsel | Deferred — interim rates only  | 2026-08-21 | N/A until counsel review            |
 
 ## Fields to accept (owners fill; leave blank until signed)
 
 | Field                                | Accepted value | Notes |
 | ------------------------------------ | -------------- | ----- |
-| Product / contract / recipient links | **Deferred until Phase 5.** No binding product→contract→payee graph accepted for money. | Shells ≠ policy. |
-| Rates / splits                       | **Deferred — no royalty rate or split accepted yet.** | Required before `PKG-61`. |
-| Recognition                          | **Deferred** (sale vs payment vs delivery recognition not accepted). | — |
-| Returns treatment                    | **Deferred** (depends on `DEC-RET-001` concrete values). | — |
-| Advances                             | **Deferred — no advance amounts accepted.** | — |
-| Reserves                             | **Deferred — no reserve % accepted.** | — |
-| Periods                              | **Deferred — no statement period accepted.** | — |
-| Currency                             | **USD** when royalties eventually activate (align `DEC-COM-001`). | Currency only; not a rate. |
-| Tax                                  | **Deferred** (withholding / 1099-class rules not accepted). Interim marketplace tax = 0 per `DEC-COM-001`. | — |
-| Statements                           | **Deferred.** No statement format or cadence accepted. | — |
-| Payout                               | **Deferred.** No royalty payout rail accepted. | — |
-| Disputes                             | **Deferred.** | — |
+| Product / contract / recipient links | **Interim: product → author (or publisher org) as payee when catalog linkage exists;** missing link → exclude from compute with note. | Shells may wire later. |
+| Rates / splits                       | **Author royalty 10% of net line (USD)** interim when author is payee. Publisher share: **deferred / 0% separate split** unless owner revises. | Single-rate interim. |
+| Recognition                          | **On payment (`paid`)** — not delivery. | Align sandbox orders. |
+| Returns treatment                    | **Approved returns reduce royalty** for the returned line in the period of return approval (`DEC-RET-001`). | After RET. |
+| Advances                             | **No advances** (interim). | — |
+| Reserves                             | **0% reserve** (interim). | — |
+| Periods                              | **Quarterly** calendar quarters (UTC). | — |
+| Currency                             | **USD** (align `DEC-COM-001`). | — |
+| Tax                                  | **Deferred withholding;** marketplace tax = 0 per COM. | — |
+| Statements                           | **Quarterly statement summary** (period, gross, returns, net royalty). | — |
+| Payout                               | **Manual/sandbox** rail after admin approval; threshold align SET spirit ($50) interim. | Distinct from vendor SET. |
+| Disputes                             | **Admin freeze + support ticket** interim. | — |
 
 ## Accepted values
 
-**Version:** interim-defaults-2026-08-20  
-**Policy:** Royalty rates, splits, recognition, advances, reserves, and statements are **deferred until Phase 5**; **no royalty rate accepted yet.** Currency for a future activate is USD. `PKG-61` stays off until this DEC is revised with concrete rates.
+**Version:** interim-owner-defaults-2026-08-21  
+**Rate:** 10% of net (USD) to author payee.  
+**Recognition:** paid.  
+**Advances / reserves:** none / 0%.  
+**Period:** quarterly.  
+**Currency:** USD.  
+**Returns:** reduce royalty on approved return.  
+**Payout:** manual/sandbox after approval.
 
 ## Explicit non-values
 
-Do not invent royalty rates, splits, advances, or statement periods from this interim record.
+Do not invent multi-party split tables beyond the 10% author interim, advances, or live tax withholding. Owner may revise.
+
+## History
+
+- **2026-08-20:** full deferral — no royalty rate; currency USD noted.
+- **2026-08-21:** interim-owner-defaults — 10% author / quarterly / no advances.
