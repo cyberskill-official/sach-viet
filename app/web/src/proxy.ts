@@ -1,15 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME, verifySessionTokenSignature } from "@/lib/auth-core.mjs";
-import { portalForPath } from "@/lib/access.mjs";
+import { portalForPath, requiresAuthPath } from "@/lib/access.mjs";
 import { isSameOriginRequest } from "@/lib/csrf.mjs";
 import { isRetiredSupplierPath } from "@/lib/production-retirement.mjs";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+function redirectToLogin(request: NextRequest, pathname: string) {
+  const login = new URL("/login", request.url);
+  login.searchParams.set("redirect", pathname);
+  return NextResponse.redirect(login);
+}
+
+function hasSignedSession(request: NextRequest) {
+  const token = request.cookies.get(COOKIE_NAME)?.value;
+  return verifySessionTokenSignature(token, process.env.AUTH_SESSION_SECRET);
+}
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isRetiredSupplierPath(pathname)) {
+    const accept = request.headers.get("accept") || "";
+    if (accept.includes("text/html")) {
+      return NextResponse.redirect(new URL("/gone/supplier", request.url));
+    }
     return NextResponse.json({ error: "Supplier portal is retired." }, { status: 410 });
   }
 
@@ -33,14 +48,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
 
+  if (requiresAuthPath(pathname) && !hasSignedSession(request)) {
+    return redirectToLogin(request, pathname);
+  }
+
   const portal = portalForPath(pathname);
   if (!portal) return NextResponse.next();
 
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  if (!verifySessionTokenSignature(token, process.env.AUTH_SESSION_SECRET)) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(login);
+  if (!hasSignedSession(request)) {
+    return redirectToLogin(request, pathname);
   }
   return NextResponse.next();
 }
@@ -57,6 +73,12 @@ export const config = {
     "/b2b/:path*",
     "/supplier",
     "/supplier/:path*",
+    "/account",
+    "/account/:path*",
+    "/wishlist",
+    "/wishlist/:path*",
+    "/ecom/orders",
+    "/ecom/orders/:path*",
     "/api/:path*",
   ],
 };
