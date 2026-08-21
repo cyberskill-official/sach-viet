@@ -10,6 +10,7 @@ source_ref:
   - docs/plans/sachviet-adjusted-completion-tracker.md
   - docs/ops/dec-accepted-values-blocker-2026-08-20.md
   - docs/ops/next-dec-revisions-checklist-2026-08-21.md
+  - docs/ops/dec-accepted-values-owner-defaults-2026-08-21b.md
   - docs/ops/production-execute-status-2026-07-26.md
 blocks:
   - staging exit
@@ -19,16 +20,16 @@ blocks:
 
 # DEC-OPS-001
 
-**Interim owner defaults 2026-08-21** — revisable. Supersedes interim-defaults-2026-08-20.
+**Interim owner defaults 2026-08-21b** — revisable. Supersedes interim-owner-defaults-2026-08-21.
 
-**Stay APAC**, `sv_session`, public schema, WP DNS refused. Storage mode remains **postgres** (BYTEA / registry metadata) until a dedicated Storage cutover package.
+**Stay APAC**, `sv_session`, public schema, WP DNS refused. Storage mode remains **postgres** (BYTEA / registry metadata) until a dedicated Storage cutover package. **Auth / private `app` / WP / US-region migration packages may be scheduled and scaffolded as docs — not executed** until a later operator cutover gate.
 
 ## Authority (owners fill)
 
-| Role       | Name                           | Date       | Signature                         |
-| ---------- | ------------------------------ | ---------- | --------------------------------- |
-| Owner      | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
-| Operations | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Role       | Name                           | Date       | Signature                            |
+| ---------- | ------------------------------ | ---------- | ------------------------------------ |
+| Owner      | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21b   |
+| Operations | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21b   |
 
 ## Fields to accept (owners fill; leave blank until signed)
 
@@ -46,23 +47,26 @@ blocks:
 | Identity / schema   | **Keep `sv_session`.** **Keep public schema.** Auth / `app` cutovers deferred. | — |
 | Storage mode        | **postgres** (BYTEA + `007` registry metadata) until Storage cutover package. | Not a live Storage go. |
 | WordPress DNS       | **Refused / deferred.** | — |
+| Migration packages  | **Scheduled but not executed (interim).** Product may ship Auth / `app` / US / WP / Storage **migration docs + scaffolding packages** without cutover. Cutover remains operator-gated and currently **refused**. Optional target window: TBD by operator (no invented date). | Explicit: scaffolding ≠ cutover. |
 
 ## Accepted values
 
-**Version:** interim-owner-defaults-2026-08-21  
+**Version:** interim-owner-defaults-2026-08-21b  
 **Topology:** Vercel + Supabase APAC `eskazygpnygqsrcwlszz`; US **deferred**.  
 **Identity:** `sv_session`.  
 **Schema:** public.  
 **Storage:** postgres until cutover package.  
 **WP DNS:** refused.  
+**Migration packages:** **scheduled / scaffold-only — not executed.**  
 **People:** CyberSkill operator interim.  
 **SLO / cost / traffic:** deferred.
 
 ## Explicit non-values
 
-Do not invent SLO %, cost caps, or treat this as approval for US move, Supabase Auth, `app` schema, or WP DNS.
+Do not invent SLO %, cost caps, or treat this as approval for US move, Supabase Auth cutover, `app` schema cutover, or WP DNS. Scaffolding docs and migration package folders are allowed; Production cutover is not.
 
 ## History
 
 - **2026-08-20:** APAC stay; Auth/`app` deferred; WP refused.
 - **2026-08-21:** interim-owner-defaults — reaffirm; note Storage mode postgres until cutover.
+- **2026-08-21b:** Accepted: migration packages scheduled but not executed (Auth/`app`/US/WP/Storage scaffold OK; cutover refused).
