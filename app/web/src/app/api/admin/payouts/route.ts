@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       return NextResponse.json({
         payouts: await listAdminPayouts(store, session.user),
         settlementPolicy: SETTLEMENT_POLICY,
-        note: "Operational payout ledger only; commission computation refused until DEC-SET-001.",
+        note: "Operational payout ledger; settlement preview uses DEC-SET-001 interim 15% via /api/finance/compute.",
       });
     } finally {
       await store.close();

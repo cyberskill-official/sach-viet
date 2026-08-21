@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { enqueueOrderComms, ensureOrderCommsOutboxSchema } from "./order-comms-outbox-core.mjs";
 import { beginImmediateWithRetry, openDatabase } from "./db.mjs";
+import { getReturnsPolicySnapshot } from "./returns-policy-core.mjs";
 
 /** Stripe Checkout Session create must fail closed rather than hang the checkout request. */
 export const STRIPE_FETCH_TIMEOUT_MS = 15_000;
@@ -17,20 +18,26 @@ export const INVENTORY_REASON_RESERVE = "reserve";
 export const INVENTORY_REASON_EXPIRE_RESTOCK = "expire_restock";
 
 /**
- * Interim retail commerce policy from DEC-COM-001 / DEC-RET-001 / DEC-PV3-001.
- * Do not invent tax jurisdictions, carrier rates, or return windows here.
+ * Interim retail commerce policy from DEC-COM-001 / DEC-RET-001 / DEC-PV3-001
+ * (interim-owner-defaults-2026-08-21). Tax stays 0; carriers none; returns thin window filled.
  */
 export function interimCommercePolicy() {
+  const returns = getReturnsPolicySnapshot();
   return {
-    version: "interim-defaults-2026-08-20",
+    version: "interim-owner-defaults-2026-08-21",
     currency: "USD",
+    countriesInScope: Object.freeze(["US", "VN"]),
     taxCharged: false,
     shippingCharged: false,
     taxUsd: ZERO_MONEY_USD,
     shippingUsd: ZERO_MONEY_USD,
+    taxSource: "none/0",
+    carriers: "none",
     reservationTtlMs: PENDING_ORDER_TTL_MS,
     paymentsMode: "sandbox",
-    returnsPolicy: "deferred",
+    returnsPolicy: returns.returnsPolicy,
+    returnsWindowDays: returns.windowDays,
+    returnsRestockFeePercent: returns.restockFeePercent,
     shippingPreference: "NO_SHIPPING",
   };
 }
@@ -208,6 +215,7 @@ function retailTotalsFromSubtotal(subtotalUsd) {
     totalUsd: subtotal,
     reservationTtlMs: policy.reservationTtlMs,
     returnsPolicy: policy.returnsPolicy,
+    returnsWindowDays: policy.returnsWindowDays,
     policy,
   };
 }

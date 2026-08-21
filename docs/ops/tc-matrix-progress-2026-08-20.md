@@ -24,9 +24,11 @@ This is a **progress registry**, not a claim that every completion-plan `TC-*` i
 
 | ID | Scenario | Status |
 | --- | --- | --- |
-| `TC-FIN-01` | Settlement compute refuses under DEC-SET | **covered** (`finance-policy-core.test.mjs`) |
-| `TC-FIN-02` | Royalty compute refuses under DEC-ROY | **covered** |
-| `TC-FIN-03` | Payout API rejects commissionRate fields | **covered** (vendor core + verify script) |
+| `TC-FIN-01` | Settlement compute uses DEC-SET interim 15% | **covered** (`finance-policy-core.test.mjs`) |
+| `TC-FIN-02` | Royalty compute uses DEC-ROY interim 10% | **covered** |
+| `TC-FIN-03` | Payout API rejects ad-hoc commissionRate fields | **covered** (vendor core + verify script; ledger still amountUsd) |
+| `TC-FIN-04` | Returns eligibility 14d defects (DEC-RET) | **covered** (`returns-policy-core.test.mjs`) |
+| `TC-FIN-05` | B2B quote 30d / Net-30 / admin max 20% | **covered** (finance-policy + b2b-quote) |
 | `TC-POR-01` | Role portals load operational APIs (orders/offers/tickets/pipeline/requests) | **partial** — UI wired; full browser matrix still open |
 | `TC-POR-02` | Finance banners show deferred without invented % | **partial** — UI + `/api/finance/policy` |
 
@@ -37,7 +39,7 @@ This is a **progress registry**, not a claim that every completion-plan `TC-*` i
 | Full `TC-<flow>.*` release matrix | Domain packages + DEC revisions |
 | Load / capacity / RPO gates (`PKG-73`) | Staging topology + operator drills |
 | Live Stripe/PayPal paid path | `DEC-PV3-001` live refused |
-| Settlement / royalty dollar correctness | `DEC-SET-001` / `DEC-ROY-001` rates |
+| Settlement / royalty dollar correctness | Interim rates from DEC-SET/ROY; live ACH / multi-party splits still out |
 | Production verification registry cleanup | `PKG-71` remainder + operator env |
 
 ## How to run locally
