@@ -1,8 +1,10 @@
 # SachViet adjusted completion tracker
 
-**As of:** 2026-08-20  
-**Baseline:** current `main` vs [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md)  
+**As of:** 2026-08-21  
+**Baseline:** `main` @ `089a160` vs [`sachviet-full-production-completion-plan.md`](sachviet-full-production-completion-plan.md)  
 **Stack default:** stay on **Vercel + Supabase** (Production project in use). Keep **custom `sv_session` + public schema** until a dedicated migration package is scheduled — do **not** force Supabase Auth or US-region move in Waves 0–3 unless `DEC-OPS-001` / identity DECs require it.
+
+**Hard stop (2026-08-21):** interim-DEC-unblocked product slices (Phases 0–4 under interim) are on `main`. Production migrate `007` applied — see [`docs/ops/production-migrate-007-2026-08-21.md`](../ops/production-migrate-007-2026-08-21.md). Further taxed retail / returns / SET / ROY / live PV3 / US / Auth / WP need owner DEC field overrides — [`docs/ops/next-dec-revisions-checklist-2026-08-21.md`](../ops/next-dec-revisions-checklist-2026-08-21.md). **Do not invent rates.**
 
 **Blocking prerequisite (updated 2026-08-20):** interim Accepted values are on `main` via PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35) (`5df30cd`). See [`docs/ops/dec-accepted-values-blocker-2026-08-20.md`](../ops/dec-accepted-values-blocker-2026-08-20.md). Owner may still revise. **Do not invent rates.** Phase 3 physical tax/shipping and Phase 5 settlement/royalties / live PV3 still need owner overrides where DECs say deferred or live-refused.
 
@@ -24,7 +26,7 @@ Statuses below mean:
 
 - Vercel + Supabase APAC project `eskazygpnygqsrcwlszz`
 - Custom `sv_session`, public schema, async `pg` pool
-- Migrations through `007_storage_object_registry` (`app/web/migrations/001`…`007`)
+- Migrations through `007_storage_object_registry` (`app/web/migrations/001`…`007`) — **applied on Production** 2026-08-21 (`/api/ready` green)
 - Sandbox Stripe / PayPal webhooks and checkout paths
 - Resend SMTP wiring
 - Nine portal shells under `/(portals)/[portal]` + storefront/account surfaces
@@ -112,3 +114,5 @@ Statuses below mean:
 - TC matrix progress: [`../ops/tc-matrix-progress-2026-08-20.md`](../ops/tc-matrix-progress-2026-08-20.md)
 - Staging/prod evidence checklist: [`../ops/staging-prod-evidence-checklist-2026-08-20.md`](../ops/staging-prod-evidence-checklist-2026-08-20.md)
 - Local-complete HITL: [`../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md`](../ops/hitl-final-acceptance-local-complete-wave-2026-08-20.md)
+- Next DEC revisions (hard stop): [`../ops/next-dec-revisions-checklist-2026-08-21.md`](../ops/next-dec-revisions-checklist-2026-08-21.md)
+- Production migrate `007`: [`../ops/production-migrate-007-2026-08-21.md`](../ops/production-migrate-007-2026-08-21.md)

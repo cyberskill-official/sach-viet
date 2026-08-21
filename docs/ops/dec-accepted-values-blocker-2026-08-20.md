@@ -52,3 +52,5 @@ Canonical tracker: [`docs/plans/sachviet-adjusted-completion-tracker.md`](../pla
 | 3 — B2C tax/shipping/returns | **Only after owner revises COM/RET** where concrete rates/windows are required (tax 0 interim ≠ taxed retail) |
 | 4+ — portal depth / finance / live PV3 | Operational portal depth + refuse-compute finance scaffold allowed; rates / Net-N / live PV3 still follow per-DEC deferral |
 **Phase 2+ that needs invented rates remains blocked.** Interim deferrals unblock documentation honesty and non-rate foundation work; they do not authorize fake tax/shipping/commission/royalty/live-pay numbers.
+
+**Next owner action (2026-08-21):** exact DEC fields to revise → [`next-dec-revisions-checklist-2026-08-21.md`](next-dec-revisions-checklist-2026-08-21.md).
