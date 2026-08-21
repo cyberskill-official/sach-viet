@@ -84,8 +84,11 @@ export const messagesVi = Object.freeze({
     inStock: "Còn {count} cuốn",
     outOfStock: "Tạm hết hàng",
     addToCart: "Thêm vào giỏ",
+    added: "Đã thêm",
     loadMore: "Xem thêm",
     loadingMore: "Đang tải…",
+    shelfCount: "{count} đầu sách trên kệ",
+    shelfWarming: "Đang chuẩn bị kệ sách…",
   },
   cart: {
     title: "Giỏ hàng",
