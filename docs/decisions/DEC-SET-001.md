@@ -4,11 +4,12 @@ title: Vendor settlement, commission, and payout policy
 status: signed
 template: decision@1
 created_at: "2026-08-13T05:08:00Z"
-signed_at: "2026-08-20"
+signed_at: "2026-08-21"
 source_ref:
   - docs/plans/sachviet-full-production-completion-plan.md
   - docs/plans/sachviet-adjusted-completion-tracker.md
   - docs/ops/dec-accepted-values-blocker-2026-08-20.md
+  - docs/ops/next-dec-revisions-checklist-2026-08-21.md
 blocks:
   - FL-VEN-08
   - FL-ADM-08
@@ -17,40 +18,50 @@ blocks:
 
 # DEC-SET-001
 
-**Interim defaults — owner may revise; supersedes unsigned empty body.**
+**Interim owner defaults 2026-08-21** — revisable. Supersedes interim-defaults-2026-08-20 (full deferral).
 
-**Accepted value = explicit deferral until Phase 5 (finance — settlement).** No commission rate, reserve, or payout threshold is invented.
+Unlocks settlement **compute** using these interim rates for sandbox/staging. Does **not** authorize live bank ACH or invented fee pass-through beyond the values below.
 
 ## Authority (owners fill)
 
-| Role    | Name                           | Date       | Signature                   |
-| ------- | ------------------------------ | ---------- | --------------------------- |
-| Owner   | CyberSkill operator (interim)  | 2026-08-20 | interim-defaults-2026-08-20 |
-| Finance | Deferred until Phase 5         | 2026-08-20 | N/A until rates accepted    |
-| Counsel | Deferred until Phase 5         | 2026-08-20 | N/A until rates accepted    |
+| Role    | Name                           | Date       | Signature                         |
+| ------- | ------------------------------ | ---------- | --------------------------------- |
+| Owner   | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Finance | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Counsel | Deferred — interim rates only  | 2026-08-21 | N/A until counsel review            |
 
 ## Fields to accept (owners fill; leave blank until signed)
 
 | Field              | Accepted value | Notes |
 | ------------------ | -------------- | ----- |
-| Vendor eligibility | **Deferred until Phase 5.** Vendor orgs/offers may exist; settlement eligibility policy not accepted. | — |
-| Commission         | **Deferred — no commission rate accepted yet.** | Required before `PKG-31`. |
-| Provider fees      | **Deferred.** Stripe/PayPal fee pass-through not accepted as product policy. | Sandbox fees ≠ accepted policy. |
-| Tax treatment      | **Align interim with `DEC-COM-001`:** marketplace tax not charged; settlement tax treatment deferred. | — |
-| Reserve            | **Deferred — no reserve % or hold days accepted.** | — |
-| Cadence            | **Deferred — no weekly/monthly payout cadence accepted.** | — |
-| Threshold          | **Deferred — no minimum payout amount accepted.** | — |
-| Bank / rail        | **Deferred.** No payout rail (ACH, bank file, PayPal Payouts) accepted. | — |
-| Approvals          | **Deferred.** Separation-of-duties approvers named at Phase 5. | — |
-| Failed transfer    | **Deferred.** | — |
-| Reversals          | **Deferred.** | — |
-| Disputes           | **Deferred.** | — |
+| Vendor eligibility | **Interim: vendors with approved offers and paid order lines** are settlement-eligible. | — |
+| Commission         | **15% platform commission** of net line amount (USD), interim. | Required for `PKG-31` compute. |
+| Provider fees      | **Interim: platform absorbs sandbox provider fees for display; do not invent live fee %.** Settlement math uses commission only. | Sandbox ≠ live fee policy. |
+| Tax treatment      | **Align `DEC-COM-001`:** marketplace tax not charged; settlement on pre-tax (tax=0) line amounts. | — |
+| Reserve            | **0% reserve; 0 hold days** (interim). | — |
+| Cadence            | **Weekly** settlement batch (calendar week, UTC Monday close interim). | — |
+| Threshold          | **$50.00 USD** minimum payout per vendor per cadence. Below threshold rolls forward. | — |
+| Bank / rail        | **`manual/sandbox`** — operator records payout on operational ledger; no automated ACH/PayPal Payouts. | — |
+| Approvals          | **Admin (or CyberSkill operator) approves payout batch** before marking paid. | — |
+| Failed transfer    | **Interim: mark failed; retry next cadence; no auto-reversal of commission.** | — |
+| Reversals          | **Interim: admin-only manual adjustment** on ledger; no self-serve. | — |
+| Disputes           | **Interim: support ticket + admin freeze** on disputed lines until resolved. | — |
 
 ## Accepted values
 
-**Version:** interim-defaults-2026-08-20  
-**Policy:** Vendor settlement, commission, reserves, cadence, thresholds, and payout rails are **deferred until Phase 5**; **no commission rate accepted yet.** `PKG-31` and settlement flags stay off until this DEC is revised with concrete finance values.
+**Version:** interim-owner-defaults-2026-08-21  
+**Commission:** 15% of net line (USD).  
+**Reserve:** 0% / 0 days.  
+**Cadence:** weekly.  
+**Threshold:** $50 USD.  
+**Rail:** manual/sandbox.  
+**Approvals:** admin/operator before paid.
 
 ## Explicit non-values
 
-Do not invent commission percentages, reserve holds, or payout thresholds from this interim record.
+Do not invent commission rates other than the 15% interim, live ACH rails, or provider-fee pass-through tables. Owner may revise any row.
+
+## History
+
+- **2026-08-20:** full deferral — no commission rate.
+- **2026-08-21:** interim-owner-defaults — 15% / reserve 0 / weekly / $50 / manual-sandbox.

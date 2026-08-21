@@ -4,11 +4,12 @@ title: B2B quote, contract, PO, invoice, and payment-terms policy
 status: signed
 template: decision@1
 created_at: "2026-08-13T05:08:00Z"
-signed_at: "2026-08-20"
+signed_at: "2026-08-21"
 source_ref:
   - docs/plans/sachviet-full-production-completion-plan.md
   - docs/plans/sachviet-adjusted-completion-tracker.md
   - docs/ops/dec-accepted-values-blocker-2026-08-20.md
+  - docs/ops/next-dec-revisions-checklist-2026-08-21.md
 blocks:
   - FL-B2B-03
   - FL-B2B-04
@@ -27,41 +28,49 @@ blocks:
 
 # DEC-B2B-001
 
-**Interim defaults — owner may revise; supersedes unsigned empty body.**
+**Interim owner defaults 2026-08-21** — revisable. Supersedes interim-defaults-2026-08-20.
 
-Codifies interim alignment with `DEC-COM-001` (USD, tax 0, no shipping rates) and **defers** quote validity days, discount authority, Net-N terms, and MARC license commercial terms until Phase 4 B2B depth. Existing quote→order / PO shells are not payment-terms policy.
+Aligns tax/shipping with `DEC-COM-001` and fills quote validity, discount authority, and Net-N for portal wiring.
 
 ## Authority (owners fill)
 
-| Role    | Name                          | Date       | Signature                   |
-| ------- | ----------------------------- | ---------- | --------------------------- |
-| Owner   | CyberSkill operator (interim) | 2026-08-20 | interim-defaults-2026-08-20 |
-| B2B     | CyberSkill operator (interim) | 2026-08-20 | interim-defaults-2026-08-20 |
-| Finance | Deferred until Phase 4/5      | 2026-08-20 | N/A until Net-N accepted    |
-| Counsel | Deferred until Phase 4        | 2026-08-20 | N/A until contract terms    |
+| Role    | Name                           | Date       | Signature                         |
+| ------- | ------------------------------ | ---------- | --------------------------------- |
+| Owner   | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| B2B     | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Finance | CyberSkill operator (interim)  | 2026-08-21 | interim-owner-defaults-2026-08-21 |
+| Counsel | Deferred — interim terms only  | 2026-08-21 | N/A until contract counsel          |
 
 ## Fields to accept (owners fill; leave blank until signed)
 
 | Field                    | Accepted value | Notes |
 | ------------------------ | -------------- | ----- |
-| Quote validity           | **Deferred — no N-day validity accepted yet.** Existing quote states may expire in UI without a signed commercial TTL. | Override before institution SLA claims. |
-| Discount authority       | **Deferred — no discount % matrix or approver ladder accepted.** | Do not invent % off. |
-| Contract / PO fields     | **Interim: keep current artifact association fields only** (upload/link as implemented). No expanded mandatory legal field set accepted. | — |
-| Signatures               | **Deferred.** No e-sign vendor or wet-sign rule accepted. | — |
-| Tax                      | **0 / not charged (interim)** — align `DEC-COM-001`. | Revise with COM tax. |
-| Shipping                 | **None / deferred** — align `DEC-COM-001` no-ship interim. | — |
-| Invoice and credit terms | **Deferred — no Net-N, credit limit, or late-fee accepted.** Currency for future invoices: USD. | — |
-| Payment evidence         | **Deferred** beyond existing sandbox B2C payment patterns; B2B offline payment evidence rules not accepted. | — |
+| Quote validity           | **30 days** from quote issue (`createdAt` + 30d). Expired quotes cannot convert without re-issue. | Unlocks SLA claims interim. |
+| Discount authority       | **Admin-only; max 20%** off quote subtotal. Non-admin cannot set discounts. | Do not invent deeper ladders. |
+| Contract / PO fields     | **Interim: keep current artifact association fields** (upload/link as implemented). | — |
+| Signatures               | **Deferred** e-sign; admin acceptance of quote state is operational acceptance interim. | — |
+| Tax                      | **0 / not charged (interim)** — align `DEC-COM-001`. | — |
+| Shipping                 | **None / $0** — align `DEC-COM-001`. | — |
+| Invoice and credit terms | **Net-30** interim; **no credit limit** accepted yet; **no late fee** accepted yet. Currency: USD. | — |
+| Payment evidence         | **Interim: admin marks invoice paid** with optional note/reference; sandbox card paths not required for B2B. | — |
 | Partial delivery         | **Deferred.** | — |
-| MARC license             | **Deferred commercial license terms.** Entitlement-gated MARC delivery may remain as implemented; no new license fee accepted. | — |
+| MARC license             | **Deferred commercial license fees.** Entitlement-gated MARC delivery as implemented. | — |
 
 ## Accepted values
 
-**Version:** interim-defaults-2026-08-20  
+**Version:** interim-owner-defaults-2026-08-21  
 **Currency:** USD.  
-**Tax / shipping:** same interim as `DEC-COM-001` (tax 0; no shipping rates).  
-**Commercial terms:** quote validity days, discount authority, Net-N, signatures, partial delivery, and MARC license fees are **deferred until Phase 4** (owner revision). Blind brokerage (hide upstream suppliers from institutions) remains in force as product boundary.
+**Tax / shipping:** tax 0; shipping none/$0 (align COM).  
+**Quote validity:** 30 days.  
+**Discount:** admin-only, max 20%.  
+**Invoice terms:** Net-30; no credit limit / late fee yet.  
+**Blind brokerage:** remains in force.
 
 ## Explicit non-values
 
-Do not invent discount percents, payment terms (Net-N), tax tables, or shipping rates from this interim record.
+Do not invent discount ladders beyond admin max 20%, credit limits, late fees, or tax tables.
+
+## History
+
+- **2026-08-20:** Net-N / discount / validity deferred.
+- **2026-08-21:** interim-owner-defaults — 30d validity, admin max 20%, Net-30.
