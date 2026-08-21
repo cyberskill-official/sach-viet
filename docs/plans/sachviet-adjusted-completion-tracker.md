@@ -10,13 +10,13 @@
 | --- | --- |
 | Full report | [`docs/ops/prod-ux-audit-2026-08-21.md`](../ops/prod-ux-audit-2026-08-21.md) |
 | Evidence | `/tmp/sachviet-prod-audit-out.json`, `/tmp/sachviet-audit-shots/` |
-| UI/UX score | **3.5 / 10** on Production (pre-fix); remediation on `fix/prod-ux-audit-findings` — **redeploy required** to clear live |
-| Critical | **2** — code fixed (CSP hash removed; warming badge/loading); Production uncleared until deploy |
+| UI/UX score | **3.5 / 10** on Production (pre-fix); remediation **deployed** via PR #47 / `dpl_Bar3oD8EUsvmZVwPTzNXyjwZDAMB` (2026-08-21) |
+| Critical | **2** — code fixed + **Production cleared** (CSP hash removed; warming badge/loading); post-deploy `/api/ready` + catalog OK |
 | High | **4** — code fixed (nav overflow; locale `?lang=`; search unblocked by CSP; proxy auth gates) |
 | Medium | **4** — code fixed (categories API; Features CTA de-dupe; catalog cache+SSR; supplier HTML page); latency verify after deploy |
 | Coverage | Home ×3 viewports, Features, auth forms (no real register), cart, support, portals anon, APIs ready/catalog/search |
-| Blocker for B2C demo | ~~CSP hash~~ **fixed in branch** — Production still broken until deploy |
-| Next actions | (1) **Operator deploy** remediation branch (2) re-probe Production console/catalog/locale/auth gates (3) optional nonce CSP follow-up |
+| Blocker for B2C demo | ~~CSP hash~~ **deployed** — Production CSP/`script-src` no longer pairs theme hash with `unsafe-inline` |
+| Next actions | (1) ~~Operator deploy~~ **done** (2) optional browser re-probe console/locale/auth gates (3) optional nonce CSP follow-up |
 | Non-goals this audit | No Production writes; register submit skipped; no PR/push unless operator asks |
 
 **HITL (2026-08-21):** Operator accepted **TASK-PLT-002**, **TASK-COM-003**, **TASK-UI-004** → `done`. Evidence: [`docs/ops/hitl-review-acceptance-phases-0-4-2026-08-21.md`](../ops/hitl-review-acceptance-phases-0-4-2026-08-21.md), [`docs/ops/hitl-final-acceptance-phases-0-4-2026-08-21.md`](../ops/hitl-final-acceptance-phases-0-4-2026-08-21.md). Wave 0 CDS Thủy·ocean (PR [#34](https://github.com/cyberskill-official/sach-viet/pull/34), commit id `TASK-UI-003`) already on `main` (no CyberOS task folder). Sandbox PV3 + Production probe evidence: [`docs/ops/sandbox-pv3-and-prod-smoke-2026-08-21.md`](../ops/sandbox-pv3-and-prod-smoke-2026-08-21.md).
@@ -70,7 +70,7 @@ Statuses below mean:
 | `PKG-09` | Outbox, jobs, provider ledger, email, Zalo | **partial** | Jobs + Resend + payment webhooks exist; full leased outbox / Realtime / Zalo OA remaining (`DEC-COMMS-001`) |
 | `PKG-10` | Retire WP import, supplier, admin AI, CapRover/SQLite | **partial** | Paths largely sidelined; dependency proof / full retirement remaining |
 | `PKG-11` | Shared schemas, error envelope, cursors, typed client | **partial** | Some API contracts; not universal across portals |
-| `PKG-20` | Home, catalog, FTS, product/offers, wishlist base | **partial** | Remediation on `fix/prod-ux-audit-findings` (CSP, SSR catalog, categories API, warming UX). **Production uncleared until deploy** — re-verify browse after ship |
+| `PKG-20` | Home, catalog, FTS, product/offers, wishlist base | **partial** | Audit remediation **deployed** (PR #47): CSP, SSR catalog, categories API, warming UX. Catalog API + home RSC flight verified post-deploy |
 | `PKG-21` | Quote, reservation, checkout, Stripe/PayPal reconcile | **partial** | Interim quote + 30m reservation + **tax/shipping stub 21b** (always `$0`, US+VN address capture, carrier `none`/`manual_pickup`); sandbox checkout/webhooks; **tax>0 / physical carriers blocked**; live keys refused (`DEC-PV3-001`) |
 | `PKG-22` | Orders, shipment, returns, refunds, timeline | **partial** | Order list/detail + fulfillment; **returns thin policy** (14d defects, refund stub) from DEC-RET; anon `/ecom/orders` now proxy-gated (audit H4; deploy to clear Production) |
 | `PKG-23` | Reviews, support, goods requests, notifications | **partial** | Support/account shells; depth remaining |
@@ -81,12 +81,12 @@ Statuses below mean:
 | `PKG-50` | B2B + institution pipeline | **partial** | Pipeline/quotes/orders/PO/budget; **Net-30 / 30d validity / admin max 20%** from DEC-B2B |
 | `PKG-60` | Publisher + author editorial | **partial** | Requests/MARC/dashboards; stages draft→review→published per DEC-PUB; royalty compute interim |
 | `PKG-61` | Royalties / statements | **partial** | DEC-ROY interim compute (10% author / quarterly) shipped; payout still manual |
-| `PKG-70` | Shared shell, i18n, a11y, privacy exports | **partial** | **TASK-UI-005** + audit remediation (nav overflow, locale cookie SSR/`?lang=`, Features CTA de-dupe). **Production CSP/i18n still blocked until deploy** |
+| `PKG-70` | Shared shell, i18n, a11y, privacy exports | **partial** | **TASK-UI-005** + audit remediation **deployed** (nav overflow, locale cookie SSR/`?lang=`, Features CTA de-dupe; CSP cleared on Production) |
 | `PKG-71` | Fixtures / seed / verification registry | **partial** | Local/docker smoke seeds; TC progress doc; production verification registry remaining |
 | `PKG-72` | Full TC matrix harness | **partial** | Unit/smoke/docker + `TC-FIN-*` compute paths; full `TC-*` release suite remaining |
 | `PKG-73` | SAST, a11y, load, backup/restore drills | **partial** | Some ops drills documented; capacity/RPO gates remaining |
 | `PKG-80` | Staging full rehearsal | **remaining** | Operator checklist: [`../ops/staging-prod-evidence-checklist-2026-08-20.md`](../ops/staging-prod-evidence-checklist-2026-08-20.md); needs DEC-OPS + domain packages |
-| `PKG-81` | Production candidate + live checks | **remaining** | No live Stripe/PayPal; needs `DEC-PV3-001` + operator deploy; UX audit remediation awaits **Production deploy** then re-probe |
+| `PKG-81` | Production candidate + live checks | **remaining** | No live Stripe/PayPal; needs `DEC-PV3-001`; UX audit remediation **deployed** (`dpl_Bar3oD8EUsvmZVwPTzNXyjwZDAMB`) — optional browser re-probe |
 | `PKG-82` | Stabilize + final acceptance | **remaining** | After production candidate |
 ## Major FL groups (rollup)
 
@@ -94,7 +94,7 @@ Statuses below mean:
 | --- | --- | --- |
 | `FL-PLT-*` | **partial** | Health/ready, shell, email wiring; Storage, audit, privacy purge, Zalo remaining |
 | `FL-ID-*` | **partial** | Register/login/recovery via custom session; Supabase Auth / MFA / privacy deletion remaining |
-| `FL-B2C-01`…`05` | **partial** | Catalog API + remediation branch (CSP/SSR/categories); **re-verify browser storefront after Production deploy** |
+| `FL-B2C-01`…`05` | **partial** | Catalog API + remediation **deployed** (CSP/SSR/categories); curl post-deploy OK — optional browser re-probe |
 | `FL-B2C-06`…`12` | **partial** | Cart + server quote + sandbox checkout; tax0/no-ship/30m; returns thin DEC-RET; taxed retail/carriers still blocked |
 | `FL-B2C-13`…`14` | **partial** | Support/review surfaces incomplete vs plan |
 | `FL-VEN-*` | **partial** | Offers/orders/payout ledger; settlement compute interim |

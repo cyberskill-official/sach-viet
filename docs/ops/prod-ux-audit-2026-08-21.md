@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-21  
 **Target:** https://sachviet.cyberskill.world (Production, read-only)  
-**Release:** `/api/ready` → `ok`, migration `008_user_tour_progress`, SHA `f2be0c0de4b085f84d7e5abcefdc0c63f9988410`  
+**Release (at audit):** `/api/ready` → `ok`, migration `008_user_tour_progress`, SHA `f2be0c0de4b085f84d7e5abcefdc0c63f9988410`  
+**Remediation deployed:** 2026-08-21 — PR #47 merged (`6e01b91`); Vercel Production `dpl_Bar3oD8EUsvmZVwPTzNXyjwZDAMB` Ready → `https://sachviet.cyberskill.world` (`/api/ready` SHA `6e01b91`, CSP `script-src 'self' 'unsafe-inline'` with no theme hash, catalog products 200)  
 **Branch audited against:** `main` (workspace)  
 **Method:** Playwright (`/tmp/sachviet-prod-audit.mjs` → `/tmp/sachviet-prod-audit-out.json`), Chrome DevTools MCP, curl API probes  
 **Screenshots:** `/tmp/sachviet-audit-shots/`
