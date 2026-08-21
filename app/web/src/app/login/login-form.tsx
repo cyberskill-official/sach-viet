@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
+  const { locale, setLocale, t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -15,27 +18,51 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.get("email"), password: form.get("password"), redirect: redirectTo }) });
     const body = await response.json();
     setPending(false);
-    if (!response.ok) return setError(body.error || "Unable to sign in.");
+    if (!response.ok) return setError(body.error || t("auth.unableSignIn"));
+    const userLocale = body.user?.locale;
+    if (userLocale === "en" || userLocale === "vi") {
+      setLocale(userLocale);
+    }
     window.location.assign(body.redirectTo);
   }
 
   return (
-    <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
-      <label className="cs-field">
-        <span className="cs-field__label">Email</span>
-        <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />
-      </label>
-      <label className="cs-field">
-        <span className="cs-field__label">Password</span>
-        <input required name="password" type="password" autoComplete="current-password" className="cs-field__control w-full" />
-      </label>
-      {error ? <p role="alert" className="cs-alert cs-alert--danger">{error}</p> : null}
-      <button disabled={pending} className="cs-button w-full" type="submit">{pending ? "Signing in..." : "Sign in"}</button>
-      <p className="text-sm text-muted">
-        <Link className="underline" href="/register">Create an account</Link>
-        {" · "}
-        <Link className="underline" href="/forgot">Forgot password</Link>
-      </p>
-    </form>
+    <section className="cs-surface-heavy w-full rounded-2xl p-7">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <Link className="cs-button cs-button--ghost text-sm" href="/features">{t("nav.features")}</Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <TourLauncher tourId="tour.auth" />
+          <button
+            type="button"
+            className="cs-button cs-button--ghost"
+            data-tour="auth-lang"
+            aria-label={t("common.language")}
+            onClick={() => setLocale(locale === "en" ? "vi" : "en")}
+          >
+            {locale === "en" ? "VI" : "EN"}
+          </button>
+        </div>
+      </div>
+      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
+      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.signIn")}</h1>
+      <p className="mt-2 text-sm text-muted">{t("auth.signInHint")}</p>
+      <form className="mt-8 grid gap-4" method="post" data-tour="auth-form" onSubmit={submit}>
+        <label className="cs-field">
+          <span className="cs-field__label">{t("common.email")}</span>
+          <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />
+        </label>
+        <label className="cs-field">
+          <span className="cs-field__label">{t("common.password")}</span>
+          <input required name="password" type="password" autoComplete="current-password" className="cs-field__control w-full" />
+        </label>
+        {error ? <p role="alert" className="cs-alert cs-alert--danger">{error}</p> : null}
+        <button disabled={pending} className="cs-button w-full" type="submit">{pending ? t("auth.signingIn") : t("auth.signIn")}</button>
+        <p className="text-sm text-muted">
+          <Link className="underline" href="/register">{t("auth.createAccount")}</Link>
+          {" · "}
+          <Link className="underline" href="/forgot">{t("auth.forgotPassword")}</Link>
+        </p>
+      </form>
+    </section>
   );
 }

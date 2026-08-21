@@ -98,4 +98,10 @@ export const MIGRATIONS = Object.freeze([
       await db.exec(loadSql("007_storage_object_registry.sql"));
     },
   },
+  {
+    id: "008_user_tour_progress",
+    async up(db) {
+      await db.exec(loadSql("008_user_tour_progress.sql"));
+    },
+  },
 ]);

@@ -260,7 +260,7 @@ export async function readSession(store, token, sessionSecret) {
     store.log("auth_session_rejected", { reason: "signature", result: "rejected" });
     return null;
   }
-  const session = await store.db.prepare(`SELECT sessions.id, sessions.expires_at, users.id AS user_id, users.email, users.role
+  const session = await store.db.prepare(`SELECT sessions.id, sessions.expires_at, users.id AS user_id, users.email, users.role, users.locale
     FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.id = ?`).get(id);
   if (!session) return null;
   if (session.expires_at <= store.now()) {
@@ -268,7 +268,16 @@ export async function readSession(store, token, sessionSecret) {
     store.log("auth_session_rejected", { reason: "expired", result: "rejected" });
     return null;
   }
-  return { id, user: { id: session.user_id, email: session.email, role: session.role }, expiresAt: session.expires_at };
+  return {
+    id,
+    user: {
+      id: session.user_id,
+      email: session.email,
+      role: session.role,
+      locale: session.locale === "vi" || session.locale === "en" ? session.locale : "en",
+    },
+    expiresAt: session.expires_at,
+  };
 }
 
 export async function revokeSession(store, token, sessionSecret) {
@@ -285,7 +294,7 @@ export async function login(store, { email, password, sessionSecret, clientKey }
     store.log("auth_login_throttled", { result: "rejected" });
     return { ok: false, reason: "throttled", retryAfterMs: LOGIN_LOCK_MS };
   }
-  const user = await store.db.prepare("SELECT id, email, password_hash, role, email_verified_at FROM users WHERE email = ?").get(normalizedEmail);
+  const user = await store.db.prepare("SELECT id, email, password_hash, role, email_verified_at, locale FROM users WHERE email = ?").get(normalizedEmail);
   if (!user || !isKnownRole(user.role) || !verifyPassword(password, user.password_hash)) {
     const failure = await recordFailure(store, normalizedEmail, normalizedClientKey);
     store.log(failure.locked ? "auth_login_throttled" : "auth_login_rejected", {
@@ -306,7 +315,8 @@ export async function login(store, { email, password, sessionSecret, clientKey }
   await upgradePhpassHashIfNeeded(store, user, password);
   const session = await createSessionCookie(store, user, sessionSecret);
   store.log("auth_login_succeeded", { role: user.role, result: "accepted" });
-  return { ok: true, user: { id: user.id, email: user.email, role: user.role }, ...session };
+  const locale = user.locale === "vi" || user.locale === "en" ? user.locale : "en";
+  return { ok: true, user: { id: user.id, email: user.email, role: user.role, locale }, ...session };
 }
 
 export function safeRedirect(value) {

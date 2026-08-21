@@ -18,6 +18,12 @@ import {
   readJsonBody,
   sessionTokenFrom,
 } from "./api-contract.mjs";
+import {
+  createTourStore,
+  listTourProgress,
+  mergeAndPersistTourProgress,
+  upsertTourProgress,
+} from "./tours/tour-core.mjs";
 
 async function sessionFor(request) {
   return await readSession(await getAuthStore(), sessionTokenFrom(request) || request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
@@ -135,5 +141,46 @@ export async function handleDeleteAddress(request, addressId) {
     }
   } catch (error) {
     return fail(error, requestId, API_ERROR_CODES.not_found);
+  }
+}
+
+export async function handleGetTours(request) {
+  const requestId = createRequestId(request);
+  try {
+    const session = await sessionFor(request);
+    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const store = await createTourStore();
+    try {
+      return jsonOk({ tours: await listTourProgress(store, session.user) });
+    } finally {
+      await store.close();
+    }
+  } catch (error) {
+    return fail(error, requestId);
+  }
+}
+
+export async function handlePatchTours(request) {
+  const requestId = createRequestId(request);
+  try {
+    const session = await sessionFor(request);
+    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const body = await readJsonBody(request);
+    if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid tour request.", { status: 400, requestId });
+    const store = await createTourStore();
+    try {
+      if (body.merge && typeof body.merge === "object") {
+        return jsonOk({ tours: await mergeAndPersistTourProgress(store, session.user, body.merge) });
+      }
+      if (typeof body.tourId === "string" && body.status) {
+        await upsertTourProgress(store, session.user, body.tourId, body.status);
+        return jsonOk({ tours: await listTourProgress(store, session.user) });
+      }
+      return jsonError(API_ERROR_CODES.invalid_request, "Invalid tour request.", { status: 400, requestId });
+    } finally {
+      await store.close();
+    }
+  } catch (error) {
+    return fail(error, requestId);
   }
 }

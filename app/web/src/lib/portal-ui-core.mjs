@@ -84,8 +84,8 @@ const portalMessages = Object.freeze({
   },
 });
 
-export function navigationForPortal(portal, locale = "vi") {
-  const messages = portalMessages[locale] || portalMessages.vi;
+export function navigationForPortal(portal, locale = "en") {
+  const messages = portalMessages[locale] || portalMessages.en;
   return (portalNavigation[portal] || []).map((item) => ({ ...item, label: messages[item.key] || item.key }));
 }
 
@@ -126,7 +126,7 @@ export function updateCartQuantity(items, vendorOfferId, quantity) {
   return normalizeCart(items).map((item) => item.vendorOfferId === vendorOfferId ? { ...item, quantity: amount } : item);
 }
 
-export function formatUsd(value, locale = "vi") {
+export function formatUsd(value, locale = "en") {
   const amount = Number(value);
   if (!Number.isFinite(amount)) return "—";
   return new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US", { style: "currency", currency: "USD" }).format(amount);

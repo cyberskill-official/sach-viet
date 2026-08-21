@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
+import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 type Product = {
   id: string;
@@ -32,6 +34,7 @@ function readCart() {
 }
 
 export function Storefront() {
+  const { locale, setLocale, t } = useLocale();
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
@@ -53,14 +56,14 @@ export function Storefront() {
       .then(async (response) => {
         const body = await response.json();
         const items = catalogItems(body);
-        if (!response.ok) throw new Error(apiMessage(body, "Không thể tải danh mục."));
+        if (!response.ok) throw new Error(apiMessage(body, t("storefront.catalogLoadError")));
         setProducts(items);
         setHasMore(Boolean(body.nextCursor) || (!submittedQuery && items.length === pageSize));
       })
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, submittedQuery]);
+  }, [category, submittedQuery, t]);
 
   const categories = useMemo(() => [...new Map(products.map((product) => [product.category.slug, product.category])).values()], [products]);
 
@@ -97,11 +100,11 @@ export function Storefront() {
       const response = await fetch(`/api/catalog/products?${params}`);
       const body = await response.json();
       const items = catalogItems(body);
-      if (!response.ok) throw new Error(apiMessage(body, "Không thể tải danh mục."));
+      if (!response.ok) throw new Error(apiMessage(body, t("storefront.catalogLoadError")));
       setProducts((current) => [...current, ...items]);
       setHasMore(Boolean(body.nextCursor) || items.length === pageSize);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể tải danh mục.");
+      setError(reason instanceof Error ? reason.message : t("storefront.catalogLoadError"));
     } finally {
       setLoadingMore(false);
     }
@@ -110,19 +113,24 @@ export function Storefront() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
-            <span><strong className="block text-lg">Sách Việt</strong><small className="text-muted">Sách hay, gần bạn</small></span>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <Link href="/" className="flex min-w-0 items-center gap-3" data-tour="storefront-brand">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
+            <span className="min-w-0"><strong className="block truncate text-lg">{t("common.brand")}</strong><small className="text-muted">{t("common.tagline")}</small></span>
           </Link>
-          <nav className="flex items-center gap-2 text-sm">
-            <Link className="cs-button cs-button--ghost" href="/account">Tài khoản</Link>
-            <Link className="cs-button cs-button--ghost" href="/wishlist">Yêu thích</Link>
-            <Link className="cs-button cs-button--ghost" href="/support">Hỗ trợ</Link>
-            <Link className="cs-button cs-button--ghost" href="/ecom/orders">Đơn hàng</Link>
-            <Link className="cs-button cs-button--secondary" href="/ecom/cart">Giỏ hàng ({cartCount})</Link>
-            <Link className="cs-button cs-button--ghost" href="/register">Đăng ký</Link>
-            <Link className="cs-button" href="/login">Đăng nhập</Link>
+          <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm" data-tour="storefront-nav">
+            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
+            <Link className="cs-button cs-button--ghost" href="/account">{t("nav.account")}</Link>
+            <Link className="cs-button cs-button--ghost" href="/wishlist">{t("nav.wishlist")}</Link>
+            <Link className="cs-button cs-button--ghost" href="/support">{t("nav.support")}</Link>
+            <Link className="cs-button cs-button--ghost" href="/ecom/orders">{t("nav.orders")}</Link>
+            <Link className="cs-button cs-button--secondary" href="/ecom/cart">{t("nav.cart")} ({cartCount})</Link>
+            <TourLauncher tourId="tour.storefront" />
+            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
+              {locale === "en" ? "VI" : "EN"}
+            </button>
+            <Link className="cs-button cs-button--ghost" href="/register">{t("nav.register")}</Link>
+            <Link className="cs-button" href="/login">{t("nav.login")}</Link>
           </nav>
         </div>
       </header>
@@ -131,33 +139,34 @@ export function Storefront() {
         <div className="cs-aurora-wash absolute inset-0 opacity-25" />
         <div className="relative mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[1.2fr_.8fr] lg:py-24">
           <div>
-            <p className="cs-eyebrow text-accent-strong">Tủ sách dành cho người Việt</p>
-            <h1 className="mt-4 max-w-3xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl">Tìm cuốn sách mở ra điều mới</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">Khám phá sách Việt chọn lọc từ các nhà xuất bản và nhà bán uy tín. Tìm kiếm tiếng Việt tự nhiên, đặt mua trong vài bước.</p>
-            <form onSubmit={submitSearch} className="cs-surface-standard mt-8 flex max-w-2xl gap-3 rounded-2xl p-3">
-              <input aria-label="Tìm sách" className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tên sách, tác giả hoặc chủ đề…" />
-              <button className="cs-button" type="submit">Tìm sách</button>
+            <p className="cs-eyebrow text-accent-strong">{t("storefront.eyebrow")}</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
+            <form onSubmit={submitSearch} className="cs-surface-standard mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 sm:flex-row" data-tour="storefront-search">
+              <input aria-label={t("storefront.searchLabel")} className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} />
+              <button className="cs-button shrink-0" type="submit">{t("storefront.searchSubmit")}</button>
             </form>
           </div>
           <div className="cs-surface-heavy hidden min-h-72 rounded-[2rem] p-8 lg:flex lg:flex-col lg:justify-end">
-            <p className="cs-eyebrow">Gợi ý hôm nay</p>
-            <p className="mt-3 text-2xl font-bold">Đọc chậm một chút, hiểu sâu hơn một chút.</p>
+            <p className="cs-eyebrow">{t("storefront.tipEyebrow")}</p>
+            <p className="mt-3 text-2xl font-bold">{t("storefront.tipBody")}</p>
+            <Link className="cs-button cs-button--secondary mt-6 w-fit" href="/features">{t("nav.features")}</Link>
           </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div><p className="cs-eyebrow text-accent-strong">Danh mục</p><h2 className="mt-2 text-3xl font-bold">Sách đang có</h2></div>
-          <select aria-label="Lọc theo danh mục" className="cs-field__control" value={category} onChange={(event) => { setLoading(true); setError(""); setCategory(event.target.value); }}>
-            <option value="">Tất cả danh mục</option>
+          <div><p className="cs-eyebrow text-accent-strong">{t("storefront.catalogEyebrow")}</p><h2 className="mt-2 text-3xl font-bold">{t("storefront.catalogTitle")}</h2></div>
+          <select aria-label={t("storefront.filterCategory")} className="cs-field__control" value={category} onChange={(event) => { setLoading(true); setError(""); setCategory(event.target.value); }}>
+            <option value="">{t("storefront.allCategories")}</option>
             {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
           </select>
         </div>
 
         {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3].map((item) => <div key={item} className="cs-skeleton h-72 rounded-2xl" />)}</div> : null}
-        {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert">{error}<button className="ml-3 underline" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>Thử lại</button></div> : null}
-        {!loading && !error && products.length === 0 ? <div className="cs-empty-state mt-8"><h3>Chưa tìm thấy sách phù hợp</h3><p>Thử từ khoá ngắn hơn hoặc xem tất cả danh mục.</p><button className="cs-button cs-button--secondary" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>Xem tất cả</button></div> : null}
+        {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert">{error}<button className="ml-3 underline" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>{t("common.retry")}</button></div> : null}
+        {!loading && !error && products.length === 0 ? <div className="cs-empty-state mt-8"><h3>{t("storefront.emptyTitle")}</h3><p>{t("storefront.emptyBody")}</p><button className="cs-button cs-button--secondary" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>{t("storefront.viewAll")}</button></div> : null}
         {!loading && products.length ? (
           <>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -168,8 +177,8 @@ export function Storefront() {
                   <h3 className="mt-2 text-xl font-bold"><Link href={`/products/${product.slug}`}>{product.title}</Link></h3>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted">{product.description}</p>
                   <div className="mt-auto flex items-end justify-between gap-3 pt-6">
-                    <div>{product.primaryOffer ? <><strong className="text-lg">{formatUsd(product.primaryOffer.priceUsd)}</strong><small className="block text-muted">Còn {product.primaryOffer.stockQuantity} cuốn</small></> : <span className="cs-badge">Tạm hết hàng</span>}</div>
-                    <button className="cs-button" disabled={!product.primaryOffer} onClick={() => addToCart(product)}>Thêm vào giỏ</button>
+                    <div>{product.primaryOffer ? <><strong className="text-lg">{formatUsd(product.primaryOffer.priceUsd, locale)}</strong><small className="block text-muted">{t("storefront.inStock", { count: product.primaryOffer.stockQuantity })}</small></> : <span className="cs-badge">{t("storefront.outOfStock")}</span>}</div>
+                    <button className="cs-button" disabled={!product.primaryOffer} onClick={() => addToCart(product)}>{t("storefront.addToCart")}</button>
                   </div>
                 </article>
               ))}
@@ -177,7 +186,7 @@ export function Storefront() {
             {hasMore ? (
               <div className="mt-8 flex justify-center">
                 <button className="cs-button cs-button--secondary" disabled={loadingMore} type="button" onClick={() => { void loadMore(); }}>
-                  {loadingMore ? "Đang tải…" : "Xem thêm"}
+                  {loadingMore ? t("storefront.loadingMore") : t("storefront.loadMore")}
                 </button>
               </div>
             ) : null}

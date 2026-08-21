@@ -60,7 +60,8 @@ test("register, verify via test hook, login, catalog, sandbox checkout, order li
   expect(login.body.user?.role).toBe("customer");
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Tìm cuốn sách/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Find the book that opens something new/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Features" })).toBeVisible();
 
   const catalog = await requestJson(page, "/api/catalog/products");
   expect(catalog.status).toBe(200);
@@ -74,7 +75,7 @@ test("register, verify via test hook, login, catalog, sandbox checkout, order li
   expect(product, "seed catalog must include a product with primaryOffer").toBeTruthy();
 
   await page.goto("/ecom/cart");
-  await expect(page.getByRole("heading", { name: "Giỏ hàng", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cart", exact: true })).toBeVisible();
 
   const checkout = await postJson(page, "/api/checkout", {
     items: [{ vendorOfferId: product.primaryOffer.id, title: product.title, quantity: 1 }],
@@ -91,7 +92,7 @@ test("register, verify via test hook, login, catalog, sandbox checkout, order li
   expect(list.some((row) => row?.status === "pending_payment")).toBe(true);
 
   await page.goto("/ecom/orders");
-  await expect(page.getByRole("heading", { name: "Đơn hàng của tôi" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My orders" })).toBeVisible();
 });
 
 test("customer cannot write vendor offers", async ({ page }) => {
@@ -106,7 +107,7 @@ test("customer cannot write vendor offers", async ({ page }) => {
   expect(login.body.user?.role).toBe("customer");
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Tìm cuốn sách/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Find the book that opens something new/ })).toBeVisible();
 
   const result = await postJson(page, "/api/vendor/offers", {
     productId: "not-a-product",
@@ -131,5 +132,18 @@ test("admin can sign in to the admin portal", async ({ page }) => {
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin/);
-  await expect(page.getByRole("heading", { name: "Bảng điều hành" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Command board" })).toBeVisible();
+});
+
+test("features page lists available vs upcoming and lang toggle persists", async ({ page }) => {
+  await page.goto("/features");
+  await expect(page.getByRole("heading", { name: "Features" })).toBeVisible();
+  await expect(page.getByText("Sandbox checkout", { exact: false })).toBeVisible();
+  await expect(page.getByText("Live payments", { exact: false })).toBeVisible();
+  await expect(page.getByText("Available").first()).toBeVisible();
+  await expect(page.getByText("Upcoming").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "VI" }).click();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Tính năng" })).toBeVisible();
 });

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
+import { TourLauncher } from "@/components/tours/tour-provider";
 
 type Ticket = { id: string; subject: string; status: string; createdAt: number };
 type Message = { id: string; body: string; createdAt: number; userId: string };
@@ -26,6 +28,7 @@ async function readJson(url: string, init?: RequestInit) {
 }
 
 export function SupportPanel() {
+  const { locale, setLocale, t } = useLocale();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [goodsRequests, setGoodsRequests] = useState<GoodsRequest[]>([]);
   const [activeId, setActiveId] = useState("");
@@ -146,40 +149,58 @@ export function SupportPanel() {
     }
   }
 
+  function ticketStatus(status: string) {
+    if (status === "open") return t("support.statusOpen");
+    if (status === "closed") return t("support.statusClosed");
+    return status;
+  }
+
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">← Về cửa hàng</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">Hỗ trợ</p>
-      <h1 className="mt-2 text-4xl font-extrabold">Ticket, yêu cầu hàng, và trao đổi</h1>
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="font-bold">{t("common.brand")}</Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm">
+            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
+            <TourLauncher tourId="tour.support" />
+            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
+              {locale === "en" ? "VI" : "EN"}
+            </button>
+          </nav>
+        </div>
+      </header>
+      <div className="mx-auto max-w-4xl px-6 py-12">
+      <p className="cs-eyebrow text-accent-strong" data-tour="support-heading">{t("support.title")}</p>
+      <h1 className="mt-2 text-4xl font-extrabold">{t("support.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
 
       <section className="mt-10 grid gap-8 lg:grid-cols-2">
-        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={createTicket}>
-          <h2 className="text-xl font-bold">Mở ticket</h2>
+        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" data-tour="support-ticket-form" onSubmit={createTicket}>
+          <h2 className="text-xl font-bold">{t("support.openTicket")}</h2>
           <label className="grid gap-2 text-sm">
-            Chủ đề
+            {t("support.subject")}
             <input required name="subject" className="cs-field__control" maxLength={200} />
           </label>
-          <button className="cs-button" disabled={pending} type="submit">Gửi ticket</button>
+          <button className="cs-button" disabled={pending} type="submit">{t("support.submitTicket")}</button>
         </form>
         <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={createGoodsRequest}>
-          <h2 className="text-xl font-bold">Yêu cầu tìm sách</h2>
+          <h2 className="text-xl font-bold">{t("support.bookRequest")}</h2>
           <label className="grid gap-2 text-sm">
-            Mô tả
+            {t("support.body")}
             <textarea required name="details" className="cs-field__control min-h-24" maxLength={2000} />
           </label>
           <label className="grid gap-2 text-sm">
-            Mã sản phẩm (tuỳ chọn)
-            <input name="productId" className="cs-field__control" />
+            {t("portals.productId")}
+            <input name="productId" className="cs-field__control" aria-label={t("portals.productId")} />
           </label>
-          <button className="cs-button cs-button--secondary" disabled={pending} type="submit">Gửi yêu cầu</button>
+          <button className="cs-button cs-button--secondary" disabled={pending} type="submit">{t("support.submitTicket")}</button>
         </form>
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">Ticket của bạn</h2>
-        {tickets.length === 0 && !loading ? <p className="mt-3 text-muted">Chưa có ticket.</p> : null}
+        <h2 className="text-2xl font-bold">{t("support.title")}</h2>
+        {tickets.length === 0 && !loading ? <p className="mt-3 text-muted">{t("support.empty")}</p> : null}
         <ul className="mt-4 grid gap-2">
           {tickets.map((ticket) => (
             <li key={ticket.id}>
@@ -192,14 +213,14 @@ export function SupportPanel() {
                 }}
               >
                 <strong>{ticket.subject}</strong>
-                <span className="ml-2 text-sm text-muted">{ticket.status}</span>
+                <span className="ml-2 text-sm text-muted">{ticketStatus(ticket.status)}</span>
               </button>
             </li>
           ))}
         </ul>
         {activeId ? (
           <div className="cs-surface-standard mt-4 rounded-2xl p-6">
-            <h3 className="font-bold">Tin nhắn</h3>
+            <h3 className="font-bold">{t("support.body")}</h3>
             <ul className="mt-3 grid gap-2">
               {messages.map((message) => (
                 <li key={message.id} className="rounded-lg bg-panel p-3 text-sm">{message.body}</li>
@@ -207,18 +228,18 @@ export function SupportPanel() {
             </ul>
             <form className="mt-4 grid gap-3" onSubmit={sendMessage}>
               <label className="grid gap-2 text-sm">
-                Trả lời
+                {t("support.body")}
                 <textarea required name="body" className="cs-field__control min-h-20" maxLength={4000} />
               </label>
-              <button className="cs-button" disabled={pending} type="submit">Gửi tin</button>
+              <button className="cs-button" disabled={pending} type="submit">{t("support.submitTicket")}</button>
             </form>
           </div>
         ) : null}
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">Yêu cầu hàng</h2>
-        {goodsRequests.length === 0 && !loading ? <p className="mt-3 text-muted">Chưa có yêu cầu hàng.</p> : null}
+        <h2 className="text-2xl font-bold">{t("support.bookRequest")}</h2>
+        {goodsRequests.length === 0 && !loading ? <p className="mt-3 text-muted">{t("support.empty")}</p> : null}
         <ul className="mt-4 grid gap-2">
           {goodsRequests.map((item) => (
             <li key={item.id} className="cs-surface-standard rounded-xl p-4">
@@ -228,6 +249,7 @@ export function SupportPanel() {
           ))}
         </ul>
       </section>
+      </div>
     </main>
   );
 }

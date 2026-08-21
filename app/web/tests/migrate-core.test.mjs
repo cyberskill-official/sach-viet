@@ -15,7 +15,9 @@ test("openDatabase applies the migration registry once", async () => {
     assert.ok(applied.some((row) => row.id === "005_order_expiry_inventory"));
     assert.ok(applied.some((row) => row.id === "006_portal_search_fulfillment"));
     assert.ok(applied.some((row) => row.id === "007_storage_object_registry"));
+    assert.ok(applied.some((row) => row.id === "008_user_tour_progress"));
     assert.ok(await tableExists(db, "user_addresses"));
+    assert.ok(await tableExists(db, "user_tour_progress"));
     const trgm = await db.pool.query(`
       SELECT n.nspname AS schema
       FROM pg_extension e

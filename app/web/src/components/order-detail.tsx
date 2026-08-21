@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
+import { useLocale } from "@/components/locale-provider";
 
 type TimelineEvent = { at: number; kind: string; label: string; status: string; orderItemId?: string };
 type Line = { id: string; title: string; quantity: number; unitPriceUsd: string; fulfillmentStatus?: string | null };
@@ -30,9 +31,11 @@ function apiMessage(body: Record<string, unknown>, fallback: string) {
 }
 
 export function OrderDetail({ orderId }: { orderId: string }) {
+  const { locale, t } = useLocale();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -43,28 +46,43 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           window.location.assign(`/login?redirect=/ecom/orders/${encodeURIComponent(orderId)}`);
           return;
         }
-        if (!response.ok || !body.order) throw new Error(apiMessage(body, "Không thể tải đơn hàng."));
+        if (!response.ok || !body.order) throw new Error(apiMessage(body, t("validation.serverError")));
         setOrder(body.order);
       })
       .catch((reason) => {
-        if (reason.name !== "AbortError") setError(reason instanceof Error ? reason.message : "Không thể tải đơn hàng.");
+        if (reason.name !== "AbortError") setError(reason instanceof Error ? reason.message : t("validation.serverError"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [orderId]);
+  }, [orderId, t]);
 
   const pendingHold =
     order?.status === "pending_payment" && typeof order.expiresAt === "number"
-      ? new Date(order.expiresAt).toLocaleString("vi-VN")
+      ? new Date(order.expiresAt).toLocaleString(dateLocale)
       : null;
+
+  function statusLabel(status: string) {
+    switch (status) {
+      case "pending_payment":
+        return t("orders.pendingPayment");
+      case "paid":
+        return t("orders.paid");
+      case "cancelled":
+        return t("orders.cancelled");
+      case "expired":
+        return t("orders.expired");
+      default:
+        return status;
+    }
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/ecom/orders">← Đơn hàng</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">Tài khoản</p>
-      <h1 className="mt-2 text-4xl font-extrabold">Chi tiết đơn hàng</h1>
+      <Link className="text-sm text-accent-strong hover:underline" href="/ecom/orders">← {t("orders.backToOrders")}</Link>
+      <p className="cs-eyebrow mt-8 text-accent-strong">{t("nav.account")}</p>
+      <h1 className="mt-2 text-4xl font-extrabold">{t("orders.detail")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-48 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
       {order ? (
@@ -72,62 +90,55 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">#{order.id.slice(0, 10)}</p>
-              <p className="mt-2 font-bold">{order.status}</p>
-              <p className="mt-1 text-sm text-muted">{new Date(order.createdAt).toLocaleString("vi-VN")}</p>
+              <p className="mt-2 font-bold">{statusLabel(order.status)}</p>
+              <p className="mt-1 text-sm text-muted">{t("orders.placedAt")}: {new Date(order.createdAt).toLocaleString(dateLocale)}</p>
               {pendingHold ? (
-                <p className="mt-2 text-sm text-muted">
-                  Giữ hàng đến {pendingHold}. Hết hạn sẽ hủy thanh toán và trả tồn kho.
-                </p>
+                <p className="mt-2 text-sm text-muted">{pendingHold}</p>
               ) : null}
             </div>
-            <strong className="text-2xl">{formatUsd(order.totalUsd ?? order.subtotalUsd)}</strong>
+            <strong className="text-2xl">{formatUsd(order.totalUsd ?? order.subtotalUsd, locale)}</strong>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-3">
             <div className="rounded-xl border border-border p-3">
-              <dt className="text-muted">Tạm tính</dt>
-              <dd className="mt-1 font-semibold">{formatUsd(order.subtotalUsd)}</dd>
+              <dt className="text-muted">{t("cart.subtotal")}</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.subtotalUsd, locale)}</dd>
             </div>
             <div className="rounded-xl border border-border p-3">
-              <dt className="text-muted">Thuế</dt>
-              <dd className="mt-1 font-semibold">{formatUsd(order.taxUsd ?? "0")}</dd>
+              <dt className="text-muted">{t("cart.tax")}</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.taxUsd ?? "0", locale)}</dd>
             </div>
             <div className="rounded-xl border border-border p-3">
-              <dt className="text-muted">Vận chuyển</dt>
-              <dd className="mt-1 font-semibold">{formatUsd(order.shippingUsd ?? "0")}</dd>
+              <dt className="text-muted">{t("cart.shipping")}</dt>
+              <dd className="mt-1 font-semibold">{formatUsd(order.shippingUsd ?? "0", locale)}</dd>
             </div>
           </dl>
-          <p className="text-sm text-muted">
-            Interim DEC-COM: USD, thuế = 0, không ship. Thanh toán sandbox only.
-            {order.returnsPolicy === "deferred"
-              ? " Đổi trả / hoàn tiền: deferred (DEC-RET)."
-              : ` Đổi trả: ${order.returnsPolicy || "interim"} — cửa sổ ${order.returnsWindowDays ?? 14} ngày (lỗi/hư hỏng/sai hàng).`}
-          </p>
+          <p className="text-sm text-muted">{t("cart.policyPayments")}</p>
           <div>
-            <h2 className="text-xl font-bold">Dòng hàng</h2>
+            <h2 className="text-xl font-bold">{t("orders.fulfillment")}</h2>
             <ul className="mt-3 space-y-2">
               {order.items.map((item) => (
                 <li key={item.id} className="rounded-xl border border-border p-3">
                   <strong>{item.title}</strong>
-                  <p className="text-sm text-muted">×{item.quantity} · {formatUsd(item.unitPriceUsd)} · {item.fulfillmentStatus || "chưa đóng gói"}</p>
+                  <p className="text-sm text-muted">×{item.quantity} · {formatUsd(item.unitPriceUsd, locale)} · {item.fulfillmentStatus || t("orders.notPacked")}</p>
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <h2 className="text-xl font-bold">Timeline</h2>
+            <h2 className="text-xl font-bold">{t("orders.status")}</h2>
             <ol className="mt-3 space-y-2">
               {order.timeline.map((event, index) => (
                 <li key={`${event.kind}-${event.at}-${index}`} className="rounded-xl border border-border p-3">
                   <p className="font-semibold">{event.label}</p>
-                  <p className="text-sm text-muted">{new Date(event.at).toLocaleString("vi-VN")} · {event.status}</p>
+                  <p className="text-sm text-muted">{new Date(event.at).toLocaleString(dateLocale)} · {event.status}</p>
                 </li>
               ))}
             </ol>
           </div>
           <p className="text-sm text-muted">
-            Cần hỗ trợ? <Link className="text-accent-strong hover:underline" href="/support">Mở ticket hỗ trợ</Link>
+            <Link className="text-accent-strong hover:underline" href="/support">{t("orders.openSupport")}</Link>
             {" · "}
-            <Link className="text-accent-strong hover:underline" href="/account">Tài khoản</Link>
+            <Link className="text-accent-strong hover:underline" href="/account">{t("nav.account")}</Link>
           </p>
         </section>
       ) : null}
