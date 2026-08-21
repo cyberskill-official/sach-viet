@@ -19,26 +19,94 @@ export const INVENTORY_REASON_EXPIRE_RESTOCK = "expire_restock";
 
 /**
  * Interim retail commerce policy from DEC-COM-001 / DEC-RET-001 / DEC-PV3-001
- * (interim-owner-defaults-2026-08-21). Tax stays 0; carriers none; returns thin window filled.
+ * (interim-owner-defaults-2026-08-21b). Tax engine stub always $0.00; flat_rate_usd 0 /
+ * carrier none (optional manual_pickup); returns thin window filled.
  */
+export const SHIP_TO_COUNTRIES = Object.freeze(["US", "VN"]);
+export const SHIP_TO_REQUIRED_FIELDS = Object.freeze(["name", "line1", "city", "country", "postal"]);
+export const STUB_CARRIER_IDS = Object.freeze(["none", "manual_pickup"]);
+
 export function interimCommercePolicy() {
   const returns = getReturnsPolicySnapshot();
   return {
-    version: "interim-owner-defaults-2026-08-21",
+    version: "interim-owner-defaults-2026-08-21b",
     currency: "USD",
-    countriesInScope: Object.freeze(["US", "VN"]),
+    countriesInScope: SHIP_TO_COUNTRIES,
     taxCharged: false,
     shippingCharged: false,
     taxUsd: ZERO_MONEY_USD,
     shippingUsd: ZERO_MONEY_USD,
-    taxSource: "none/0",
+    taxSource: "none",
+    taxEngine: "stub",
+    salesTaxRatePercent: 0,
+    flatRateUsd: ZERO_MONEY_USD,
+    carrierId: "none",
     carriers: "none",
+    allowedCarrierIds: STUB_CARRIER_IDS,
+    shipToRequiredFields: SHIP_TO_REQUIRED_FIELDS,
     reservationTtlMs: PENDING_ORDER_TTL_MS,
     paymentsMode: "sandbox",
     returnsPolicy: returns.returnsPolicy,
     returnsWindowDays: returns.windowDays,
     returnsRestockFeePercent: returns.restockFeePercent,
     shippingPreference: "NO_SHIPPING",
+  };
+}
+
+/**
+ * Normalize ship-to address for DEC-COM-001 stub retail (US+VN).
+ * @param {unknown} input
+ * @param {{ required?: boolean }} [options]
+ * @returns {null | { name: string, line1: string, line2: string | null, city: string, region: string | null, postal: string, country: "US" | "VN", phone: string | null }}
+ */
+export function normalizeShipToAddress(input, { requireAddress = false } = {}) {
+  if (input == null || input === "") {
+    if (requireAddress) throw new Error("Ship-to address is required.");
+    return null;
+  }
+  if (typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("Ship-to address must be an object.");
+  }
+  const countryRaw = typeof input.country === "string" ? input.country.trim().toUpperCase() : "";
+  if (countryRaw !== "US" && countryRaw !== "VN") {
+    throw new Error("Ship-to country must be US or VN.");
+  }
+  const name = required(typeof input.name === "string" ? input.name : "", "Ship-to name");
+  const line1 = required(typeof input.line1 === "string" ? input.line1 : "", "Ship-to line1");
+  const city = required(typeof input.city === "string" ? input.city : "", "Ship-to city");
+  const postal = required(typeof input.postal === "string" ? input.postal : (typeof input.postalCode === "string" ? input.postalCode : ""), "Ship-to postal");
+  return {
+    name,
+    line1,
+    line2: typeof input.line2 === "string" && input.line2.trim() ? input.line2.trim() : null,
+    city,
+    region: typeof input.region === "string" && input.region.trim()
+      ? input.region.trim()
+      : (typeof input.state === "string" && input.state.trim() ? input.state.trim() : null),
+    postal,
+    country: /** @type {"US" | "VN"} */ (countryRaw),
+    phone: typeof input.phone === "string" && input.phone.trim() ? input.phone.trim() : null,
+  };
+}
+
+/**
+ * Stub tax + shipping lines under DEC-COM-001 21b (always $0.00).
+ * @param {{ carrierId?: unknown }} [options]
+ */
+export function stubTaxShippingLines({ carrierId } = {}) {
+  const policy = interimCommercePolicy();
+  let carrier = typeof carrierId === "string" && carrierId.trim() ? carrierId.trim().toLowerCase() : "none";
+  if (!STUB_CARRIER_IDS.includes(carrier)) {
+    throw new Error("Carrier must be none or manual_pickup under interim DEC-COM-001.");
+  }
+  return {
+    taxUsd: ZERO_MONEY_USD,
+    shippingUsd: ZERO_MONEY_USD,
+    taxSource: policy.taxSource,
+    taxEngine: policy.taxEngine,
+    salesTaxRatePercent: policy.salesTaxRatePercent,
+    flatRateUsd: policy.flatRateUsd,
+    carrierId: carrier,
   };
 }
 
@@ -158,8 +226,10 @@ export function normalizeCartItem(item) {
  * @param {{ db: unknown }} store
  * @param {unknown[]} items
  */
-export async function quoteRetailCart(store, items) {
+export async function quoteRetailCart(store, items, options = {}) {
   if (!Array.isArray(items) || items.length === 0) throw new Error("Cart cannot be empty.");
+  const shipTo = normalizeShipToAddress(options?.shipTo, { requireAddress: options?.requireShipTo === true });
+  const stubLines = stubTaxShippingLines({ carrierId: options?.carrierId });
   const normalizedItems = items.map(normalizeCartItem);
   const lines = [];
   let subtotalUsd = 0n;
@@ -196,10 +266,14 @@ export async function quoteRetailCart(store, items) {
     currency: policy.currency,
     lines,
     subtotalUsd: subtotal,
-    taxUsd: policy.taxUsd,
-    shippingUsd: policy.shippingUsd,
+    taxUsd: stubLines.taxUsd,
+    shippingUsd: stubLines.shippingUsd,
     totalUsd: subtotal,
     reservationTtlMs: policy.reservationTtlMs,
+    shipTo,
+    taxEngine: stubLines.taxEngine,
+    taxSource: stubLines.taxSource,
+    carrierId: stubLines.carrierId,
     policy,
   };
 }

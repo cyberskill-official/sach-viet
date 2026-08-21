@@ -20,9 +20,24 @@ type Quote = {
   shippingUsd: string;
   totalUsd: string;
   reservationTtlMs: number;
-  policy?: { returnsPolicy?: string; paymentsMode?: string };
+  taxEngine?: string;
+  taxSource?: string;
+  carrierId?: string;
+  shipTo?: ShipTo | null;
+  policy?: { returnsPolicy?: string; paymentsMode?: string; taxEngine?: string; version?: string };
   lines?: Array<{ vendorOfferId: string; title: string; unitPriceUsd: string; quantity: number }>;
 };
+type ShipTo = {
+  name: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  region?: string | null;
+  postal: string;
+  country: "US" | "VN";
+  phone?: string | null;
+};
+type CarrierId = "none" | "manual_pickup";
 
 function loadCart(): CartItem[] {
   try {
@@ -43,6 +58,17 @@ export function CartPanel() {
   const [quoting, setQuoting] = useState(false);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState<CheckoutProvider | null>(null);
+  const [carrierId, setCarrierId] = useState<CarrierId>("none");
+  const [shipTo, setShipTo] = useState<ShipTo>({
+    name: "",
+    line1: "",
+    city: "",
+    postal: "",
+    country: "VN",
+    line2: "",
+    region: "",
+    phone: "",
+  });
 
   useEffect(() => {
     const timer = window.setTimeout(() => setItems(loadCart()), 0);
@@ -61,7 +87,13 @@ export function CartPanel() {
       const response = await fetch("/api/quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cart }),
+        body: JSON.stringify({
+          items: cart,
+          carrierId,
+          shipTo: shipTo.name && shipTo.line1 && shipTo.city && shipTo.postal
+            ? shipTo
+            : undefined,
+        }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.quote) {
@@ -76,7 +108,7 @@ export function CartPanel() {
     } finally {
       setQuoting(false);
     }
-  }, []);
+  }, [carrierId, shipTo]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -103,7 +135,7 @@ export function CartPanel() {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, provider }),
+        body: JSON.stringify({ items, provider, shipTo, carrierId }),
       });
       const result = await response.json().catch(() => null);
       if (response.status === 401) {
@@ -124,6 +156,7 @@ export function CartPanel() {
   const busy = submitting !== null;
   const displayTotal = quote?.totalUsd ?? String(estimatedTotal);
   const ttlMinutes = quote ? reservationMinutes(quote.reservationTtlMs) : 30;
+  const shipToReady = Boolean(shipTo.name.trim() && shipTo.line1.trim() && shipTo.city.trim() && shipTo.postal.trim() && (shipTo.country === "US" || shipTo.country === "VN"));
 
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
@@ -190,7 +223,27 @@ export function CartPanel() {
           )}
         </div>
         <aside className="cs-surface-heavy h-fit rounded-2xl p-6">
-          <p className="cs-eyebrow">Báo giá máy chủ</p>
+          <p className="cs-eyebrow">Địa chỉ giao (US / VN)</p>
+          <div className="mt-3 space-y-2 text-sm">
+            <input className="cs-field__control w-full" placeholder="Họ tên" value={shipTo.name} onChange={(e) => setShipTo((s) => ({ ...s, name: e.target.value }))} />
+            <input className="cs-field__control w-full" placeholder="Địa chỉ dòng 1" value={shipTo.line1} onChange={(e) => setShipTo((s) => ({ ...s, line1: e.target.value }))} />
+            <input className="cs-field__control w-full" placeholder="Địa chỉ dòng 2 (tuỳ chọn)" value={shipTo.line2 ?? ""} onChange={(e) => setShipTo((s) => ({ ...s, line2: e.target.value }))} />
+            <div className="grid grid-cols-2 gap-2">
+              <input className="cs-field__control w-full" placeholder="Thành phố" value={shipTo.city} onChange={(e) => setShipTo((s) => ({ ...s, city: e.target.value }))} />
+              <input className="cs-field__control w-full" placeholder="Mã bưu chính" value={shipTo.postal} onChange={(e) => setShipTo((s) => ({ ...s, postal: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <select className="cs-field__control w-full" value={shipTo.country} onChange={(e) => setShipTo((s) => ({ ...s, country: e.target.value as "US" | "VN" }))}>
+                <option value="VN">VN</option>
+                <option value="US">US</option>
+              </select>
+              <select className="cs-field__control w-full" value={carrierId} onChange={(e) => setCarrierId(e.target.value as CarrierId)}>
+                <option value="none">Carrier: none ($0)</option>
+                <option value="manual_pickup">manual_pickup ($0)</option>
+              </select>
+            </div>
+          </div>
+          <p className="cs-eyebrow mt-6">Báo giá máy chủ</p>
           <p className="mt-2 text-3xl font-extrabold">{formatUsd(displayTotal)}</p>
           <dl className="mt-4 space-y-1 text-sm text-muted">
             <div className="flex justify-between gap-3">
@@ -213,7 +266,7 @@ export function CartPanel() {
           <p className="mt-3 text-sm leading-6 text-muted">
             {quoting
               ? "Đang xác nhận giá và tồn kho…"
-              : `Interim: thuế = 0, không ship. Giữ hàng ${ttlMinutes} phút sau khi tạo đơn chờ thanh toán (sandbox).`}
+              : `Interim 21b: taxEngine=stub ($0), flat_rate=$0, carrier=${quote?.carrierId ?? carrierId}. Giữ hàng ${ttlMinutes} phút (sandbox).`}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
             Đổi trả / hoàn tiền (DEC-RET interim): 14 ngày với lỗi/hư hỏng/sai hàng; phí nhập lại 0%; hoàn về phương thức gốc. Liên hệ hỗ trợ để mở yêu cầu.
@@ -225,14 +278,14 @@ export function CartPanel() {
           ) : null}
           <button
             className="cs-button mt-6 w-full"
-            disabled={items.length === 0 || busy || Boolean(quoteError)}
+            disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
             onClick={() => checkout("stripe")}
           >
             {submitting === "stripe" ? "Đang chuẩn bị…" : "Thanh toán Stripe (sandbox)"}
           </button>
           <button
             className="cs-button cs-button--secondary mt-3 w-full"
-            disabled={items.length === 0 || busy || Boolean(quoteError)}
+            disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
             onClick={() => checkout("paypal")}
           >
             {submitting === "paypal" ? "Đang chuẩn bị…" : "Thanh toán PayPal (sandbox)"}

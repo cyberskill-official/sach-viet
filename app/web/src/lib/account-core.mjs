@@ -9,6 +9,14 @@ const required = (value, name) => {
   return value.trim();
 };
 
+function normalizeAccountCountry(value) {
+  const country = typeof value === "string" && value.trim() ? value.trim().toUpperCase() : "US";
+  if (country !== "US" && country !== "VN") {
+    throw new Error("Address country must be US or VN under interim DEC-COM-001.");
+  }
+  return country;
+}
+
 function requireUser(user) {
   if (!user?.id) throw new Error("A signed-in customer is required.");
   return user;
@@ -114,7 +122,7 @@ export async function createAddress(store, user, input = {}) {
     city: required(input.city, "City"),
     region: typeof input.region === "string" && input.region.trim() ? input.region.trim() : null,
     postalCode: typeof input.postalCode === "string" && input.postalCode.trim() ? input.postalCode.trim() : null,
-    country: typeof input.country === "string" && input.country.trim() ? input.country.trim() : "US",
+    country: normalizeAccountCountry(input.country),
     createdAt: store.now(),
     updatedAt: store.now(),
   };
