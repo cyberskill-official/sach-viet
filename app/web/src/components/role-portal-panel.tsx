@@ -88,8 +88,8 @@ export function RolePortalPanel({
         );
         setPolicyNote(policy?.policy?.settlement?.message
           || (vi
-            ? "Đối soát / hoa hồng: deferred (DEC-SET) — không tính % tại đây. Sổ chi trả chỉ là dữ liệu vận hành."
-            : "Settlement/commission: deferred (DEC-SET) — no rates computed here. Payout rows are operational ledger only."));
+            ? "Đối soát: DEC-SET interim 15% hoa hồng, reserve 0, weekly, $50, manual/sandbox."
+            : "Settlement: DEC-SET interim 15% commission, reserve 0, weekly, $50, manual/sandbox."));
         setRows([
           ...listItems(offers, ["offers"]).map((item) => ({
             id: String(item.id),
@@ -156,8 +156,8 @@ export function RolePortalPanel({
         setSummary(vi ? "Pipeline báo giá B2B (vận hành)" : "B2B quote pipeline (operational)");
         setPolicyNote(policy?.policy?.b2b?.message
           || (vi
-            ? "Net-N / chiết khấu / hiệu lực báo giá: deferred (DEC-B2B) — không invent điều khoản thanh toán."
-            : "Net-N / discount / quote validity: deferred (DEC-B2B) — no invented payment terms."));
+            ? "B2B: hiệu lực 30 ngày, Net-30, chiết khấu admin tối đa 20% (DEC-B2B interim)."
+            : "B2B: quote validity 30d, Net-30, admin discount max 20% (DEC-B2B interim)."));
         setRows(combined);
       } else if (portal === "institution") {
         const [quotes, orders, budget] = await Promise.all([
@@ -169,8 +169,8 @@ export function RolePortalPanel({
         setSummary(vi ? "Báo giá và đơn tổ chức" : "Institution quotes and orders");
         setPolicyNote(policy?.policy?.b2b?.message
           || (vi
-            ? "Điều khoản thương mại B2B/institution: deferred (DEC-B2B)."
-            : "B2B/institution commercial terms: deferred (DEC-B2B)."));
+            ? "Điều khoản B2B/institution: Net-30 + hiệu lực báo giá 30 ngày (DEC-B2B interim)."
+            : "B2B/institution terms: Net-30 + quote validity 30d (DEC-B2B interim)."));
         if (budgetRow) {
           setFinanceNote(vi
             ? `Ngân sách (informational): ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"))}`
@@ -192,12 +192,12 @@ export function RolePortalPanel({
           : `Requests: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`);
         setPolicyNote(policy?.policy?.royalty?.message
           || (vi
-            ? "Royalty / doanh số / hợp đồng: deferred (DEC-ROY) — không có số liệu tính toán."
-            : "Royalties / sales / contracts: deferred (DEC-ROY) — no computed amounts."));
+            ? "Royalty: DEC-ROY interim 10% author / quý — không advances."
+            : "Royalties: DEC-ROY interim 10% author / quarterly — no advances."));
         if (dash.royalties?.policyPending || dash.sales?.policyPending) {
           setFinanceNote(vi
-            ? "Dashboard tài chính: policyPending — không hiển thị tỷ lệ hoặc số liệu giả."
-            : "Finance dashboard: policyPending — no rates or invented figures shown.");
+            ? "Dashboard: compute preview qua finance policy (DEC-ROY interim)."
+            : "Dashboard: compute preview via finance policy (DEC-ROY interim).");
         }
         setRows([
           ...(Array.isArray(requests.publishingRequests) ? requests.publishingRequests : []).map((item: { id: string; title: string; status: string }) => ({
@@ -220,12 +220,12 @@ export function RolePortalPanel({
         setSummary(vi ? "Bản thảo (vận hành)" : "Manuscripts (operational)");
         setPolicyNote(policy?.policy?.royalty?.message
           || (vi
-            ? "Thu nhập / royalty: deferred (DEC-ROY) — không tính earnings."
-            : "Earnings / royalties: deferred (DEC-ROY) — no earnings computation."));
+            ? "Thu nhập: DEC-ROY interim 10% / quý."
+            : "Earnings: DEC-ROY interim 10% / quarterly."));
         if (dash.earnings?.policyPending || dash.stages?.policyPending) {
           setFinanceNote(vi
-            ? "Earnings & stages: policyPending — không có số liệu tài chính."
-            : "Earnings & stages: policyPending — no financial amounts.");
+            ? "Earnings: dùng finance compute preview (DEC-ROY interim)."
+            : "Earnings: use finance compute preview (DEC-ROY interim).");
         }
         setRows((Array.isArray(body.manuscriptRequests) ? body.manuscriptRequests : []).map((item: { id: string; title: string; status: string }) => ({
           id: item.id,

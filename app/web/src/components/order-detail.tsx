@@ -16,6 +16,7 @@ type Order = {
   totalUsd?: string;
   expiresAt?: number | null;
   returnsPolicy?: string;
+  returnsWindowDays?: number;
   createdAt: number;
   items: Line[];
   timeline: TimelineEvent[];
@@ -98,8 +99,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <p className="text-sm text-muted">
             Interim DEC-COM: USD, thuế = 0, không ship. Thanh toán sandbox only.
             {order.returnsPolicy === "deferred"
-              ? " Đổi trả / hoàn tiền: deferred (DEC-RET) — chưa có cửa sổ tự phục vụ."
-              : ""}
+              ? " Đổi trả / hoàn tiền: deferred (DEC-RET)."
+              : ` Đổi trả: ${order.returnsPolicy || "interim"} — cửa sổ ${order.returnsWindowDays ?? 14} ngày (lỗi/hư hỏng/sai hàng).`}
           </p>
           <div>
             <h2 className="text-xl font-bold">Dòng hàng</h2>

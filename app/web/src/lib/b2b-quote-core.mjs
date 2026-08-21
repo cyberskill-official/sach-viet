@@ -2,6 +2,13 @@ import { randomBytes } from "node:crypto";
 import { beginImmediateWithRetry, isUniqueViolationError, openDatabase, tableExists } from "./db.mjs";
 import { normalizeRole } from "./access.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
+import {
+  B2B_COMMERCIAL_POLICY,
+  DEC_B2B_NET_DAYS,
+  DEC_B2B_QUOTE_VALIDITY_DAYS,
+  applyB2bDiscount,
+  isB2bQuoteExpired,
+} from "./finance-policy-core.mjs";
 
 const QUOTE_STATUSES = Object.freeze(["draft", "sent", "negotiating", "won", "lost"]);
 const TRANSITIONS = Object.freeze({
@@ -69,13 +76,14 @@ async function quoteItems(store, quoteId) {
   `).all(quoteId);
 }
 
-async function publicQuote(store, quote, { blind }) {
+async function publicQuote(store, quote, { blind, now = store.clock() }) {
   const items = (await quoteItems(store, quote.id)).map((item) => ({
     id: item.id,
     productId: item.productId,
     quantity: item.quantity,
     unitPriceUsd: item.unitPriceUsd,
   }));
+  const expired = isB2bQuoteExpired(quote.createdAt, now);
   const payload = {
     id: quote.id,
     organizationId: quote.organizationId,
@@ -84,6 +92,10 @@ async function publicQuote(store, quote, { blind }) {
     createdAt: quote.createdAt,
     updatedAt: quote.updatedAt,
     items,
+    quoteValidityDays: DEC_B2B_QUOTE_VALIDITY_DAYS,
+    netDays: DEC_B2B_NET_DAYS,
+    expired,
+    commercialPolicyVersion: B2B_COMMERCIAL_POLICY.version,
   };
   if (!blind) payload.createdBy = quote.createdBy;
   return payload;
@@ -258,12 +270,43 @@ export async function transitionQuoteStatus(store, actor, input) {
   if (!QUOTE_STATUSES.includes(nextStatus)) throw new Error("Quote status is invalid.");
   const quote = await quoteRow(store, quoteId);
   if (!quote) throw new Error("Quote does not exist.");
+  if (isB2bQuoteExpired(quote.createdAt, store.clock()) && nextStatus === "won") {
+    throw new Error(`DEC-B2B-001: quote expired after ${DEC_B2B_QUOTE_VALIDITY_DAYS} days; re-issue required.`);
+  }
   const allowed = TRANSITIONS[quote.status] || [];
   if (!allowed.includes(nextStatus)) throw new Error(`Cannot transition quote from ${quote.status} to ${nextStatus}.`);
   const updatedAt = store.clock();
   await store.db.prepare("UPDATE b2b_quotes SET status = ?, updated_at = ? WHERE id = ?").run(nextStatus, updatedAt, quoteId);
   store.log("b2b_quote_status_changed", { result: "accepted", quote_id: quoteId, from_status: quote.status, to_status: nextStatus });
   return await publicQuote(store, { ...quote, status: nextStatus, updatedAt }, { blind: false });
+}
+
+/**
+ * Admin-only discount preview using DEC-B2B max 20%.
+ * @param {object} store
+ * @param {{ id: string, role: string }} actor
+ * @param {{ quoteId?: string, discountPercent?: number, subtotalUsd?: string }} input
+ */
+export async function previewQuoteDiscount(store, actor, input = {}) {
+  staffActor(actor);
+  const role = normalizeRole(actor.role);
+  const discountPercent = Number(input?.discountPercent);
+  let subtotalUsd = typeof input?.subtotalUsd === "string" ? input.subtotalUsd : "";
+  if (input?.quoteId) {
+    const quote = await getStaffQuote(store, actor, input.quoteId);
+    if (quote.expired) {
+      throw new Error(`DEC-B2B-001: quote expired after ${DEC_B2B_QUOTE_VALIDITY_DAYS} days; re-issue required.`);
+    }
+    const units = quote.items.reduce((sum, item) => {
+      if (!item.unitPriceUsd) return sum;
+      const [whole, fraction = ""] = String(item.unitPriceUsd).split(".");
+      const line = (BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, "0"))) * BigInt(item.quantity);
+      return sum + line;
+    }, 0n);
+    subtotalUsd = `${units / 10000n}.${String(units % 10000n).padStart(4, "0")}`;
+  }
+  if (!subtotalUsd) throw new Error("Subtotal or quoteId is required.");
+  return applyB2bDiscount(subtotalUsd, discountPercent, { role });
 }
 
 export async function setQuoteItemPrices(store, actor, input) {

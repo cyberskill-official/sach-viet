@@ -53,7 +53,7 @@ test("checkout snapshots an eligible offer and preserves cart add-ons", async ()
   assert.equal(order.shippingUsd, ZERO_MONEY_USD);
   assert.equal(order.totalUsd, "25.0000");
   assert.equal(order.reservationTtlMs, PENDING_ORDER_TTL_MS);
-  assert.equal(order.returnsPolicy, "deferred");
+  assert.equal(order.returnsPolicy, "interim_14d_defects");
   const item = await commerce.db.prepare("SELECT unit_price_usd, quantity, plastic_cover, gift_wrap FROM order_items WHERE order_id = ?").get(order.id);
   assert.equal(item.unit_price_usd, "12.5000");
   assert.equal(item.quantity, 2);
@@ -72,7 +72,7 @@ test("quoteRetailCart returns interim zero tax/shipping without reserving stock"
   assert.equal(quote.totalUsd, "25.0000");
   assert.equal(quote.reservationTtlMs, PENDING_ORDER_TTL_MS);
   assert.equal(quote.policy.paymentsMode, "sandbox");
-  assert.equal(quote.policy.returnsPolicy, "deferred");
+  assert.equal(quote.policy.returnsPolicy, "interim_14d_defects");
   assert.equal(quote.lines.length, 1);
   assert.equal(quote.lines[0].title, "A Book");
   assert.equal(quote.lines[0].stockAvailable, 2);
@@ -90,7 +90,7 @@ test("customer order detail exposes expiresAt and interim totals", async () => w
   assert.equal(detail.taxUsd, ZERO_MONEY_USD);
   assert.equal(detail.shippingUsd, ZERO_MONEY_USD);
   assert.equal(detail.totalUsd, pending.subtotalUsd);
-  assert.equal(detail.returnsPolicy, "deferred");
+  assert.equal(detail.returnsPolicy, "interim_14d_defects");
   const listed = await listCustomerOrders(commerce, user, { limit: 10 });
   assert.equal(listed.items[0].expiresAt, pending.expiresAt);
 }));

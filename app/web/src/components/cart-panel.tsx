@@ -216,7 +216,7 @@ export function CartPanel() {
               : `Interim: thuế = 0, không ship. Giữ hàng ${ttlMinutes} phút sau khi tạo đơn chờ thanh toán (sandbox).`}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Đổi trả / hoàn tiền: chưa mở (DEC-RET deferred). Liên hệ hỗ trợ nếu cần trợ giúp.
+            Đổi trả / hoàn tiền (DEC-RET interim): 14 ngày với lỗi/hư hỏng/sai hàng; phí nhập lại 0%; hoàn về phương thức gốc. Liên hệ hỗ trợ để mở yêu cầu.
           </p>
           {quoteError ? (
             <p role="alert" className="cs-alert cs-alert--danger mt-3">

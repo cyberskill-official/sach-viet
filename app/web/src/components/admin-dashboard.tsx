@@ -144,10 +144,10 @@ function AdminPayoutsPanel() {
     <section id="payouts" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6">
       <div className="flex items-center justify-between gap-3"><h2 className="text-2xl font-bold">Thanh toán đối tác</h2><button className="cs-button cs-button--secondary" onClick={() => void load()}>Làm mới</button></div>
       <div className="cs-alert cs-alert--warning mt-3">
-        <strong>DEC-SET deferred</strong>
-        <p className="mt-1 text-sm">Sổ chi trả dưới đây là dữ liệu vận hành (ledger). Hoa hồng / reserve / cadence chưa được chấp nhận — không tính % settlement tại UI này.</p>
+        <strong>DEC-SET interim (2026-08-21)</strong>
+        <p className="mt-1 text-sm">Hoa hồng 15%, reserve 0, weekly, ngưỡng $50, rail manual/sandbox. Sổ chi trả vẫn nhập amountUsd; xem preview settlement qua policy API.</p>
       </div>
-      <p className="mt-2 text-sm text-muted">Lịch sử hiển thị để đối soát vận hành. Không có máy tính hoa hồng cho đến khi DEC-SET được revise.</p>
+      <p className="mt-2 text-sm text-muted">Ledger vận hành + DEC-SET interim rates. Live ACH / PV3 vẫn bị từ chối.</p>
       {loading ? <div className="cs-skeleton mt-4 h-32 rounded-xl" /> : null}
       {error ? <div className="mt-4"><PanelError message={error} /></div> : null}
       {!loading && !error ? <div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>Nhà bán</th><th>Số tiền</th><th>Dòng đơn hàng</th><th>Thời gian</th></tr></thead><tbody>{payouts.length ? payouts.map((payout) => <tr key={payout.id}><td>{payout.vendorId}</td><td>{formatUsd(payout.amountUsd)}</td><td>{payout.orderItemIds.length}</td><td>{new Date(payout.createdAt).toLocaleString("vi-VN")}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">Chưa có khoản thanh toán.</td></tr>}</tbody></table></div> : null}

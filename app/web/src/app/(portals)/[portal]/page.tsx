@@ -44,15 +44,15 @@ export default async function PortalPage({
   const financeCopy =
     portal === "vendor"
       ? locale === "vi"
-        ? "Đối soát nhà bán / hoa hồng (DEC-SET) đang deferred — cổng chỉ hiển thị đơn, chào bán và sổ chi trả vận hành."
-        : "Vendor settlement/commission (DEC-SET) is deferred — this portal shows offers, orders, and operational payout ledger only."
+        ? "Đối soát nhà bán: DEC-SET interim 15% hoa hồng (manual/sandbox) — sổ chi trả vẫn là ledger vận hành."
+        : "Vendor settlement: DEC-SET interim 15% commission (manual/sandbox) — payout ledger remains operational."
       : portal === "b2b" || portal === "institution"
         ? locale === "vi"
-          ? "Điều khoản Net-N / chiết khấu B2B (DEC-B2B) đang deferred — pipeline và PO vẫn là vận hành."
-          : "B2B Net-N / discount terms (DEC-B2B) are deferred — pipeline and PO flows remain operational only."
+          ? "B2B: hiệu lực báo giá 30 ngày, Net-30, chiết khấu admin tối đa 20% (DEC-B2B interim)."
+          : "B2B: quote validity 30d, Net-30, admin discount max 20% (DEC-B2B interim)."
         : locale === "vi"
-          ? "Royalty / thu nhập (DEC-ROY) đang deferred — không có tỷ lệ hoặc số liệu tính toán tại đây."
-          : "Royalty / earnings (DEC-ROY) are deferred — no rates or computed financial amounts here.";
+          ? "Royalty: DEC-ROY interim 10% author / quý — compute preview qua finance policy."
+          : "Royalty: DEC-ROY interim 10% author / quarterly — compute preview via finance policy.";
 
   return (
     <PortalShell portal={portal} locale={locale} user={user}>
