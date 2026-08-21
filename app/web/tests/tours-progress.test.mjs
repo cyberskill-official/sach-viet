@@ -82,6 +82,14 @@ test("joyride steps localize content and use data-tour targets", () => {
   assert.ok(en[0].content.includes("Welcome") || en[0].content.includes("Sách"));
   assert.notEqual(en[0].content, vi[0].content);
   assert.ok(en[0].target.startsWith("[data-tour="));
+  assert.equal(en[0].skipBeacon, true);
+});
+
+test("pathForTourId returns primary routeHint", async () => {
+  const { pathForTourId } = await import("../src/lib/tours/registry.mjs");
+  assert.equal(pathForTourId("tour.features"), "/features");
+  assert.equal(pathForTourId("tour.storefront"), "/");
+  assert.equal(pathForTourId("tour.account"), "/account");
 });
 
 test("tour title keys resolve in both catalogs", () => {
