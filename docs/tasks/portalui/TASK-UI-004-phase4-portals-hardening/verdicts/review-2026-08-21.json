@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "gate": "review",
+  "from": "reviewing",
+  "to": "ready_to_test",
+  "verdict": "accepted",
+  "actor": {
+    "type": "human",
+    "name": "operator"
+  },
+  "decidedAt": "2026-08-21T04:30:00Z",
+  "reason": "Accepted batch review for Phases 0–4 wave; evidence in docs/ops/hitl-review-acceptance-phases-0-4-2026-08-21.md (implementation on main via PRs #34–#43).",
+  "taskId": "TASK-UI-004"
+}

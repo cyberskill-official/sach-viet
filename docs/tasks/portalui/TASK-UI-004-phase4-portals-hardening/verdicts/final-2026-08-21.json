@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "gate": "final",
+  "from": "testing",
+  "to": "done",
+  "verdict": "accepted",
+  "actor": {
+    "type": "human",
+    "name": "operator"
+  },
+  "decidedAt": "2026-08-21T04:30:00Z",
+  "reason": "Accepted batch final for Phases 0–4 wave; evidence in docs/ops/hitl-final-acceptance-phases-0-4-2026-08-21.md (operator chat accept 2026-08-21; PRs #34–#43 on main).",
+  "taskId": "TASK-UI-004"
+}
