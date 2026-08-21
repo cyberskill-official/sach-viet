@@ -84,8 +84,11 @@ export const messagesEn = Object.freeze({
     inStock: "In stock: {count}",
     outOfStock: "Temporarily out of stock",
     addToCart: "Add to cart",
+    added: "Added",
     loadMore: "Load more",
     loadingMore: "Loading…",
+    shelfCount: "{count} titles on the shelf",
+    shelfWarming: "Warming the shelf…",
   },
   cart: {
     title: "Cart",

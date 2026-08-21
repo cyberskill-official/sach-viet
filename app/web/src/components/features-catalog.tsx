@@ -28,10 +28,10 @@ export function FeaturesCatalog() {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-[color-mix(in_oklab,var(--cs-color-surface-panel)_88%,transparent)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <Link href="/" className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] font-bold text-white">SV</span>
             <strong className="truncate text-lg">{t("common.brand")}</strong>
           </Link>
           <nav className="flex flex-wrap items-center gap-2 text-sm">
@@ -44,23 +44,28 @@ export function FeaturesCatalog() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+      <section className="relative overflow-hidden border-b border-border">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklab,var(--cs-accent)_20%,transparent),transparent_55%)]" />
+        <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
         <p className="cs-eyebrow text-accent-strong">{t("features.eyebrow")}</p>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">{t("features.title")}</h1>
+        <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">{t("features.title")}</h1>
         <p className="mt-4 max-w-2xl text-base text-muted sm:text-lg">{t("features.intro")}</p>
         <div className="mt-4 flex flex-wrap gap-2" data-tour="features-availability">
           {(["available", "restricted", "upcoming"] as const).map((status) => (
             <span key={status} className="cs-badge">{t(availabilityKeys[status])}</span>
           ))}
         </div>
+        </div>
+      </section>
 
-        <div className="mt-12 space-y-12" data-tour="features-categories">
+      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+        <div className="space-y-12" data-tour="features-categories">
           {[...groups.entries()].map(([category, features]) => (
             <section key={category}>
               <h2 className="text-xl font-bold sm:text-2xl">{t(categoryKeys[category] || category)}</h2>
               <ul className="mt-6 grid gap-6 sm:grid-cols-2">
                 {features.map((feature) => (
-                  <li key={feature.id} className="cs-surface-standard rounded-2xl p-5 sm:p-6">
+                  <li key={feature.id} className="cs-surface-standard rounded-2xl p-5 sm:p-6 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_color-mix(in_oklab,var(--cs-accent)_14%,transparent)]">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-bold sm:text-xl">{featureTitle(locale, feature)}</h3>
                       <span className="cs-badge">{t(availabilityKeys[feature.availability] || feature.availability)}</span>
