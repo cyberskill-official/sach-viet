@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
+import { MotionReveal } from "@/components/motion-reveal";
 
 type Product = {
   id: string;
@@ -156,25 +157,25 @@ export function Storefront() {
 
       <section className="relative overflow-hidden border-b border-border">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklab,var(--cs-accent)_28%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklab,var(--cs-accent-strong)_22%,transparent),transparent_50%),linear-gradient(180deg,color-mix(in_oklab,var(--cs-color-surface-page)_70%,#061821),var(--cs-color-surface-page))]" />
-        <div className="cs-aurora-wash pointer-events-none absolute inset-0 opacity-40" />
+        <div className="cs-aurora-wash sv-aurora-live pointer-events-none absolute inset-0 opacity-40" />
         <div className="relative mx-auto grid max-w-7xl gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
           <div>
-            <p className="cs-eyebrow text-accent-strong">{t("storefront.eyebrow")}</p>
-            <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight text-balance sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
-            <form onSubmit={submitSearch} className="cs-surface-heavy mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_color-mix(in_oklab,var(--cs-accent)_18%,transparent)] sm:flex-row" data-tour="storefront-search">
+            <p className="cs-eyebrow sv-motion-fade-up text-accent-strong">{t("storefront.eyebrow")}</p>
+            <h1 className="sv-motion-fade-up sv-motion-delay-1 mt-4 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight text-balance sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
+            <p className="sv-motion-fade-up sv-motion-delay-2 mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
+            <form onSubmit={submitSearch} className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-3 mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_color-mix(in_oklab,var(--cs-accent)_18%,transparent)] sm:flex-row" data-tour="storefront-search">
               <input aria-label={t("storefront.searchLabel")} className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} />
               <button className="cs-button shrink-0" type="submit">{t("storefront.searchSubmit")}</button>
             </form>
-            <div className="mt-6 flex flex-wrap gap-3 text-sm text-muted">
+            <div className="sv-motion-fade-up sv-motion-delay-4 mt-6 flex flex-wrap gap-3 text-sm text-muted">
               <span className="rounded-full border border-border bg-panel/70 px-3 py-1">{products.length ? t("storefront.shelfCount", { count: products.length }) : t("storefront.shelfWarming")}</span>
               <Link className="rounded-full border border-border bg-panel/70 px-3 py-1 text-accent-strong" href="/features">{t("nav.features")}</Link>
             </div>
           </div>
           <div className="relative hidden min-h-80 lg:block" aria-hidden="true">
-            <div className="absolute inset-y-6 left-8 w-[42%] -rotate-6 rounded-[1.4rem] bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] opacity-90 shadow-2xl" />
-            <div className="absolute inset-y-2 left-[28%] w-[46%] rotate-3 rounded-[1.4rem] bg-gradient-to-br from-[#0d4a5c] to-[var(--cs-accent)] shadow-2xl" />
-            <div className="cs-surface-heavy absolute inset-y-0 right-0 flex w-[58%] flex-col justify-end rounded-[2rem] p-8 shadow-[0_30px_80px_color-mix(in_oklab,#000_25%,transparent)]">
+            <div className="sv-float absolute inset-y-6 left-8 w-[42%] rounded-[1.4rem] bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] opacity-90 shadow-2xl" style={{ "--sv-tilt": "-6deg" } as CSSProperties} />
+            <div className="sv-float-slow absolute inset-y-2 left-[28%] w-[46%] rounded-[1.4rem] bg-gradient-to-br from-[#0d4a5c] to-[var(--cs-accent)] shadow-2xl" style={{ "--sv-tilt": "3deg" } as CSSProperties} />
+            <div className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-2 absolute inset-y-0 right-0 flex w-[58%] flex-col justify-end rounded-[2rem] p-8 shadow-[0_30px_80px_color-mix(in_oklab,#000_25%,transparent)]">
               <p className="cs-eyebrow">{t("storefront.tipEyebrow")}</p>
               <p className="mt-3 text-2xl font-bold leading-snug">{t("storefront.tipBody")}</p>
               <Link className="cs-button cs-button--secondary mt-6 w-fit" href="/features">{t("nav.features")}</Link>
@@ -209,9 +210,9 @@ export function Storefront() {
         {!loading && products.length ? (
           <>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product) => (
-                <article key={product.id} className="cs-surface-standard group flex min-h-[26rem] flex-col overflow-hidden rounded-3xl transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_color-mix(in_oklab,var(--cs-accent)_16%,transparent)]">
-                  <div className={`relative mx-4 mt-4 flex h-40 items-end overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white ${coverTone(product.slug)}`}>
+              {products.map((product, index) => (
+                <MotionReveal key={product.id} as="article" delayMs={Math.min(index, 8) * 55} className="cs-surface-standard sv-card-lift group flex min-h-[26rem] flex-col overflow-hidden rounded-3xl">
+                  <div className={`sv-cover-sheen relative mx-4 mt-4 flex h-40 items-end overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white ${coverTone(product.slug)}`}>
                     <div className="absolute inset-y-0 left-0 w-2 bg-black/20" />
                     <div className="relative">
                       <p className="text-xs uppercase tracking-[0.18em] text-white/70">{product.category.name}</p>
@@ -233,12 +234,12 @@ export function Storefront() {
                           </>
                         ) : <span className="cs-badge">{t("storefront.outOfStock")}</span>}
                       </div>
-                      <button className="cs-button" disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
+                      <button className={`cs-button ${addedId === product.id ? "sv-added-pop" : ""}`} disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
                         {addedId === product.id ? t("storefront.added") : t("storefront.addToCart")}
                       </button>
                     </div>
                   </div>
-                </article>
+                </MotionReveal>
               ))}
             </div>
             {hasMore ? (

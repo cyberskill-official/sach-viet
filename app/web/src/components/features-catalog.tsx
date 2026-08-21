@@ -5,6 +5,7 @@ import { featureCatalog, featuresByCategory, featureTitle, featureDescription } 
 import { TOUR_IDS, tourTitleKey } from "@/lib/tours/registry.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
+import { MotionReveal } from "@/components/motion-reveal";
 
 type FeatureItem = (typeof featureCatalog)[number];
 
@@ -46,10 +47,11 @@ export function FeaturesCatalog() {
 
       <section className="relative overflow-hidden border-b border-border">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,color-mix(in_oklab,var(--cs-accent)_20%,transparent),transparent_55%)]" />
+        <div className="cs-aurora-wash sv-aurora-live pointer-events-none absolute inset-0 opacity-30" />
         <div className="relative mx-auto max-w-7xl px-5 py-12 sm:px-8 sm:py-16">
-        <p className="cs-eyebrow text-accent-strong">{t("features.eyebrow")}</p>
-        <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">{t("features.title")}</h1>
-        <p className="mt-4 max-w-2xl text-base text-muted sm:text-lg">{t("features.intro")}</p>
+        <p className="cs-eyebrow sv-motion-fade-up text-accent-strong">{t("features.eyebrow")}</p>
+        <h1 className="sv-motion-fade-up sv-motion-delay-1 mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl">{t("features.title")}</h1>
+        <p className="sv-motion-fade-up sv-motion-delay-2 mt-4 max-w-2xl text-base text-muted sm:text-lg">{t("features.intro")}</p>
         <div className="mt-4 flex flex-wrap gap-2" data-tour="features-availability">
           {(["available", "restricted", "upcoming"] as const).map((status) => (
             <span key={status} className="cs-badge">{t(availabilityKeys[status])}</span>
@@ -64,8 +66,8 @@ export function FeaturesCatalog() {
             <section key={category}>
               <h2 className="text-xl font-bold sm:text-2xl">{t(categoryKeys[category] || category)}</h2>
               <ul className="mt-6 grid gap-6 sm:grid-cols-2">
-                {features.map((feature) => (
-                  <li key={feature.id} className="cs-surface-standard rounded-2xl p-5 sm:p-6 transition hover:-translate-y-0.5 hover:shadow-[0_16px_36px_color-mix(in_oklab,var(--cs-accent)_14%,transparent)]">
+                {features.map((feature, index) => (
+                  <MotionReveal key={feature.id} as="li" delayMs={Math.min(index, 6) * 60} className="cs-surface-standard sv-card-lift rounded-2xl p-5 sm:p-6">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-bold sm:text-xl">{featureTitle(locale, feature)}</h3>
                       <span className="cs-badge">{t(availabilityKeys[feature.availability] || feature.availability)}</span>
@@ -79,7 +81,7 @@ export function FeaturesCatalog() {
                       )}
                       {feature.tourId ? <TourLauncher tourId={feature.tourId} className="cs-button cs-button--secondary" /> : null}
                     </div>
-                  </li>
+                  </MotionReveal>
                 ))}
               </ul>
             </section>
