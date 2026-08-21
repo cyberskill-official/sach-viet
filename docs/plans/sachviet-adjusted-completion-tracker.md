@@ -1,18 +1,20 @@
 # SachViet adjusted completion tracker
 
-**As of:** 2026-08-21  
-**Baseline:** `main` @ `3ade640` (DEC owner defaults) + product unlock PR  
+**As of:** 2026-08-21 (HITL accept Phases 0–4)  
+**Baseline:** `main` @ `3db9d86` (PR [#43](https://github.com/cyberskill-official/sach-viet/pull/43) tax/ship stub)  
 **Stack default:** stay on **Vercel + Supabase** (Production project in use). Keep **custom `sv_session` + public schema** until a dedicated migration package is scheduled — do **not** force Supabase Auth or US-region move in Waves 0–3 unless `DEC-OPS-001` / identity DECs require it.
+
+**HITL (2026-08-21):** Operator accepted **TASK-PLT-002**, **TASK-COM-003**, **TASK-UI-004** → `done`. Evidence: [`docs/ops/hitl-review-acceptance-phases-0-4-2026-08-21.md`](../ops/hitl-review-acceptance-phases-0-4-2026-08-21.md), [`docs/ops/hitl-final-acceptance-phases-0-4-2026-08-21.md`](../ops/hitl-final-acceptance-phases-0-4-2026-08-21.md). Wave 0 CDS Thủy·ocean (PR [#34](https://github.com/cyberskill-official/sach-viet/pull/34), commit id `TASK-UI-003`) already on `main` (no CyberOS task folder). Sandbox PV3 + Production probe evidence: [`docs/ops/sandbox-pv3-and-prod-smoke-2026-08-21.md`](../ops/sandbox-pv3-and-prod-smoke-2026-08-21.md).
 
 **Hard stop update (2026-08-21b):** DEC `interim-owner-defaults-2026-08-21b` on `main` (PR [#42](https://github.com/cyberskill-official/sach-viet/pull/42), `ac55dca`). Unlocks tax/shipping **stub** (`taxEngine: stub`, `$0` lines, US+VN address), sandbox PV3 evidence procedures, Auth/`app` migration **scaffolding**. **Still blocked:** live PV3, tax>0 / physical carriers, US/Auth/`app`/WP **cutovers**, Zalo OA id. See [`docs/ops/dec-accepted-values-owner-defaults-2026-08-21b.md`](../ops/dec-accepted-values-owner-defaults-2026-08-21b.md).
 
 **Blocking prerequisite (updated 2026-08-20):** interim Accepted values are on `main` via PR [#35](https://github.com/cyberskill-official/sach-viet/pull/35) (`5df30cd`). Owner revised 2026-08-21 (#40). **Do not invent rates beyond DEC bodies.** Live keys refused (`DEC-PV3-001`).
 
-**Phase 2 foundations delta (TASK-PLT-002):** Storage registry scaffold + Auth/`app` schema plans + probe fingerprints — see [`docs/ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md), [`docs/ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md), [`docs/ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md). US-region remains deferred.
+**Phase 2 foundations delta (TASK-PLT-002):** **done (HITL).** Storage registry scaffold + Auth/`app` schema plans + probe fingerprints — see [`docs/ops/supabase-storage-scaffolding-2026-08-20.md`](../ops/supabase-storage-scaffolding-2026-08-20.md), [`docs/ops/auth-migration-plan-2026-08-20.md`](../ops/auth-migration-plan-2026-08-20.md), [`docs/ops/app-schema-migration-strategy-2026-08-20.md`](../ops/app-schema-migration-strategy-2026-08-20.md). US-region remains deferred.
 
-**Phase 3 B2C interim (TASK-COM-003):** Server `POST /api/quote` + cart/order UI under DEC-COM interim (USD, tax 0, no shipping, 30m reservation); sandbox payments only; **returns thin policy** from DEC-RET (14d defects). Taxed retail / carriers remain deferred until tax>0 / carrier rates accepted.
+**Phase 3 B2C interim (TASK-COM-003):** **done (HITL).** Server `POST /api/quote` + cart/order UI under DEC-COM interim (USD, tax 0, no shipping, 30m reservation); sandbox payments only; **returns thin policy** from DEC-RET (14d defects); tax/ship stub 21b. Taxed retail / carriers remain deferred until tax>0 / carrier rates accepted.
 
-**Phase 4 portal depth + hardening slice (TASK-UI-004):** Role portals wired to operational APIs under ocean chrome; **finance compute enabled** from DEC-SET/ROY interim rates; B2B Net-30 / 30d quote validity / admin max 20% discount.
+**Phase 4 portal depth + hardening slice (TASK-UI-004):** **done (HITL).** Role portals wired to operational APIs under ocean chrome; **finance compute enabled** from DEC-SET/ROY interim rates; B2B Net-30 / 30d quote validity / admin max 20% discount.
 
 Statuses below mean:
 
@@ -89,11 +91,11 @@ Statuses below mean:
 
 | Phase | Focus | Gate |
 | --- | --- | --- |
-| 0 | CDS Thủy · ocean + auth UI parity | Allowed now (platform UI) |
-| 1 | Fill DEC Accepted values | **Owner defaults on `main` (#40); revisable** |
-| 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **Delta shipped (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
-| 3 | B2C completeness (quote/tax/shipping/reservation, returns) | **Interim + returns thin + tax/ship stub 21b shipped** — tax>0 / physical carriers still blocked |
-| 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | **Operational depth + DEC-backed finance/B2B terms** |
+| 0 | CDS Thủy · ocean + auth UI parity | **Shipped** PR #34 (`TASK-UI-003` commit id; no CyberOS task folder) |
+| 1 | Fill DEC Accepted values | **Owner defaults on `main` (#40/#42); revisable** |
+| 2 | Foundations delta (Storage, Auth migration plan, `app` schema strategy, observability); defer US-region until `DEC-OPS-001` names it | **HITL done (TASK-PLT-002)** — full PKG-08/Auth/`app` cutovers still later packages |
+| 3 | B2C completeness (quote/tax/shipping/reservation, returns) | **HITL done (TASK-COM-003)** — tax>0 / physical carriers still blocked |
+| 4 | Portal API depth (`PKG-30`…`60`) under ocean chrome | **HITL done (TASK-UI-004)** — operational depth + DEC-backed finance/B2B terms |
 | 5 | Finance — settlement then royalties | **Interim compute on `main`**; live rails still out |
 | 6 | Hardening + TC matrix (`PKG-71`…`73`) | **Partial progress doc** — full matrix after interfaces stabilize |
 | 7–9 | Staging / Production evidence / stabilize | Operator checklist shipped; never `sk_live_` until PV3; no auto-deploy |

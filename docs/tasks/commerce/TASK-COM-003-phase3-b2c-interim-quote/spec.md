@@ -6,7 +6,7 @@ type: feature
 module: commerce
 author: "@cursor"
 department: engineering
-status: ready_to_review
+status: done
 entered_via: adjusted_completion
 priority: p0
 created_at: "2026-08-20T10:00:00Z"

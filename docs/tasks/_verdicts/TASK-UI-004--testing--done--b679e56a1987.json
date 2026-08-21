@@ -1,0 +1,11 @@
+{
+  "schema": "cyberos.verdict@1",
+  "actor": "operator",
+  "timestamp": "2026-08-21T04:30:00Z",
+  "task_id": "TASK-UI-004",
+  "from": "testing",
+  "to": "done",
+  "evidence_path": "docs/ops/hitl-final-acceptance-phases-0-4-2026-08-21.md",
+  "evidence_sha256": "b679e56a1987d242c3e9da12fbd2ea4653ed4fceeed33369c4ef22f68a354541",
+  "artifact_sha256": "0c84d44e844e4d98fa3a6a64ddb06a766bc9d9dc793277089dcf3559f463bbd5"
+}
