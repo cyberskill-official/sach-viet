@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { FormEvent, useEffect, useRef, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
@@ -15,6 +15,8 @@ type Product = {
   category: { slug: string; name: string };
   primaryOffer: null | { id: string; priceUsd: string; listPriceUsd?: string | null; stockQuantity: number };
 };
+
+type CategoryOption = { slug: string; name: string };
 
 const COVER_TONES = [
   "from-[color-mix(in_oklab,var(--cs-accent-strong)_88%,#031018)] to-[color-mix(in_oklab,var(--cs-accent)_55%,#0a2a38)]",
@@ -47,40 +49,80 @@ function readCart() {
   catch { return []; }
 }
 
-export function Storefront() {
+function shelfBadgeLabel(loading: boolean, count: number, t: (key: string, vars?: Record<string, string | number>) => string) {
+  if (loading) return t("storefront.shelfWarming");
+  if (count > 0) return t("storefront.shelfCount", { count });
+  return t("storefront.shelfEmpty");
+}
+
+type StorefrontProps = {
+  initialProducts?: Product[];
+  initialCategories?: CategoryOption[];
+  initialHasMore?: boolean;
+};
+
+export function Storefront({
+  initialProducts = [],
+  initialCategories = [],
+  initialHasMore = false,
+}: StorefrontProps) {
   const { locale, setLocale, t } = useLocale();
-  const [products, setProducts] = useState<Product[]>([]);
+  const catalogErrorFallback = useRef("Could not load the catalog.");
+  useEffect(() => {
+    catalogErrorFallback.current = t("storefront.catalogLoadError");
+  }, [t]);
+
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [categories, setCategories] = useState<CategoryOption[]>(initialCategories);
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [category, setCategory] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialProducts.length === 0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const [hasMore, setHasMore] = useState(initialHasMore);
   const [error, setError] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(() => typeof window === "undefined" ? 0 : readCart().reduce((sum, item) => sum + item.quantity, 0));
   const [addedId, setAddedId] = useState("");
   const pageSize = 24;
+  const skipInitialFetch = useRef(initialProducts.length > 0 && !submittedQuery && !category);
 
   useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/catalog/categories", { signal: controller.signal })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || !Array.isArray(body.categories)) return;
+        setCategories(body.categories as CategoryOption[]);
+      })
+      .catch(() => { /* keep SSR / derived categories */ });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false;
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     const params = new URLSearchParams();
     if (submittedQuery) params.set("q", submittedQuery);
     if (category) params.set("category", category);
     params.set("limit", String(pageSize));
+    setLoading(true);
     fetch(`/api/catalog/products?${params}`, { signal: controller.signal })
       .then(async (response) => {
         const body = await response.json();
         const items = catalogItems(body);
-        if (!response.ok) throw new Error(apiMessage(body, t("storefront.catalogLoadError")));
+        if (!response.ok) throw new Error(apiMessage(body, catalogErrorFallback.current));
         setProducts(items);
         setHasMore(Boolean(body.nextCursor) || (!submittedQuery && items.length === pageSize));
       })
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [category, submittedQuery, t]);
-
-  const categories = useMemo(() => [...new Map(products.map((product) => [product.category.slug, product.category])).values()], [products]);
+  }, [category, submittedQuery]);
 
   function submitSearch(event: FormEvent) {
     event.preventDefault();
@@ -117,39 +159,85 @@ export function Storefront() {
       const response = await fetch(`/api/catalog/products?${params}`);
       const body = await response.json();
       const items = catalogItems(body);
-      if (!response.ok) throw new Error(apiMessage(body, t("storefront.catalogLoadError")));
+      if (!response.ok) throw new Error(apiMessage(body, catalogErrorFallback.current));
       setProducts((current) => [...current, ...items]);
       setHasMore(Boolean(body.nextCursor) || items.length === pageSize);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("storefront.catalogLoadError"));
+      setError(reason instanceof Error ? reason.message : catalogErrorFallback.current);
     } finally {
       setLoadingMore(false);
     }
   }
 
+  function toggleLocale() {
+    const next = locale === "en" ? "vi" : "en";
+    setLocale(next);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("lang", next);
+      window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+    } catch { /* ignore */ }
+  }
+
+  const secondaryLinks = [
+    { href: "/account", label: t("nav.account") },
+    { href: "/wishlist", label: t("nav.wishlist") },
+    { href: "/support", label: t("nav.support") },
+    { href: "/ecom/orders", label: t("nav.orders") },
+  ] as const;
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/80 bg-[color-mix(in_oklab,var(--cs-color-surface-panel)_88%,transparent)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
           <Link href="/" className="flex min-w-0 items-center gap-3" data-tour="storefront-brand">
             <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] font-bold text-white shadow-[0_10px_30px_color-mix(in_oklab,var(--cs-accent)_35%,transparent)]">SV</span>
             <span className="min-w-0">
               <strong className="block truncate text-lg tracking-tight">{t("common.brand")}</strong>
-              <small className="text-muted">{t("common.tagline")}</small>
+              <small className="hidden text-muted sm:block">{t("common.tagline")}</small>
             </span>
           </Link>
-          <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm" data-tour="storefront-nav">
-            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
-            <Link className="cs-button cs-button--ghost" href="/account">{t("nav.account")}</Link>
-            <Link className="cs-button cs-button--ghost" href="/wishlist">{t("nav.wishlist")}</Link>
-            <Link className="cs-button cs-button--ghost" href="/support">{t("nav.support")}</Link>
-            <Link className="cs-button cs-button--ghost" href="/ecom/orders">{t("nav.orders")}</Link>
+          <nav className="flex shrink-0 items-center gap-2 text-sm" data-tour="storefront-nav">
+            <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/features">{t("nav.features")}</Link>
+            <div className="relative hidden lg:flex lg:items-center lg:gap-2">
+              {secondaryLinks.map((link) => (
+                <Link key={link.href} className="cs-button cs-button--ghost" href={link.href}>{link.label}</Link>
+              ))}
+            </div>
+            <div className="relative lg:hidden">
+              <button
+                type="button"
+                className="cs-button cs-button--ghost"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                aria-label={t("nav.moreMenu")}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                {t("nav.moreMenu")}
+              </button>
+              {menuOpen ? (
+                <div role="menu" className="cs-surface-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
+                  <Link className="cs-button cs-button--ghost flex w-full justify-start sm:hidden" href="/features" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.features")}</Link>
+                  {secondaryLinks.map((link) => (
+                    <Link key={link.href} className="cs-button cs-button--ghost flex w-full justify-start" href={link.href} role="menuitem" onClick={() => setMenuOpen(false)}>{link.label}</Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
             <Link className="cs-button cs-button--secondary" href="/ecom/cart">{t("nav.cart")} ({cartCount})</Link>
             <TourLauncher tourId="tour.storefront" />
-            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
+            <a
+              className="cs-button cs-button--ghost"
+              href={`?lang=${locale === "en" ? "vi" : "en"}`}
+              aria-label={t("common.language")}
+              onClick={(event) => {
+                event.preventDefault();
+                toggleLocale();
+              }}
+            >
               {locale === "en" ? "VI" : "EN"}
-            </button>
-            <Link className="cs-button cs-button--ghost" href="/register">{t("nav.register")}</Link>
+            </a>
+            <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
             <Link className="cs-button" href="/login">{t("nav.login")}</Link>
           </nav>
         </div>
@@ -168,8 +256,8 @@ export function Storefront() {
               <button className="cs-button shrink-0" type="submit">{t("storefront.searchSubmit")}</button>
             </form>
             <div className="sv-motion-fade-up sv-motion-delay-4 mt-6 flex flex-wrap gap-3 text-sm text-muted">
-              <span className="rounded-full border border-border bg-panel/70 px-3 py-1">{products.length ? t("storefront.shelfCount", { count: products.length }) : t("storefront.shelfWarming")}</span>
-              <Link className="rounded-full border border-border bg-panel/70 px-3 py-1 text-accent-strong" href="/features">{t("nav.features")}</Link>
+              <span className="rounded-full border border-border bg-panel/70 px-3 py-1">{shelfBadgeLabel(loading, products.length, t)}</span>
+              <a className="rounded-full border border-border bg-panel/70 px-3 py-1 text-accent-strong" href="#catalog">{t("storefront.browseCatalog")}</a>
             </div>
           </div>
           <div className="relative hidden min-h-80 lg:block" aria-hidden="true">
@@ -178,13 +266,13 @@ export function Storefront() {
             <div className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-2 absolute inset-y-0 right-0 flex w-[58%] flex-col justify-end rounded-[2rem] p-8 shadow-[0_30px_80px_color-mix(in_oklab,#000_25%,transparent)]">
               <p className="cs-eyebrow">{t("storefront.tipEyebrow")}</p>
               <p className="mt-3 text-2xl font-bold leading-snug">{t("storefront.tipBody")}</p>
-              <Link className="cs-button cs-button--secondary mt-6 w-fit" href="/features">{t("nav.features")}</Link>
+              <Link className="cs-button cs-button--secondary mt-6 w-fit" href="/features">{t("storefront.seePlatformStatus")}</Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
+      <section id="catalog" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-12 sm:px-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="cs-eyebrow text-accent-strong">{t("storefront.catalogEyebrow")}</p>

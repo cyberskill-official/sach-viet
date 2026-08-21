@@ -1,4 +1,4 @@
-import { createCatalogStore, getPublicProduct } from "./catalog-core.mjs";
+import { createCatalogStore, getPublicProduct, listCategories } from "./catalog-core.mjs";
 import {
   API_ERROR_CODES,
   createRequestId,
@@ -7,6 +7,9 @@ import {
   jsonPage,
 } from "./api-contract.mjs";
 import { searchPublicProducts, suggestCatalogQueries } from "./vietnamese-search-core.mjs";
+
+/** Short CDN/browser cache for anonymous catalog reads (audit M3). */
+const PUBLIC_CATALOG_CACHE = "public, s-maxage=30, stale-while-revalidate=120";
 
 function parseLimit(value, fallback = 24) {
   if (value == null || value === "") return fallback;
@@ -26,9 +29,32 @@ export async function handleListPublicProducts(request) {
     const page = await searchPublicProducts(store, { q, category, limit, after });
     return jsonPage(page.items, page.nextCursor, {
       extra: page.timedOut ? { timedOut: true } : undefined,
+      headers: { "Cache-Control": PUBLIC_CATALOG_CACHE },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Catalog is unavailable.";
+    return jsonError(API_ERROR_CODES.internal, message, { status: 500, requestId });
+  } finally {
+    await store.close();
+  }
+}
+
+export async function handleListPublicCategories(request) {
+  const requestId = createRequestId(request);
+  const store = await createCatalogStore();
+  try {
+    const categories = await listCategories(store);
+    return jsonOk(
+      {
+        categories: categories.map((category) => ({
+          slug: category.slug,
+          name: category.name,
+        })),
+      },
+      { headers: { "Cache-Control": PUBLIC_CATALOG_CACHE } },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Categories are unavailable.";
     return jsonError(API_ERROR_CODES.internal, message, { status: 500, requestId });
   } finally {
     await store.close();

@@ -40,6 +40,7 @@ export const messagesVi = Object.freeze({
     login: "Đăng nhập",
     features: "Tính năng",
     home: "Trang chủ",
+    moreMenu: "Thêm",
   },
   auth: {
     signIn: "Đăng nhập",
@@ -89,6 +90,9 @@ export const messagesVi = Object.freeze({
     loadingMore: "Đang tải…",
     shelfCount: "{count} đầu sách trên kệ",
     shelfWarming: "Đang chuẩn bị kệ sách…",
+    shelfEmpty: "Chưa có đầu sách trên kệ",
+    browseCatalog: "Xem danh mục sách",
+    seePlatformStatus: "Xem trạng thái nền tảng",
   },
   cart: {
     title: "Giỏ hàng",

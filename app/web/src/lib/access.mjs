@@ -53,3 +53,17 @@ export function portalForPath(pathname) {
   const segment = pathname.split("/").filter(Boolean)[0];
   return segment && Object.hasOwn(portalRoles, segment) ? segment : null;
 }
+
+/** B2C private pages that must redirect anonymous users to login (audit H4). */
+const privateB2cPrefixes = Object.freeze([
+  "/account",
+  "/wishlist",
+  "/ecom/orders",
+]);
+
+export function requiresAuthPath(pathname) {
+  if (typeof pathname !== "string" || pathname === "") return false;
+  return privateB2cPrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}

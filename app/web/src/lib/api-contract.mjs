@@ -36,18 +36,18 @@ export function jsonError(code, message, { status = 400, requestId, headers } = 
 /**
  * @param {unknown[]} items
  * @param {string | null} [nextCursor]
- * @param {{ status?: number, extra?: Record<string, unknown> }} [options]
+ * @param {{ status?: number, extra?: Record<string, unknown>, headers?: HeadersInit }} [options]
  */
-export function jsonPage(items, nextCursor, { status = 200, extra } = {}) {
-  return Response.json({ items, nextCursor: nextCursor ?? null, ...extra }, { status });
+export function jsonPage(items, nextCursor, { status = 200, extra, headers } = {}) {
+  return Response.json({ items, nextCursor: nextCursor ?? null, ...extra }, { status, headers });
 }
 
 /**
  * @param {Record<string, unknown>} body
- * @param {{ status?: number }} [options]
+ * @param {{ status?: number, headers?: HeadersInit }} [options]
  */
-export function jsonOk(body, { status = 200 } = {}) {
-  return Response.json(body, { status });
+export function jsonOk(body, { status = 200, headers } = {}) {
+  return Response.json(body, { status, headers });
 }
 
 export function errorStatusForMessage(message, fallback = 400) {

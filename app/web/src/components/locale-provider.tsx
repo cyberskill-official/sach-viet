@@ -61,13 +61,22 @@ function queryLangFromLocation(): string | null {
   }
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
+export function LocaleProvider({
+  children,
+  initialLocale,
+}: {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+}) {
   const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === "undefined") return DEFAULT_LOCALE as Locale;
+    if (typeof window === "undefined") {
+      return (initialLocale || DEFAULT_LOCALE) as Locale;
+    }
     return resolveLocale({
       queryLang: queryLangFromLocation(),
       cookieLocale: readCookieLocale(),
       storageLocale: readStorageLocale(),
+      userLocale: initialLocale,
     }) as Locale;
   });
 

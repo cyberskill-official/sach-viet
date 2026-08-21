@@ -1,18 +1,19 @@
 import type { NextConfig } from "next";
-import { createHash } from "node:crypto";
-
-/** Must match the inline theme boot script in `src/app/layout.tsx`. */
-const THEME_INIT_SCRIPT =
-  '(function(){try{var t=localStorage.getItem("sv_theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();';
-const THEME_SCRIPT_SHA256 = createHash("sha256").update(THEME_INIT_SCRIPT).digest("base64");
 
 const isProd = process.env.NODE_ENV === "production";
 
+/**
+ * Interim CSP: `'unsafe-inline'` alone so Next.js App Router RSC flight scripts
+ * (`self.__next_f.push`) can run. Do **not** pair a hash/nonce with `'unsafe-inline'`
+ * — CSP Level 2+ ignores `'unsafe-inline'` when a hash or nonce is present, which
+ * blocked hydration on Production (audit 2026-08-21 C1).
+ *
+ * Theme/locale boot in `src/app/layout.tsx` relies on `'unsafe-inline'` until a
+ * nonce-based CSP middleware is introduced.
+ */
 const contentSecurityPolicy = [
   "default-src 'self'",
-  // 'unsafe-inline' is required for Next.js App Router RSC flight payloads (`self.__next_f`).
-  // The theme boot hash remains so the inline theme script is explicitly allowed.
-  `script-src 'self' 'unsafe-inline' 'sha256-${THEME_SCRIPT_SHA256}'`,
+  "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",

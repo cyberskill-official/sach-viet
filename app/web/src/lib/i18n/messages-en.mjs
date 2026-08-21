@@ -40,6 +40,7 @@ export const messagesEn = Object.freeze({
     login: "Sign in",
     features: "Features",
     home: "Home",
+    moreMenu: "More",
   },
   auth: {
     signIn: "Sign in",
@@ -89,6 +90,9 @@ export const messagesEn = Object.freeze({
     loadingMore: "Loading…",
     shelfCount: "{count} titles on the shelf",
     shelfWarming: "Warming the shelf…",
+    shelfEmpty: "No titles on the shelf yet",
+    browseCatalog: "Browse the catalog",
+    seePlatformStatus: "See platform status",
   },
   cart: {
     title: "Cart",
