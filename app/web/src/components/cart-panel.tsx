@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CART_KEY, formatUsd, normalizeCart, updateCartQuantity } from "@/lib/portal-ui-core.mjs";
+import { useLocale } from "@/components/locale-provider";
 
 type CartItem = {
   vendorOfferId: string;
@@ -52,6 +53,7 @@ function reservationMinutes(ttlMs: number) {
 }
 
 export function CartPanel() {
+  const { locale, t } = useLocale();
   const [items, setItems] = useState<CartItem[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState("");
@@ -98,17 +100,17 @@ export function CartPanel() {
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.quote) {
         setQuote(null);
-        setQuoteError(result?.error ?? "Không thể báo giá từ máy chủ.");
+        setQuoteError(result?.error ?? t("cart.quoteError"));
         return;
       }
       setQuote(result.quote);
     } catch {
       setQuote(null);
-      setQuoteError("Không thể báo giá từ máy chủ.");
+      setQuoteError(t("cart.quoteError"));
     } finally {
       setQuoting(false);
     }
-  }, [carrierId, shipTo]);
+  }, [carrierId, shipTo, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -143,7 +145,7 @@ export function CartPanel() {
         return;
       }
       if (!response.ok || !result?.checkout?.url) {
-        setMessage(result?.error ?? "Thanh toán hiện chưa khả dụng.");
+        setMessage(result?.error ?? t("cart.checkoutError"));
         return;
       }
       window.localStorage.setItem(CART_KEY, "[]");
@@ -159,28 +161,27 @@ export function CartPanel() {
   const shipToReady = Boolean(shipTo.name.trim() && shipTo.line1.trim() && shipTo.city.trim() && shipTo.postal.trim() && (shipTo.country === "US" || shipTo.country === "VN"));
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
+    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12" data-tour="cart-panel">
       <Link className="text-sm text-accent-strong hover:underline" href="/">
-        ← Tiếp tục chọn sách
+        ← {t("cart.continueShopping")}
       </Link>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="cs-eyebrow text-accent-strong">Đơn hàng của bạn</p>
-          <h1 className="mt-2 text-4xl font-extrabold">Giỏ hàng</h1>
-          <p className="mt-2 text-muted">{totalItems} sản phẩm được lưu trên trình duyệt này.</p>
+          <p className="cs-eyebrow text-accent-strong">{t("orders.title")}</p>
+          <h1 className="mt-2 text-4xl font-extrabold">{t("cart.title")}</h1>
+          <p className="mt-2 text-muted">{totalItems}</p>
         </div>
         <Link className="cs-button cs-button--secondary" href="/ecom/orders">
-          Xem đơn hàng
+          {t("nav.orders")}
         </Link>
       </div>
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="space-y-4">
           {items.length === 0 ? (
             <div className="cs-empty-state cs-surface-standard rounded-2xl p-10">
-              <h2>Giỏ hàng đang trống</h2>
-              <p>Chọn một cuốn sách phù hợp để bắt đầu.</p>
+              <h2>{t("cart.empty")}</h2>
               <Link className="cs-button" href="/">
-                Khám phá sách
+                {t("cart.continueShopping")}
               </Link>
             </div>
           ) : (
@@ -192,14 +193,14 @@ export function CartPanel() {
                 <div className="min-w-0">
                   <p className="font-bold">{item.title}</p>
                   <p className="mt-1 text-sm text-muted">
-                    {item.priceUsd ? formatUsd(item.priceUsd) : "Giá được xác nhận khi thanh toán"}
-                    {item.plasticCover ? " · Bọc sách" : ""}
-                    {item.giftWrap ? " · Gói quà" : ""}
+                    {item.priceUsd ? formatUsd(item.priceUsd, locale) : "—"}
+                    {item.plasticCover ? ` · ${t("cart.plasticCover")}` : ""}
+                    {item.giftWrap ? ` · ${t("cart.giftWrap")}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <label className="text-sm text-muted">
-                    Số lượng{" "}
+                    {t("cart.quantity")}{" "}
                     <input
                       className="cs-field__control ml-2 w-20"
                       min="1"
@@ -215,7 +216,7 @@ export function CartPanel() {
                     className="cs-button cs-button--ghost"
                     onClick={() => update(items.filter((entry) => entry.vendorOfferId !== item.vendorOfferId))}
                   >
-                    Xoá
+                    {t("cart.remove")}
                   </button>
                 </div>
               </article>
@@ -223,73 +224,74 @@ export function CartPanel() {
           )}
         </div>
         <aside className="cs-surface-heavy h-fit rounded-2xl p-6">
-          <p className="cs-eyebrow">Địa chỉ giao (US / VN)</p>
+          <p className="cs-eyebrow">{t("cart.shipTo")}</p>
           <div className="mt-3 space-y-2 text-sm">
-            <input className="cs-field__control w-full" placeholder="Họ tên" value={shipTo.name} onChange={(e) => setShipTo((s) => ({ ...s, name: e.target.value }))} />
-            <input className="cs-field__control w-full" placeholder="Địa chỉ dòng 1" value={shipTo.line1} onChange={(e) => setShipTo((s) => ({ ...s, line1: e.target.value }))} />
-            <input className="cs-field__control w-full" placeholder="Địa chỉ dòng 2 (tuỳ chọn)" value={shipTo.line2 ?? ""} onChange={(e) => setShipTo((s) => ({ ...s, line2: e.target.value }))} />
+            <input className="cs-field__control w-full" placeholder={t("cart.name")} value={shipTo.name} onChange={(e) => setShipTo((s) => ({ ...s, name: e.target.value }))} />
+            <input className="cs-field__control w-full" placeholder={t("cart.line1")} value={shipTo.line1} onChange={(e) => setShipTo((s) => ({ ...s, line1: e.target.value }))} />
+            <input className="cs-field__control w-full" placeholder={t("cart.line2")} value={shipTo.line2 ?? ""} onChange={(e) => setShipTo((s) => ({ ...s, line2: e.target.value }))} />
             <div className="grid grid-cols-2 gap-2">
-              <input className="cs-field__control w-full" placeholder="Thành phố" value={shipTo.city} onChange={(e) => setShipTo((s) => ({ ...s, city: e.target.value }))} />
-              <input className="cs-field__control w-full" placeholder="Mã bưu chính" value={shipTo.postal} onChange={(e) => setShipTo((s) => ({ ...s, postal: e.target.value }))} />
+              <input className="cs-field__control w-full" placeholder={t("cart.city")} value={shipTo.city} onChange={(e) => setShipTo((s) => ({ ...s, city: e.target.value }))} />
+              <input className="cs-field__control w-full" placeholder={t("cart.postal")} value={shipTo.postal} onChange={(e) => setShipTo((s) => ({ ...s, postal: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <select className="cs-field__control w-full" value={shipTo.country} onChange={(e) => setShipTo((s) => ({ ...s, country: e.target.value as "US" | "VN" }))}>
+              <select className="cs-field__control w-full" value={shipTo.country} onChange={(e) => setShipTo((s) => ({ ...s, country: e.target.value as "US" | "VN" }))} aria-label={t("cart.country")}>
                 <option value="VN">VN</option>
                 <option value="US">US</option>
               </select>
-              <select className="cs-field__control w-full" value={carrierId} onChange={(e) => setCarrierId(e.target.value as CarrierId)}>
-                <option value="none">Carrier: none ($0)</option>
-                <option value="manual_pickup">manual_pickup ($0)</option>
+              <select className="cs-field__control w-full" value={carrierId} onChange={(e) => setCarrierId(e.target.value as CarrierId)} aria-label={t("cart.carrier")}>
+                <option value="none">{t("cart.carrierNone")}</option>
+                <option value="manual_pickup">{t("cart.carrierPickup")}</option>
               </select>
             </div>
           </div>
-          <p className="cs-eyebrow mt-6">Báo giá máy chủ</p>
-          <p className="mt-2 text-3xl font-extrabold">{formatUsd(displayTotal)}</p>
+          <p className="cs-eyebrow mt-6">{t("cart.total")}</p>
+          <p className="mt-2 text-3xl font-extrabold">{formatUsd(displayTotal, locale)}</p>
           <dl className="mt-4 space-y-1 text-sm text-muted">
             <div className="flex justify-between gap-3">
-              <dt>Tạm tính</dt>
-              <dd>{formatUsd(quote?.subtotalUsd ?? estimatedTotal)}</dd>
+              <dt>{t("cart.subtotal")}</dt>
+              <dd>{formatUsd(quote?.subtotalUsd ?? estimatedTotal, locale)}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Thuế</dt>
-              <dd>{formatUsd(quote?.taxUsd ?? "0")}</dd>
+              <dt>{t("cart.tax")}</dt>
+              <dd>{formatUsd(quote?.taxUsd ?? "0", locale)}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt>Vận chuyển</dt>
-              <dd>{formatUsd(quote?.shippingUsd ?? "0")}</dd>
+              <dt>{t("cart.shipping")}</dt>
+              <dd>{formatUsd(quote?.shippingUsd ?? "0", locale)}</dd>
             </div>
             <div className="flex justify-between gap-3 font-semibold text-foreground">
-              <dt>Tổng (USD)</dt>
-              <dd>{formatUsd(displayTotal)}</dd>
+              <dt>{t("cart.total")}</dt>
+              <dd>{formatUsd(displayTotal, locale)}</dd>
             </div>
           </dl>
           <p className="mt-3 text-sm leading-6 text-muted">
             {quoting
-              ? "Đang xác nhận giá và tồn kho…"
-              : `Interim 21b: taxEngine=stub ($0), flat_rate=$0, carrier=${quote?.carrierId ?? carrierId}. Giữ hàng ${ttlMinutes} phút (sandbox).`}
+              ? t("common.loading")
+              : t("cart.reservationNote", { minutes: ttlMinutes })}
           </p>
-          <p className="mt-2 text-sm leading-6 text-muted">
-            Đổi trả / hoàn tiền (DEC-RET interim): 14 ngày với lỗi/hư hỏng/sai hàng; phí nhập lại 0%; hoàn về phương thức gốc. Liên hệ hỗ trợ để mở yêu cầu.
-          </p>
+          <p className="mt-2 text-sm leading-6 text-muted">{t("cart.policyTaxStub")}</p>
+          <p className="mt-2 text-sm leading-6 text-muted">{t("cart.policyPayments")}</p>
           {quoteError ? (
             <p role="alert" className="cs-alert cs-alert--danger mt-3">
               {quoteError}
             </p>
           ) : null}
-          <button
-            className="cs-button mt-6 w-full"
-            disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
-            onClick={() => checkout("stripe")}
-          >
-            {submitting === "stripe" ? "Đang chuẩn bị…" : "Thanh toán Stripe (sandbox)"}
-          </button>
-          <button
-            className="cs-button cs-button--secondary mt-3 w-full"
-            disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
-            onClick={() => checkout("paypal")}
-          >
-            {submitting === "paypal" ? "Đang chuẩn bị…" : "Thanh toán PayPal (sandbox)"}
-          </button>
+          <div data-tour="cart-checkout">
+            <button
+              className="cs-button mt-6 w-full"
+              disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
+              onClick={() => checkout("stripe")}
+            >
+              {submitting === "stripe" ? t("common.loading") : t("cart.payStripe")}
+            </button>
+            <button
+              className="cs-button cs-button--secondary mt-3 w-full"
+              disabled={items.length === 0 || busy || Boolean(quoteError) || !shipToReady}
+              onClick={() => checkout("paypal")}
+            >
+              {submitting === "paypal" ? t("common.loading") : t("cart.payPaypal")}
+            </button>
+          </div>
           {message ? (
             <p role="alert" className="cs-alert cs-alert--danger mt-4">
               {message}

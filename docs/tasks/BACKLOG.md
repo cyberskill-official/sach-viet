@@ -8,6 +8,10 @@ The `ship-tasks` workflow reads this file, picks the first eligible task (`ready
 
 Lifecycle: draft -> ready_to_implement -> implementing -> ready_to_review -> reviewing -> ready_to_test -> testing -> done. Off-ramps: on_hold, closed. See `.cyberos/cuo/STATUS-REFERENCE.md`.
 
+## ready_to_review
+
+- [ready_to_review] TASK-UI-005-i18n-tours-features - i18n default EN, Joyride tours, Features catalog
+
 ## ready_to_implement
 
 - [done] TASK-COM-002-expire-pending-orders-restore-stock - Expire or fail pending orders and restore reserved stock

@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 export function RegisterForm() {
+  const { t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -20,33 +22,44 @@ export function RegisterForm() {
     });
     const body = await response.json().catch(() => ({}));
     setPending(false);
-    if (!response.ok) return setError(body.error || "Unable to register.");
+    if (!response.ok) return setError(body.error || t("auth.unableRegister"));
     setDone(true);
   }
 
   if (done) {
     return (
-      <p className="cs-alert mt-8" role="status">
-        Check your email for a verification link, then <Link className="underline" href="/login">sign in</Link>.
-      </p>
+      <section className="cs-surface-heavy w-full rounded-2xl p-7">
+        <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
+        <p className="cs-alert mt-8" role="status">
+          {t("auth.checkEmail")}{" "}
+          <Link className="underline" href="/login">{t("auth.signIn")}</Link>
+        </p>
+      </section>
     );
   }
 
   return (
-    <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
-      <label className="cs-field">
-        <span className="cs-field__label">Email</span>
-        <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />
-      </label>
-      <label className="cs-field">
-        <span className="cs-field__label">Password</span>
-        <input required name="password" type="password" minLength={8} autoComplete="new-password" className="cs-field__control w-full" />
-      </label>
-      {error ? <p role="alert" className="cs-alert cs-alert--danger">{error}</p> : null}
-      <button disabled={pending} className="cs-button w-full" type="submit">
-        {pending ? "Creating..." : "Create account"}
-      </button>
-      <p className="text-sm text-muted">Already have an account? <Link className="underline" href="/login">Sign in</Link></p>
-    </form>
+    <section className="cs-surface-heavy w-full rounded-2xl p-7">
+      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
+      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.createAccount")}</h1>
+      <p className="mt-2 text-sm text-muted">Register with email. Verify before signing in. Guest checkout is not available.</p>
+      <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
+        <label className="cs-field">
+          <span className="cs-field__label">{t("common.email")}</span>
+          <input required name="email" type="email" autoComplete="email" className="cs-field__control w-full" />
+        </label>
+        <label className="cs-field">
+          <span className="cs-field__label">{t("common.password")}</span>
+          <input required name="password" type="password" minLength={8} autoComplete="new-password" className="cs-field__control w-full" />
+        </label>
+        {error ? <p role="alert" className="cs-alert cs-alert--danger">{error}</p> : null}
+        <button disabled={pending} className="cs-button w-full" type="submit">
+          {pending ? t("auth.creating") : t("auth.createAccount")}
+        </button>
+        <p className="text-sm text-muted">
+          <Link className="underline" href="/login">{t("auth.signIn")}</Link>
+        </p>
+      </form>
+    </section>
   );
 }

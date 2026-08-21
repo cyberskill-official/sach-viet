@@ -31,7 +31,7 @@ test("commerce routes use signed sessions and Stripe/PayPal checkout + webhooks"
   assert.match(cart, /localStorage/);
   assert.match(cart, /plasticCover/);
   assert.match(cart, /giftWrap/);
-  assert.match(cart, /Thanh toán Stripe/);
-  assert.match(cart, /Thanh toán PayPal/);
+  assert.match(cart, /cart\.payStripe/);
+  assert.match(cart, /cart\.payPaypal/);
   assert.match(cart, /provider/);
 });

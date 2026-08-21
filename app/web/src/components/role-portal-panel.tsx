@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { DataTable } from "@/components/data-table";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
+import { useLocale } from "@/components/locale-provider";
 
 type Row = { id: string; label: string; kind?: "offer" | "order" | "ticket" | "quote" | "request" | "marc" };
 
@@ -63,6 +64,7 @@ export function RolePortalPanel({
   const [offerForm, setOfferForm] = useState({ id: "", productId: "", priceUsd: "", stockQuantity: "1" });
   const [selectedQuote, setSelectedQuote] = useState("");
   const [quoteDetail, setQuoteDetail] = useState<Record<string, unknown> | null>(null);
+  const { t } = useLocale();
   const vi = locale === "vi";
 
   const load = useCallback(async () => {
@@ -82,19 +84,14 @@ export function RolePortalPanel({
         ]);
         const dash = dashboard.dashboard || {};
         setSummary(
-          vi
-            ? `Đơn vào: ${dash.incomingOrderLineCount ?? 0} · Đã trả: ${formatUsd(dash.paidLineTotalUsd || "0")} · Sổ chi trả: ${dash.payoutCount ?? 0}`
-            : `Incoming lines: ${dash.incomingOrderLineCount ?? 0} · Paid: ${formatUsd(dash.paidLineTotalUsd || "0")} · Payout ledger: ${dash.payoutCount ?? 0}`,
+          `${t("portals.incomingLines", { count: dash.incomingOrderLineCount ?? 0 })} · ${t("portals.paid", { amount: formatUsd(dash.paidLineTotalUsd || "0", locale) })} · ${t("portals.payoutLedger", { count: dash.payoutCount ?? 0 })}`,
         );
-        setPolicyNote(policy?.policy?.settlement?.message
-          || (vi
-            ? "Đối soát: DEC-SET interim 15% hoa hồng, reserve 0, weekly, $50, manual/sandbox."
-            : "Settlement: DEC-SET interim 15% commission, reserve 0, weekly, $50, manual/sandbox."));
+        setPolicyNote(policy?.policy?.settlement?.message || t("portals.settlementNote"));
         setRows([
           ...listItems(offers, ["offers"]).map((item) => ({
             id: String(item.id),
             kind: "offer" as const,
-            label: `${item.productTitle || item.productSlug} · ${formatUsd(String(item.priceUsd || "0"))} · ${item.stockQuantity}`,
+            label: `${item.productTitle || item.productSlug} · ${formatUsd(String(item.priceUsd || "0"), locale)} · ${item.stockQuantity}`,
           })),
           ...listItems(orders, ["orders"]).map((item) => ({
             id: String(item.orderItemId || item.orderId),
@@ -105,7 +102,7 @@ export function RolePortalPanel({
         setExtraRows(listItems(payouts, ["payouts"]).map((item) => ({
           id: String(item.id),
           kind: "order" as const,
-          label: `payout · ${formatUsd(String(item.amountUsd || "0"))} · ${Array.isArray(item.orderItemIds) ? item.orderItemIds.length : 0} lines`,
+          label: `payout · ${formatUsd(String(item.amountUsd || "0"), locale)} · ${Array.isArray(item.orderItemIds) ? item.orderItemIds.length : 0} lines`,
         })));
       } else if (portal === "employee") {
         const [dashboard, tickets, sections] = await Promise.all([
@@ -134,7 +131,7 @@ export function RolePortalPanel({
         setRows(listItems(body, ["orders"]).flatMap((item) => {
           const lines = Array.isArray(item.items) ? item.items as Array<{ id: string; title?: string; fulfillmentStatus?: string }> : [];
           if (!lines.length) {
-            return [{ id: String(item.id), kind: "order" as const, label: `${item.id} · ${item.status} · ${formatUsd(String(item.subtotalUsd || "0"))}` }];
+            return [{ id: String(item.id), kind: "order" as const, label: `${item.id} · ${item.status} · ${formatUsd(String(item.subtotalUsd || "0"), locale)}` }];
           }
           return lines.map((line) => ({
             id: String(line.id),
@@ -172,9 +169,7 @@ export function RolePortalPanel({
             ? "Điều khoản B2B/institution: Net-30 + hiệu lực báo giá 30 ngày (DEC-B2B interim)."
             : "B2B/institution terms: Net-30 + quote validity 30d (DEC-B2B interim)."));
         if (budgetRow) {
-          setFinanceNote(vi
-            ? `Ngân sách (informational): ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"))}`
-            : `Budget (informational): ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"))}`);
+          setFinanceNote(`${t("portals.budget")}: ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"), locale)}`);
         }
         setRows([
           ...listItems(quotes, ["quotes"]).map((item) => ({ id: String(item.id), kind: "quote" as const, label: `quote · ${item.status} · ${item.id}` })),
@@ -190,14 +185,9 @@ export function RolePortalPanel({
         setSummary(vi
           ? `Yêu cầu: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`
           : `Requests: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`);
-        setPolicyNote(policy?.policy?.royalty?.message
-          || (vi
-            ? "Royalty: DEC-ROY interim 10% author / quý — không advances."
-            : "Royalties: DEC-ROY interim 10% author / quarterly — no advances."));
+        setPolicyNote(policy?.policy?.royalty?.message || t("portals.royaltyNote"));
         if (dash.royalties?.policyPending || dash.sales?.policyPending) {
-          setFinanceNote(vi
-            ? "Dashboard: compute preview qua finance policy (DEC-ROY interim)."
-            : "Dashboard: compute preview via finance policy (DEC-ROY interim).");
+          setFinanceNote(t("portals.royaltyNote"));
         }
         setRows([
           ...(Array.isArray(requests.publishingRequests) ? requests.publishingRequests : []).map((item: { id: string; title: string; status: string }) => ({
@@ -218,14 +208,9 @@ export function RolePortalPanel({
         ]);
         const dash = dashboard.dashboard || {};
         setSummary(vi ? "Bản thảo (vận hành)" : "Manuscripts (operational)");
-        setPolicyNote(policy?.policy?.royalty?.message
-          || (vi
-            ? "Thu nhập: DEC-ROY interim 10% / quý."
-            : "Earnings: DEC-ROY interim 10% / quarterly."));
+        setPolicyNote(policy?.policy?.royalty?.message || t("portals.royaltyNote"));
         if (dash.earnings?.policyPending || dash.stages?.policyPending) {
-          setFinanceNote(vi
-            ? "Earnings: dùng finance compute preview (DEC-ROY interim)."
-            : "Earnings: use finance compute preview (DEC-ROY interim).");
+          setFinanceNote(t("portals.royaltyNote"));
         }
         setRows((Array.isArray(body.manuscriptRequests) ? body.manuscriptRequests : []).map((item: { id: string; title: string; status: string }) => ({
           id: item.id,
@@ -243,7 +228,7 @@ export function RolePortalPanel({
     } finally {
       setLoading(false);
     }
-  }, [portal, vi]);
+  }, [locale, portal, t, vi]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -405,7 +390,7 @@ export function RolePortalPanel({
     }
   }
 
-  if (loading) return <p className="mt-5 text-sm text-muted">{vi ? "Đang tải…" : "Loading…"}</p>;
+  if (loading) return <p className="mt-5 text-sm text-muted">{t("common.loading")}</p>;
   if (error) return <p className="cs-alert cs-alert--danger mt-5" role="alert">{error}</p>;
   return (
     <div className="mt-5 space-y-6">

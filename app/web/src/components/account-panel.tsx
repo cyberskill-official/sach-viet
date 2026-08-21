@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 type Account = { id: string; email: string; role: string; locale: string; createdAt: number };
 type Address = { id: string; label: string; line1: string; line2?: string | null; city: string; region?: string | null; postalCode?: string | null; country: string };
@@ -25,10 +26,11 @@ async function readJson(url: string, init?: RequestInit) {
 }
 
 export function AccountPanel() {
+  const { setLocale: setAppLocale, t } = useLocale();
   const [account, setAccount] = useState<Account | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [email, setEmail] = useState("");
-  const [locale, setLocale] = useState("vi");
+  const [locale, setLocale] = useState("en");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(true);
@@ -42,10 +44,10 @@ export function AccountPanel() {
         readJson("/api/account"),
         readJson("/api/account/addresses"),
       ]);
-      if (!accountBody.account) throw new Error("Account is unavailable.");
+      if (!accountBody.account) throw new Error(t("account.loadError"));
       setAccount(accountBody.account);
       setEmail(accountBody.account.email);
-      setLocale(accountBody.account.locale || "vi");
+      setLocale(accountBody.account.locale || "en");
       setAddresses(Array.isArray(addressBody.items) ? addressBody.items : []);
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "Unauthenticated.") {
@@ -54,7 +56,7 @@ export function AccountPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -73,7 +75,10 @@ export function AccountPanel() {
         body: JSON.stringify({ email, locale }),
       });
       setAccount(body.account);
-      setNotice("Đã lưu hồ sơ.");
+      if (locale === "en" || locale === "vi") {
+        setAppLocale(locale);
+      }
+      setNotice(t("account.profileSaved"));
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "Unauthenticated.") setError(reason.message);
     } finally {
@@ -98,7 +103,7 @@ export function AccountPanel() {
         }),
       });
       form.reset();
-      setNotice("Đã đổi mật khẩu.");
+      setNotice(t("account.passwordChanged"));
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "Unauthenticated.") setError(reason.message);
     } finally {
@@ -129,7 +134,7 @@ export function AccountPanel() {
       });
       form.reset();
       if (body.address) setAddresses((current) => [body.address, ...current]);
-      setNotice("Đã lưu địa chỉ. Địa chỉ chưa dùng khi báo giá.");
+      setNotice(t("account.addAddress"));
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "Unauthenticated.") setError(reason.message);
     } finally {
@@ -152,53 +157,84 @@ export function AccountPanel() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">← Về cửa hàng</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">Tài khoản</p>
-      <h1 className="mt-2 text-4xl font-extrabold">Hồ sơ và địa chỉ</h1>
-      <p className="mt-2 text-sm text-muted">
-        Địa chỉ được lưu nhưng chưa dùng khi báo giá hoặc thanh toán (interim: không ship, thuế = 0).
-        Đổi trả tự phục vụ: deferred (DEC-RET) — dùng hỗ trợ nếu cần.
-      </p>
+      <Link className="text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
+      <p className="cs-eyebrow mt-8 text-accent-strong">{t("nav.account")}</p>
+      <h1 className="mt-2 text-4xl font-extrabold">{t("account.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
       {notice ? <p className="cs-alert mt-8" role="status">{notice}</p> : null}
 
       {account ? (
         <section className="mt-10 grid gap-8 lg:grid-cols-2">
-          <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void saveProfile(event); }}>
-            <h2 className="text-xl font-bold">Hồ sơ</h2>
-            <label className="grid gap-2 text-sm">Email<input required type="email" className="cs-field__control" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-            <label className="grid gap-2 text-sm">Ngôn ngữ
+          <form
+            className="cs-surface-standard grid gap-3 rounded-2xl p-6"
+            data-tour="account-profile"
+            onSubmit={(event) => { void saveProfile(event); }}
+          >
+            <h2 className="text-xl font-bold">{t("account.title")}</h2>
+            <label className="grid gap-2 text-sm">
+              {t("common.email")}
+              <input required type="email" className="cs-field__control" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            <label className="grid gap-2 text-sm" data-tour="account-locale">
+              {t("account.locale")}
               <select aria-label="Locale" className="cs-field__control" value={locale} onChange={(event) => setLocale(event.target.value)}>
-                <option value="vi">Tiếng Việt</option>
                 <option value="en">English</option>
+                <option value="vi">Tiếng Việt</option>
               </select>
             </label>
-            <p className="text-sm text-muted">Vai trò: {account.role}</p>
-            <button className="cs-button" disabled={busy === "profile"} type="submit">Lưu hồ sơ</button>
+            <p className="text-sm text-muted">{account.role}</p>
+            <button className="cs-button" disabled={busy === "profile"} type="submit">{t("common.save")}</button>
           </form>
           <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void changePassword(event); }}>
-            <h2 className="text-xl font-bold">Đổi mật khẩu</h2>
-            <label className="grid gap-2 text-sm">Mật khẩu hiện tại<input required type="password" name="currentPassword" className="cs-field__control" autoComplete="current-password" /></label>
-            <label className="grid gap-2 text-sm">Mật khẩu mới<input required type="password" name="password" className="cs-field__control" autoComplete="new-password" minLength={8} /></label>
-            <button className="cs-button cs-button--secondary" disabled={busy === "password"} type="submit">Đổi mật khẩu</button>
+            <h2 className="text-xl font-bold">{t("account.changePassword")}</h2>
+            <label className="grid gap-2 text-sm">
+              {t("account.currentPassword")}
+              <input required type="password" name="currentPassword" className="cs-field__control" autoComplete="current-password" />
+            </label>
+            <label className="grid gap-2 text-sm">
+              {t("account.newPassword")}
+              <input required type="password" name="password" className="cs-field__control" autoComplete="new-password" minLength={8} />
+            </label>
+            <button className="cs-button cs-button--secondary" disabled={busy === "password"} type="submit">{t("account.changePassword")}</button>
           </form>
         </section>
       ) : null}
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">Địa chỉ đã lưu</h2>
+        <h2 className="text-2xl font-bold">{t("account.addresses")}</h2>
         <form className="cs-surface-standard mt-4 grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void addAddress(event); }}>
-          <label className="grid gap-2 text-sm">Nhãn<input required name="label" className="cs-field__control" placeholder="Nhà" /></label>
-          <label className="grid gap-2 text-sm">Địa chỉ<input required name="line1" className="cs-field__control" /></label>
-          <label className="grid gap-2 text-sm">Dòng 2<input name="line2" className="cs-field__control" /></label>
+          <label className="grid gap-2 text-sm">
+            {t("account.label")}
+            <input required name="label" className="cs-field__control" />
+          </label>
+          <label className="grid gap-2 text-sm">
+            {t("cart.line1")}
+            <input required name="line1" className="cs-field__control" />
+          </label>
+          <label className="grid gap-2 text-sm">
+            {t("cart.line2")}
+            <input name="line2" className="cs-field__control" />
+          </label>
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-2 text-sm">Thành phố<input required name="city" className="cs-field__control" /></label>
-            <label className="grid gap-2 text-sm">Tỉnh / vùng<input name="region" className="cs-field__control" /></label>
-            <label className="grid gap-2 text-sm">Mã bưu chính<input name="postalCode" className="cs-field__control" /></label>
+            <label className="grid gap-2 text-sm">
+              {t("cart.city")}
+              <input required name="city" className="cs-field__control" />
+            </label>
+            <label className="grid gap-2 text-sm">
+              {t("cart.region")}
+              <input name="region" className="cs-field__control" />
+            </label>
+            <label className="grid gap-2 text-sm">
+              {t("cart.postal")}
+              <input name="postalCode" className="cs-field__control" />
+            </label>
           </div>
-          <label className="grid gap-2 text-sm">Quốc gia<input name="country" className="cs-field__control" defaultValue="US" /></label>
-          <button className="cs-button" disabled={busy === "address"} type="submit">Lưu địa chỉ</button>
+          <label className="grid gap-2 text-sm">
+            {t("cart.country")}
+            <input name="country" className="cs-field__control" defaultValue="US" />
+          </label>
+          <button className="cs-button" disabled={busy === "address"} type="submit">{t("account.addAddress")}</button>
         </form>
         <ul className="mt-4 grid gap-2">
           {addresses.map((address) => (
@@ -207,11 +243,11 @@ export function AccountPanel() {
                 <strong>{address.label}</strong>
                 <p className="mt-1 text-sm text-muted">{address.line1}{address.line2 ? `, ${address.line2}` : ""} · {address.city}</p>
               </div>
-              <button className="cs-button cs-button--secondary" disabled={busy === address.id} type="button" onClick={() => { void removeAddress(address.id); }}>Xóa</button>
+              <button className="cs-button cs-button--secondary" disabled={busy === address.id} type="button" onClick={() => { void removeAddress(address.id); }}>{t("account.deleteAddress")}</button>
             </li>
           ))}
         </ul>
-        {!loading && addresses.length === 0 ? <p className="mt-3 text-muted">Chưa có địa chỉ.</p> : null}
+        {!loading && addresses.length === 0 ? <p className="mt-3 text-muted">{t("account.noAddresses")}</p> : null}
       </section>
     </main>
   );

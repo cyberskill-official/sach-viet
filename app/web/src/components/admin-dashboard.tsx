@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
+import { useLocale } from "@/components/locale-provider";
 
 type Dashboard = { orderCount: number; paidOrderCount: number; paidRevenueUsd: string; recentOrders: Array<{ id: string; status: string; subtotalUsd: string; createdAt: number }> };
 type Application = { id: string; userId: string; status: string; rejectionReason?: string | null; createdAt: number };
@@ -40,9 +41,11 @@ function PanelError({ message }: { message: string }) {
 }
 
 function AdminOverviewPanel() {
+  const { locale, t } = useLocale();
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const dateLocale = locale === "vi" ? "vi-VN" : "en-US";
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -57,17 +60,17 @@ function AdminOverviewPanel() {
       setLoading(false);
     }
   }, []);
-  useEffect(() => { const t = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(t); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
   if (loading) return <div className="cs-skeleton h-40 rounded-2xl" />;
-  if (error) return <section className="space-y-3"><PanelError message={error} /><button className="cs-button cs-button--secondary" onClick={() => void load()}>Thử lại</button></section>;
+  if (error) return <section className="space-y-3"><PanelError message={error} /><button className="cs-button cs-button--secondary" onClick={() => void load()}>{t("portals.tryAgain")}</button></section>;
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-3">
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">Tổng đơn hàng</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.orderCount ?? 0}</p></article>
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">Đã thanh toán</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.paidOrderCount ?? 0}</p></article>
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">Doanh thu đã thu</p><p className="mt-2 text-3xl font-extrabold">{formatUsd(dashboard?.paidRevenueUsd)}</p></article>
+        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.totalOrders")}</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.orderCount ?? 0}</p></article>
+        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.paidOrders")}</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.paidOrderCount ?? 0}</p></article>
+        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.paidRevenue")}</p><p className="mt-2 text-3xl font-extrabold">{formatUsd(dashboard?.paidRevenueUsd, locale)}</p></article>
       </section>
-      <section className="cs-surface-standard rounded-2xl p-6"><h2 className="text-2xl font-bold">Đơn hàng gần đây</h2><div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>Mã đơn</th><th>Trạng thái</th><th>Giá trị</th><th>Thời gian</th></tr></thead><tbody>{dashboard?.recentOrders.length ? dashboard.recentOrders.map((order) => <tr key={order.id}><td>#{order.id.slice(0, 10)}</td><td><span className="cs-badge">{order.status}</span></td><td>{formatUsd(order.subtotalUsd)}</td><td>{new Date(order.createdAt).toLocaleString("vi-VN")}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">Chưa có đơn hàng.</td></tr>}</tbody></table></div></section>
+      <section className="cs-surface-standard rounded-2xl p-6"><h2 className="text-2xl font-bold">{t("portals.recentOrders")}</h2><div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>{t("portals.orderId")}</th><th>{t("portals.status")}</th><th>{t("portals.value")}</th><th>{t("portals.time")}</th></tr></thead><tbody>{dashboard?.recentOrders.length ? dashboard.recentOrders.map((order) => <tr key={order.id}><td>#{order.id.slice(0, 10)}</td><td><span className="cs-badge">{order.status}</span></td><td>{formatUsd(order.subtotalUsd, locale)}</td><td>{new Date(order.createdAt).toLocaleString(dateLocale)}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">{t("portals.noOrders")}</td></tr>}</tbody></table></div></section>
     </>
   );
 }
@@ -341,12 +344,12 @@ function AdminFlagsPanel() {
 }
 
 export function AdminDashboard() {
+  const { t } = useLocale();
   return (
     <div className="space-y-8">
       <section>
-        <p className="cs-eyebrow text-accent-strong">Vận hành thương mại</p>
-        <h1 className="mt-2 text-4xl font-extrabold">Bảng điều hành</h1>
-        <p className="mt-2 text-muted">Catalog, đơn đăng ký, thanh toán đối tác và cờ vận hành tải độc lập — panel lỗi không hiện số 0 giả.</p>
+        <p className="cs-eyebrow text-accent-strong">{t("common.overview")}</p>
+        <h1 className="mt-2 text-4xl font-extrabold">{t("portals.adminTitle")}</h1>
       </section>
       <AdminOverviewPanel />
       <AdminCatalogPanel />
