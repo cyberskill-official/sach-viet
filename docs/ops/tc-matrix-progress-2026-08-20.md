@@ -32,6 +32,10 @@ This is a **progress registry**, not a claim that every completion-plan `TC-*` i
 | `TC-POR-01` | Role portals load operational APIs (orders/offers/tickets/pipeline/requests) | **partial** — UI wired; full browser matrix still open |
 | `TC-POR-02` | Finance banners show deferred without invented % | **partial** — UI + `/api/finance/policy` |
 
+| `TC-COM-21B-01` | Stub taxEngine always `$0.00`; flat_rate `$0`; carrier none/manual_pickup | **covered** (`commerce-stub-21b.test.mjs`) |
+| `TC-COM-21B-02` | Ship-to normalize US+VN required fields | **covered** (`commerce-stub-21b.test.mjs`) |
+| `TC-PV3-SBX-01` | Sandbox PV3 evidence script refuses live env | **covered** (`scripts/sandbox-pv3-evidence.mjs`) |
+
 ## Still open (honest gaps)
 
 | Gap | Blocker |

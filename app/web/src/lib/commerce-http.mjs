@@ -9,8 +9,10 @@ import {
   createSandboxStubCheckout,
   createStripeCheckoutSession,
   normalizeCheckoutProvider,
+  normalizeShipToAddress,
   quoteRetailCart,
   sandboxCheckoutStubEnabled,
+  stubTaxShippingLines,
 } from "./commerce-core.mjs";
 import { commerceMutationsDisabledMessage, commerceMutationsEnabled } from "./commerce-kill-switch.mjs";
 import { isUniqueViolationError } from "./db.mjs";
@@ -34,13 +36,17 @@ function assertProviderConfigured(provider, environment = process.env) {
 }
 
 /**
- * POST /api/quote — server retail quote (USD, tax 0, shipping 0). Read-only; no auth required.
+ * POST /api/quote — server retail quote (USD, taxEngine stub $0, flat_rate $0). Optional shipTo US+VN. Read-only; no auth required.
  */
 export async function handleQuote(request) {
   const body = await request.json().catch(() => null);
   const store = await createCommerceStore();
   try {
-    const quote = await quoteRetailCart(store, body?.items);
+    const quote = await quoteRetailCart(store, body?.items, {
+      shipTo: body?.shipTo,
+      carrierId: body?.carrierId,
+      requireShipTo: body?.requireShipTo === true,
+    });
     return Response.json({ quote }, { status: 200 });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Quote failed.", 400);
@@ -89,7 +95,11 @@ export async function handleCheckout(request, environment = process.env) {
       }
     }
 
+    const shipTo = normalizeShipToAddress(body?.shipTo, { requireAddress: true });
+    stubTaxShippingLines({ carrierId: body?.carrierId });
     const order = await createPendingOrder(store, session.user, body?.items);
+    order.shipTo = shipTo;
+    order.carrierId = typeof body?.carrierId === "string" && body.carrierId.trim() ? body.carrierId.trim().toLowerCase() : "none";
     const checkout =
       provider === "stub"
         ? await createSandboxStubCheckout(store, order.id, environment)

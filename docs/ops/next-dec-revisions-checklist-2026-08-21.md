@@ -1,8 +1,8 @@
 # Next DEC revisions checklist — 2026-08-21
 
-**Verdict:** **Interim owner defaults 2026-08-21b filled** (second pass after #40/#41) — revisable. Unlocks tax/shipping **stub** path, sandbox PV3 evidence procedures, and Auth/`app` migration **scaffolding**. **Live PV3, tax>0/carriers, US/Auth/`app`/WP cutovers, and Zalo OA remain blocked** as documented per-DEC.
+**Verdict:** **Interim owner defaults 2026-08-21b filled** (PR #42 @ `ac55dca`) — revisable. Product unlock ships tax/shipping **stub** + address capture, sandbox PV3 evidence script, Auth/`app` migration **scaffolding**. **Live PV3, tax>0/physical carriers, US/Auth/`app`/WP cutovers, and Zalo OA remain blocked**.
 
-**Baseline:** `main` @ `cbf8b2f` (PR #41 product unlock) · Production `https://sachviet.cyberskill.world`  
+**Baseline:** `main` @ `ac55dca` (PR #42 DEC 21b) · Production `https://sachviet.cyberskill.world`  
 **Tracker:** [`docs/plans/sachviet-adjusted-completion-tracker.md`](../plans/sachviet-adjusted-completion-tracker.md)  
 **21 defaults note:** [`dec-accepted-values-owner-defaults-2026-08-21.md`](dec-accepted-values-owner-defaults-2026-08-21.md)  
 **21b defaults note:** [`dec-accepted-values-owner-defaults-2026-08-21b.md`](dec-accepted-values-owner-defaults-2026-08-21b.md)
