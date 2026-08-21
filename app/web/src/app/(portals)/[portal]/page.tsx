@@ -43,16 +43,10 @@ export default async function PortalPage({
   const financeDeferred = portal === "publisher" || portal === "author" || portal === "vendor" || portal === "b2b" || portal === "institution";
   const financeCopy =
     portal === "vendor"
-      ? locale === "vi"
-        ? "Đối soát nhà bán: DEC-SET interim 15% hoa hồng (manual/sandbox) — sổ chi trả vẫn là ledger vận hành."
-        : "Vendor settlement: DEC-SET interim 15% commission (manual/sandbox) — payout ledger remains operational."
+      ? translate(locale, "portals.vendorSettlementBanner")
       : portal === "b2b" || portal === "institution"
-        ? locale === "vi"
-          ? "B2B: hiệu lực báo giá 30 ngày, Net-30, chiết khấu admin tối đa 20% (DEC-B2B interim)."
-          : "B2B: quote validity 30d, Net-30, admin discount max 20% (DEC-B2B interim)."
-        : locale === "vi"
-          ? "Royalty: DEC-ROY interim 10% author / quý — compute preview qua finance policy."
-          : "Royalty: DEC-ROY interim 10% author / quarterly — compute preview via finance policy.";
+        ? translate(locale, "portals.b2bPolicy")
+        : translate(locale, "portals.royaltyBanner");
 
   return (
     <PortalShell portal={portal} locale={locale} user={user}>
@@ -61,7 +55,7 @@ export default async function PortalPage({
         <h1 className="mt-3 text-3xl font-extrabold">{translate(locale, "overview")}</h1>
         {financeDeferred ? (
           <div className="cs-alert cs-alert--warning mt-5">
-            <strong>{locale === "vi" ? "Chính sách đang chờ quyết định" : "Policy decision pending"}</strong>
+            <strong>{translate(locale, "portals.policyPending")}</strong>
             <p className="mt-1">{financeCopy}</p>
           </div>
         ) : null}

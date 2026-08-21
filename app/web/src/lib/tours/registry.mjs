@@ -24,7 +24,7 @@ const definitions = Object.freeze({
     id: "tour.product_cart",
     routeHints: ["/products", "/ecom/cart"],
     steps: [
-      { target: "[data-tour='product-add-cart']", contentKey: "tours.product_cart_pdp", placement: "left" },
+      { target: "[data-tour='product-add-cart']", contentKey: "tours.product_cart_pdp", placement: "auto" },
       { target: "[data-tour='cart-panel']", contentKey: "tours.product_cart_cart", placement: "top" },
       { target: "[data-tour='cart-checkout']", contentKey: "tours.product_cart_checkout", placement: "top" },
     ],
@@ -41,15 +41,16 @@ const definitions = Object.freeze({
     id: "tour.features",
     routeHints: ["/features"],
     steps: [
-      { target: "[data-tour='features-categories']", contentKey: "tours.features_categories", placement: "bottom" },
+      // Visual order on the page: badges, then category sections.
       { target: "[data-tour='features-availability']", contentKey: "tours.features_availability", placement: "bottom" },
+      { target: "[data-tour='features-categories']", contentKey: "tours.features_categories", placement: "bottom" },
     ],
   },
   "tour.portal_overview": {
     id: "tour.portal_overview",
     routeHints: ["/admin", "/vendor", "/employee", "/retail", "/b2b", "/institution", "/publisher", "/author"],
     steps: [
-      { target: "[data-tour='portal-nav']", contentKey: "tours.portal_overview_nav", placement: "right" },
+      { target: "[data-tour='portal-nav']", contentKey: "tours.portal_overview_nav", placement: "auto" },
       { target: "[data-tour='portal-lang']", contentKey: "tours.portal_overview_lang", placement: "bottom" },
     ],
   },

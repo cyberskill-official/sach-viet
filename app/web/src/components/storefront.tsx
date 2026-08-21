@@ -113,12 +113,12 @@ export function Storefront() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link href="/" className="flex items-center gap-3" data-tour="storefront-brand">
-            <span className="grid size-10 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
-            <span><strong className="block text-lg">{t("common.brand")}</strong><small className="text-muted">{t("common.tagline")}</small></span>
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
+          <Link href="/" className="flex min-w-0 items-center gap-3" data-tour="storefront-brand">
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-accent-strong font-bold text-white">SV</span>
+            <span className="min-w-0"><strong className="block truncate text-lg">{t("common.brand")}</strong><small className="text-muted">{t("common.tagline")}</small></span>
           </Link>
-          <nav className="flex flex-wrap items-center gap-2 text-sm" data-tour="storefront-nav">
+          <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm" data-tour="storefront-nav">
             <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
             <Link className="cs-button cs-button--ghost" href="/account">{t("nav.account")}</Link>
             <Link className="cs-button cs-button--ghost" href="/wishlist">{t("nav.wishlist")}</Link>
@@ -140,11 +140,11 @@ export function Storefront() {
         <div className="relative mx-auto grid max-w-7xl gap-8 px-5 py-16 sm:px-8 lg:grid-cols-[1.2fr_.8fr] lg:py-24">
           <div>
             <p className="cs-eyebrow text-accent-strong">{t("storefront.eyebrow")}</p>
-            <h1 className="mt-4 max-w-3xl text-5xl font-extrabold leading-tight tracking-tight sm:text-6xl">{t("storefront.heroTitle")}</h1>
+            <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
-            <form onSubmit={submitSearch} className="cs-surface-standard mt-8 flex max-w-2xl gap-3 rounded-2xl p-3" data-tour="storefront-search">
+            <form onSubmit={submitSearch} className="cs-surface-standard mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 sm:flex-row" data-tour="storefront-search">
               <input aria-label={t("storefront.searchLabel")} className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} />
-              <button className="cs-button" type="submit">{t("storefront.searchSubmit")}</button>
+              <button className="cs-button shrink-0" type="submit">{t("storefront.searchSubmit")}</button>
             </form>
           </div>
           <div className="cs-surface-heavy hidden min-h-72 rounded-[2rem] p-8 lg:flex lg:flex-col lg:justify-end">

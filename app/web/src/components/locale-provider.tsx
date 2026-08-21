@@ -70,17 +70,6 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
       storageLocale: readStorageLocale(),
     }) as Locale;
   });
-  const [userLocale, setUserLocale] = useState<string | null>(null);
-
-  useEffect(() => {
-    const resolved = resolveLocale({
-      queryLang: queryLangFromLocation(),
-      cookieLocale: readCookieLocale(),
-      storageLocale: readStorageLocale(),
-      userLocale,
-    }) as Locale;
-    setLocaleState(resolved);
-  }, [userLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -96,7 +85,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         const body = await response.json();
         const next = body?.user?.locale;
         if (!cancelled && (next === "en" || next === "vi")) {
-          setUserLocale(next);
+          const resolved = resolveLocale({
+            queryLang: queryLangFromLocation(),
+            cookieLocale: readCookieLocale(),
+            storageLocale: readStorageLocale(),
+            userLocale: next,
+          }) as Locale;
+          setLocaleState(resolved);
           if (!queryLangFromLocation() && !readCookieLocale() && !readStorageLocale()) {
             writePersistedLocale(next);
           }
@@ -115,8 +110,6 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ locale: normalized }),
-      }).then(async (response) => {
-        if (response.ok) setUserLocale(normalized);
       }).catch(() => {});
     }
   }, []);

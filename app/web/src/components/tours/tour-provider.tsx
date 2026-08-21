@@ -140,7 +140,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
           buttons: ["back", "close", "primary", "skip"],
           overlayClickAction: "close",
           skipScroll: prefersReducedMotion(),
-          disableFocusTrap: false,
+          // Keep page usable: do not trap focus behind the spotlight overlay.
+          disableFocusTrap: true,
           primaryColor: "var(--cs-accent, #0e7490)",
           zIndex: 10000,
         }}

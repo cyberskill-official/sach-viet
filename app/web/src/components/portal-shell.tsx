@@ -19,8 +19,13 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
 
   useEffect(() => {
     document.documentElement.lang = locale;
-    if (localeProp === "en" || localeProp === "vi") setLocale(localeProp);
-  }, [locale, localeProp, setLocale]);
+  }, [locale]);
+
+  useEffect(() => {
+    if (localeProp !== "en" && localeProp !== "vi") return;
+    const timer = window.setTimeout(() => setLocale(localeProp), 0);
+    return () => window.clearTimeout(timer);
+  }, [localeProp, setLocale]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -29,13 +34,20 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
 
   return <main className="min-h-screen bg-background text-foreground">
     <header className="sticky top-0 z-40 border-b border-border bg-panel/85 px-5 py-3 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-        <Link href={`/${portal}`} className="flex items-center gap-3 font-bold"><span className="grid size-9 place-items-center rounded-full bg-accent-strong text-sm text-white">SV</span><span>{t("common.brand")} <span className="font-normal text-muted">/ {portal}</span></span></Link>
-        <nav className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link href={`/${portal}`} className="flex min-w-0 items-center gap-3 font-bold"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent-strong text-sm text-white">SV</span><span className="truncate">{t("common.brand")} <span className="font-normal text-muted">/ {portal}</span></span></Link>
+        <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm">
           <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
           {user ? <NotificationCenter locale={locale} /> : null}
           <TourLauncher tourId="tour.portal_overview" />
-          <Link className="cs-button cs-button--ghost" data-tour="portal-lang" href={`/${portal}?lang=${locale === "vi" ? "en" : "vi"}`}>{locale === "vi" ? "EN" : "VI"}</Link>
+          <Link
+            className="cs-button cs-button--ghost"
+            data-tour="portal-lang"
+            aria-label={t("common.language")}
+            href={`/${portal}?lang=${locale === "vi" ? "en" : "vi"}`}
+          >
+            {locale === "vi" ? "EN" : "VI"}
+          </Link>
           <select aria-label={t("common.theme")} value={theme} onChange={(event) => setTheme(event.target.value as typeof theme)} className="cs-field__control">
             {themes.map((item) => <option key={item} value={item}>{item === "light" ? t("common.themeLight") : t("common.themeDark")}</option>)}
           </select>

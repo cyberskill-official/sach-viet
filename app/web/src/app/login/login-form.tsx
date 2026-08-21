@@ -29,7 +29,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     <section className="cs-surface-heavy w-full rounded-2xl p-7">
       <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
       <h1 className="mt-3 text-3xl font-extrabold">{t("auth.signIn")}</h1>
-      <p className="mt-2 text-sm text-muted">Use a verified customer account or an administrator-created role account.</p>
+      <p className="mt-2 text-sm text-muted">{t("auth.signInHint")}</p>
       <form className="mt-8 grid gap-4" method="post" onSubmit={submit}>
         <label className="cs-field">
           <span className="cs-field__label">{t("common.email")}</span>

@@ -65,7 +65,6 @@ export function RolePortalPanel({
   const [selectedQuote, setSelectedQuote] = useState("");
   const [quoteDetail, setQuoteDetail] = useState<Record<string, unknown> | null>(null);
   const { t } = useLocale();
-  const vi = locale === "vi";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -112,9 +111,11 @@ export function RolePortalPanel({
         ]);
         const dash = dashboard.dashboard || {};
         setSummary(
-          vi
-            ? `Đơn: ${dash.orderCount ?? 0} · Ticket: ${dash.openTicketCount ?? 0} · Đơn vendor: ${dash.pendingVendorApplicationCount ?? 0}`
-            : `Orders: ${dash.orderCount ?? 0} · Tickets: ${dash.openTicketCount ?? 0} · Vendor apps: ${dash.pendingVendorApplicationCount ?? 0}`,
+          t("portals.employeeSummary", {
+            orders: dash.orderCount ?? 0,
+            tickets: dash.openTicketCount ?? 0,
+            vendors: dash.pendingVendorApplicationCount ?? 0,
+          }),
         );
         setRows(listItems(tickets, ["tickets"]).map((item) => ({
           id: String(item.id),
@@ -127,7 +128,7 @@ export function RolePortalPanel({
         })));
       } else if (portal === "retail") {
         const body = await readJson("/api/retail/orders");
-        setSummary(vi ? "Đơn bán lẻ đã thanh toán" : "Paid retail orders");
+        setSummary(t("portals.paidRetailOrders"));
         setRows(listItems(body, ["orders"]).flatMap((item) => {
           const lines = Array.isArray(item.items) ? item.items as Array<{ id: string; title?: string; fulfillmentStatus?: string }> : [];
           if (!lines.length) {
@@ -150,11 +151,8 @@ export function RolePortalPanel({
             label: `${status} · ${(item as { id: string }).id}`,
           })),
         );
-        setSummary(vi ? "Pipeline báo giá B2B (vận hành)" : "B2B quote pipeline (operational)");
-        setPolicyNote(policy?.policy?.b2b?.message
-          || (vi
-            ? "B2B: hiệu lực 30 ngày, Net-30, chiết khấu admin tối đa 20% (DEC-B2B interim)."
-            : "B2B: quote validity 30d, Net-30, admin discount max 20% (DEC-B2B interim)."));
+        setSummary(t("portals.b2bPipeline"));
+        setPolicyNote(policy?.policy?.b2b?.message || t("portals.b2bPolicy"));
         setRows(combined);
       } else if (portal === "institution") {
         const [quotes, orders, budget] = await Promise.all([
@@ -163,11 +161,8 @@ export function RolePortalPanel({
           readJson("/api/institution/budget").catch(() => ({ budget: null })),
         ]);
         const budgetRow = budget.budget;
-        setSummary(vi ? "Báo giá và đơn tổ chức" : "Institution quotes and orders");
-        setPolicyNote(policy?.policy?.b2b?.message
-          || (vi
-            ? "Điều khoản B2B/institution: Net-30 + hiệu lực báo giá 30 ngày (DEC-B2B interim)."
-            : "B2B/institution terms: Net-30 + quote validity 30d (DEC-B2B interim)."));
+        setSummary(t("portals.institutionQuotes"));
+        setPolicyNote(policy?.policy?.b2b?.message || t("portals.institutionPolicy"));
         if (budgetRow) {
           setFinanceNote(`${t("portals.budget")}: ${formatUsd(String(budgetRow.amountUsd || budgetRow.limitUsd || "0"), locale)}`);
         }
@@ -182,9 +177,10 @@ export function RolePortalPanel({
           readJson("/api/publisher/dashboard").catch(() => ({ dashboard: null })),
         ]);
         const dash = dashboard.dashboard || {};
-        setSummary(vi
-          ? `Yêu cầu: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`
-          : `Requests: ${Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0} · MARC: ${Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0}`);
+        setSummary(t("portals.publisherSummary", {
+          requests: Array.isArray(requests.publishingRequests) ? requests.publishingRequests.length : 0,
+          marc: Array.isArray(marc.marcRecords) ? marc.marcRecords.length : 0,
+        }));
         setPolicyNote(policy?.policy?.royalty?.message || t("portals.royaltyNote"));
         if (dash.royalties?.policyPending || dash.sales?.policyPending) {
           setFinanceNote(t("portals.royaltyNote"));
@@ -207,7 +203,7 @@ export function RolePortalPanel({
           readJson("/api/author/dashboard").catch(() => ({ dashboard: null })),
         ]);
         const dash = dashboard.dashboard || {};
-        setSummary(vi ? "Bản thảo (vận hành)" : "Manuscripts (operational)");
+        setSummary(t("portals.manuscriptsOps"));
         setPolicyNote(policy?.policy?.royalty?.message || t("portals.royaltyNote"));
         if (dash.earnings?.policyPending || dash.stages?.policyPending) {
           setFinanceNote(t("portals.royaltyNote"));
@@ -218,7 +214,7 @@ export function RolePortalPanel({
           label: `${item.title} · ${item.status}`,
         })));
       } else if (portal === "supplier") {
-        setSummary(vi ? "Cổng nhà cung cấp không còn trên Production UI." : "Supplier portal is retired from Production UI.");
+        setSummary(t("portals.supplierRetired"));
         setRows([]);
       } else {
         setRows([]);
@@ -228,7 +224,7 @@ export function RolePortalPanel({
     } finally {
       setLoading(false);
     }
-  }, [locale, portal, t, vi]);
+  }, [locale, portal, t]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -397,7 +393,7 @@ export function RolePortalPanel({
       {summary ? <p className="text-sm text-muted">{summary}</p> : null}
       {policyNote ? (
         <div className="cs-alert cs-alert--warning" id="finance">
-          <strong>{vi ? "Chính sách tài chính đang chờ DEC" : "Finance policy pending DEC"}</strong>
+          <strong>{t("portals.financePolicyPending")}</strong>
           <p className="mt-1 text-sm">{policyNote}</p>
         </div>
       ) : null}
@@ -405,18 +401,18 @@ export function RolePortalPanel({
 
       {portal === "vendor" ? (
         <form id="offers" className="cs-surface-standard space-y-3 rounded-2xl p-4" onSubmit={(event) => { void saveOffer(event); }}>
-          <h3 className="font-semibold">{vi ? "Tạo / sửa chào bán" : "Create or edit offer"}</h3>
+          <h3 className="font-semibold">{t("portals.createEditOffer")}</h3>
           <input aria-label="Offer ID" className="cs-field__control w-full" placeholder="Offer ID (edit)" value={offerForm.id} onChange={(event) => setOfferForm((current) => ({ ...current, id: event.target.value }))} />
           <input required aria-label="Product ID" className="cs-field__control w-full" placeholder="Product ID" value={offerForm.productId} onChange={(event) => setOfferForm((current) => ({ ...current, productId: event.target.value }))} />
           <input required aria-label="Price USD" className="cs-field__control w-full" placeholder="Price USD" value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />
           <input required aria-label="Stock" className="cs-field__control w-full" placeholder="Stock" value={offerForm.stockQuantity} onChange={(event) => setOfferForm((current) => ({ ...current, stockQuantity: event.target.value }))} />
-          <button disabled={busy === "offer"} className="cs-button" type="submit">{vi ? "Lưu chào bán" : "Save offer"}</button>
+          <button disabled={busy === "offer"} className="cs-button" type="submit">{t("portals.saveOffer")}</button>
         </form>
       ) : null}
 
       {portal === "vendor" || portal === "retail" ? (
         <div id="orders" className="space-y-2">
-          <p className="text-sm text-muted">{vi ? "Ghi chú fulfillment (packing / shipped / delivered) — không phải hợp đồng vận chuyển." : "Fulfillment overlay notes only — not a shipping contract."}</p>
+          <p className="text-sm text-muted">{t("portals.fulfillmentNote")}</p>
           {rows.filter((row) => row.kind === "order").slice(0, 12).map((row) => (
             <div className="flex flex-wrap gap-2" key={`f-${row.id}`}>
               <button className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void markFulfillment(row.id, "packing", portal === "retail" ? "/api/retail/orders" : "/api/vendor/orders")}>packing</button>
@@ -429,10 +425,10 @@ export function RolePortalPanel({
 
       {portal === "employee" ? (
         <div id="tickets" className="space-y-2">
-          <p className="text-sm text-muted">{vi ? "Gán ticket cho chính bạn." : "Assign a ticket to yourself."}</p>
+          <p className="text-sm text-muted">{t("portals.assignTicketHint")}</p>
           {rows.map((row) => (
             <button key={`a-${row.id}`} className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void assignSelected(row.id)}>
-              {vi ? "Gán cho tôi" : "Assign to me"} · {row.id.slice(0, 8)}
+              {t("portals.assignToMe")} · {row.id.slice(0, 8)}
             </button>
           ))}
         </div>
@@ -440,14 +436,14 @@ export function RolePortalPanel({
 
       {portal === "employee" && extraRows.length ? (
         <div id="home" className="space-y-2">
-          <h3 className="font-semibold">{vi ? "Cấu hình trang chủ (đọc)" : "Home sections (read)"}</h3>
+          <h3 className="font-semibold">{t("portals.homeSectionsRead")}</h3>
           <DataTable labels={{ empty: emptyLabel, previous: previousLabel, next: nextLabel }} rows={extraRows} />
         </div>
       ) : null}
 
       {portal === "vendor" && extraRows.length ? (
         <div id="payouts" className="space-y-2">
-          <h3 className="font-semibold">{vi ? "Sổ chi trả (vận hành, không phải settlement DEC-SET)" : "Payout ledger (operational, not DEC-SET settlement)"}</h3>
+          <h3 className="font-semibold">{t("portals.payoutLedgerOps")}</h3>
           <DataTable labels={{ empty: emptyLabel, previous: previousLabel, next: nextLabel }} rows={extraRows} />
         </div>
       ) : null}
@@ -455,37 +451,37 @@ export function RolePortalPanel({
       {portal === "b2b" ? (
         <div id="pipeline" className="space-y-3">
           <label className="block text-sm">
-            {vi ? "Chi tiết báo giá" : "Quote detail"}
+            {t("portals.quoteDetail")}
             <select aria-label="Quote" className="cs-field__control mt-1 w-full" value={selectedQuote} onChange={(event) => { void loadQuote(event.target.value); }}>
-              <option value="">{vi ? "Chọn báo giá" : "Select quote"}</option>
+              <option value="">{t("portals.selectQuote")}</option>
               {rows.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}
             </select>
           </label>
           {quoteDetail ? <pre className="overflow-auto rounded-xl border border-border p-3 text-xs">{JSON.stringify(quoteDetail, null, 2)}</pre> : null}
-          <button className="cs-button" disabled={!selectedQuote || busy === "convert"} onClick={() => void convertQuote()}>{vi ? "Chuyển thành đơn" : "Convert to order"}</button>
+          <button className="cs-button" disabled={!selectedQuote || busy === "convert"} onClick={() => void convertQuote()}>{t("portals.convertToOrder")}</button>
         </div>
       ) : null}
 
       {portal === "institution" ? (
         <form id="orders" className="space-y-3" onSubmit={(event) => { void uploadPo(event); }}>
-          <h3 className="font-semibold">{vi ? "Tải PO (stored_objects)" : "Upload PO (stored_objects)"}</h3>
+          <h3 className="font-semibold">{t("portals.uploadPo")}</h3>
           <input required aria-label="Order ID" name="orderId" className="cs-field__control w-full" placeholder="Order ID" />
           <input required aria-label="PO reference" name="referenceNumber" className="cs-field__control w-full" placeholder="PO-1001" />
           <input required aria-label="PO file" name="po" type="file" className="cs-field__control w-full" />
-          <button disabled={busy === "po"} className="cs-button" type="submit">{vi ? "Gửi PO" : "Submit PO"}</button>
+          <button disabled={busy === "po"} className="cs-button" type="submit">{t("portals.submitPo")}</button>
         </form>
       ) : null}
 
       {portal === "publisher" || portal === "author" ? (
         <div id="requests" className="space-y-3">
           <form className="space-y-3" onSubmit={(event) => { void createPublisherRequest(event); }}>
-            <input required aria-label="Title" name="title" className="cs-field__control w-full" placeholder={vi ? "Tiêu đề" : "Title"} />
+            <input required aria-label="Title" name="title" className="cs-field__control w-full" placeholder={t("portals.titlePlaceholder")} />
             <input required aria-label="Asset" name="asset" type="file" className="cs-field__control w-full" />
-            <button disabled={busy === "request"} className="cs-button" type="submit">{vi ? "Gửi yêu cầu" : "Submit request"}</button>
+            <button disabled={busy === "request"} className="cs-button" type="submit">{t("portals.submitRequest")}</button>
           </form>
           {rows.filter((row) => !row.label.startsWith("MARC")).map((row) => (
             <button key={`w-${row.id}`} className="cs-button cs-button--secondary" disabled={busy === row.id} onClick={() => void withdrawRequest(row.id)}>
-              {vi ? "Rút" : "Withdraw"} · {row.label}
+              {t("portals.withdraw")} · {row.label}
             </button>
           ))}
         </div>

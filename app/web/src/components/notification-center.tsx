@@ -15,7 +15,7 @@ export function NotificationCenter({ locale: localeProp }: { locale: string }) {
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState("");
   const failures = useRef(0);
-  const label = locale === "vi" ? "Thông báo" : "Notifications";
+  const label = t("common.notifications");
 
   useEffect(() => {
     let source: EventSource | null = null;
@@ -42,7 +42,7 @@ export function NotificationCenter({ locale: localeProp }: { locale: string }) {
           failures.current += 1;
           if (failures.current >= 5) {
             source?.close();
-            setError(locale === "vi" ? "Cập nhật trực tiếp đang tạm dừng." : "Live updates are paused.");
+            setError(t("portals.liveUpdatesPaused"));
           }
         };
       })
@@ -53,7 +53,7 @@ export function NotificationCenter({ locale: localeProp }: { locale: string }) {
   async function markRead(notification: Notification) {
     if (notification.isRead) return;
     const response = await fetch(`/api/notifications/${encodeURIComponent(notification.id)}/read`, { method: "POST" });
-    if (!response.ok) { setError(locale === "vi" ? "Chưa thể đánh dấu đã đọc." : "Could not mark as read."); return; }
+    if (!response.ok) { setError(t("portals.markReadFailed")); return; }
     setItems((current) => current.map((item) => item.id === notification.id ? { ...item, isRead: true } : item));
     setUnread((value) => Math.max(0, value - 1));
   }
@@ -64,7 +64,10 @@ export function NotificationCenter({ locale: localeProp }: { locale: string }) {
         <span aria-hidden="true">{label}</span>{unread > 0 ? <span className="ml-2 rounded-full bg-accent-strong px-2 py-0.5 text-xs text-white">{unread > 99 ? "99+" : unread}</span> : null}
       </button>
       {open ? <section className="cs-surface-heavy absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-2xl p-4 shadow-xl">
-        <div className="flex items-center justify-between"><h2 className="font-bold">{label}</h2><button className="cs-button cs-button--ghost" onClick={() => setOpen(false)}>×</button></div>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="font-bold">{label}</h2>
+          <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.close")} onClick={() => setOpen(false)}>×</button>
+        </div>
         {error ? <p className="cs-alert cs-alert--warning mt-3 text-sm" role="status">{error}</p> : null}
         <div className="mt-3 max-h-96 space-y-2 overflow-auto">
           {items.length === 0 ? <p className="py-8 text-center text-sm text-muted">{t("common.empty")}</p> : items.map((item) => (
