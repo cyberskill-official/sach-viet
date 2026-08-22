@@ -29,6 +29,8 @@ export const messagesEn = Object.freeze({
     refresh: "Refresh",
     notifications: "Notifications",
     close: "Close",
+    showNavigation: "Show navigation",
+    hideNavigation: "Hide navigation",
   },
   nav: {
     account: "Account",
@@ -61,6 +63,8 @@ export const messagesEn = Object.freeze({
     passwordUpdated: "Password updated. You can sign in.",
     signInHint: "Use a verified customer account or an administrator-created role account.",
     registerHint: "Register with email. Verify before signing in. Guest checkout is not available.",
+    forgotHint: "If the email exists, a reset link is issued. The response does not disclose whether the account is present.",
+    passwordHint: "Use at least 8 characters.",
     accessDenied: "Access denied",
     accessDeniedBody: "Your account does not have access to this portal.",
     backToStorefront: "Back to storefront",

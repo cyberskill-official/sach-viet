@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useRef, useState, type CSSProperties } from "react";
+import { FormEvent, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
@@ -86,6 +86,8 @@ export function Storefront({
   const [addedId, setAddedId] = useState("");
   const pageSize = 24;
   const skipInitialFetch = useRef(initialProducts.length > 0 && !submittedQuery && !category);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const searchFieldId = useId();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,6 +100,22 @@ export function Storefront({
       .catch(() => { /* keep SSR / derived categories */ });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+    function onPointerDown(event: MouseEvent | PointerEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (skipInitialFetch.current) {
@@ -190,33 +208,34 @@ export function Storefront({
     <main className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border/80 bg-[color-mix(in_oklab,var(--cs-color-surface-panel)_88%,transparent)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3" data-tour="storefront-brand">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] font-bold text-white shadow-[0_10px_30px_color-mix(in_oklab,var(--cs-accent)_35%,transparent)]">SV</span>
+          <Link href="/" className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-color-accent-ochre,#f4ba17)]" data-tour="storefront-brand">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] font-bold text-white shadow-[0_10px_30px_color-mix(in_oklab,var(--cs-accent)_35%,transparent)]" aria-hidden="true">SV</span>
             <span className="min-w-0">
               <strong className="block truncate text-lg tracking-tight">{t("common.brand")}</strong>
               <small className="hidden text-muted sm:block">{t("common.tagline")}</small>
             </span>
           </Link>
-          <nav className="flex shrink-0 items-center gap-2 text-sm" data-tour="storefront-nav">
+          <nav className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-2" data-tour="storefront-nav">
             <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/features">{t("nav.features")}</Link>
-            <div className="relative hidden lg:flex lg:items-center lg:gap-2">
+            <div className="relative hidden lg:flex lg:items-center lg:gap-1.5">
               {secondaryLinks.map((link) => (
                 <Link key={link.href} className="cs-button cs-button--ghost" href={link.href}>{link.label}</Link>
               ))}
             </div>
-            <div className="relative lg:hidden">
+            <div className="relative lg:hidden" ref={menuRef}>
               <button
                 type="button"
                 className="cs-button cs-button--ghost"
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
+                aria-controls="storefront-more-menu"
                 aria-label={t("nav.moreMenu")}
                 onClick={() => setMenuOpen((open) => !open)}
               >
                 {t("nav.moreMenu")}
               </button>
               {menuOpen ? (
-                <div role="menu" className="cs-surface-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
+                <div id="storefront-more-menu" role="menu" className="cs-surface-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
                   <Link className="cs-button cs-button--ghost flex w-full justify-start sm:hidden" href="/features" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.features")}</Link>
                   {secondaryLinks.map((link) => (
                     <Link key={link.href} className="cs-button cs-button--ghost flex w-full justify-start" href={link.href} role="menuitem" onClick={() => setMenuOpen(false)}>{link.label}</Link>
@@ -251,13 +270,16 @@ export function Storefront({
             <p className="cs-eyebrow sv-motion-fade-up text-accent-strong">{t("storefront.eyebrow")}</p>
             <h1 className="sv-motion-fade-up sv-motion-delay-1 mt-4 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight text-balance sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
             <p className="sv-motion-fade-up sv-motion-delay-2 mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
-            <form onSubmit={submitSearch} className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-3 mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_color-mix(in_oklab,var(--cs-accent)_18%,transparent)] sm:flex-row" data-tour="storefront-search">
-              <input aria-label={t("storefront.searchLabel")} className="cs-field__control min-w-0 flex-1" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} />
-              <button className="cs-button shrink-0" type="submit">{t("storefront.searchSubmit")}</button>
+            <form onSubmit={submitSearch} className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-3 mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_color-mix(in_oklab,var(--cs-accent)_18%,transparent)] sm:flex-row sm:items-end" data-tour="storefront-search">
+              <div className="cs-field min-w-0 flex-1">
+                <label className="cs-field__label" htmlFor={searchFieldId}>{t("storefront.searchLabel")}</label>
+                <input id={searchFieldId} className="cs-field__control w-full" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} autoComplete="off" enterKeyHint="search" />
+              </div>
+              <button className="cs-button shrink-0 sm:mb-0.5" type="submit">{t("storefront.searchSubmit")}</button>
             </form>
             <div className="sv-motion-fade-up sv-motion-delay-4 mt-6 flex flex-wrap gap-3 text-sm text-muted">
-              <span className="rounded-full border border-border bg-panel/70 px-3 py-1">{shelfBadgeLabel(loading, products.length, t)}</span>
-              <a className="rounded-full border border-border bg-panel/70 px-3 py-1 text-accent-strong" href="#catalog">{t("storefront.browseCatalog")}</a>
+              <span className="inline-flex min-h-9 items-center rounded-full border border-border bg-panel/70 px-3 py-1" aria-live="polite">{shelfBadgeLabel(loading, products.length, t)}</span>
+              <a className="sv-chip-link" href="#catalog">{t("storefront.browseCatalog")}</a>
             </div>
           </div>
           <div className="relative hidden min-h-80 lg:block" aria-hidden="true">
@@ -284,14 +306,14 @@ export function Storefront({
           </select>
         </div>
 
-        {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="cs-skeleton h-96 rounded-3xl" />)}</div> : null}
-        {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert">{error}<button className="ml-3 underline" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>{t("common.retry")}</button></div> : null}
+        {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-live="polite">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="cs-skeleton h-96 rounded-3xl" aria-hidden="true" />)}</div> : null}
+        {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert" tabIndex={-1}>{error}<button type="button" className="sv-text-link ml-3" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>{t("common.retry")}</button></div> : null}
         {!loading && !error && products.length === 0 ? (
           <div className="cs-surface-standard mt-8 overflow-hidden rounded-3xl">
             <div className="border-b border-border bg-[radial-gradient(circle_at_top,color-mix(in_oklab,var(--cs-accent)_22%,transparent),transparent_60%)] px-6 py-10 sm:px-10">
               <h3 className="text-2xl font-bold">{t("storefront.emptyTitle")}</h3>
               <p className="mt-3 max-w-xl text-muted">{t("storefront.emptyBody")}</p>
-              <button className="cs-button cs-button--secondary mt-6" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>{t("storefront.viewAll")}</button>
+              <button type="button" className="cs-button cs-button--secondary mt-6" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>{t("storefront.viewAll")}</button>
             </div>
           </div>
         ) : null}
@@ -309,10 +331,10 @@ export function Storefront({
                   </div>
                   <div className="flex flex-1 flex-col p-6 pt-5">
                     <h3 className="text-xl font-bold leading-snug">
-                      <Link className="hover:text-accent-strong" href={`/products/${product.slug}`}>{product.title}</Link>
+                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-color-accent-ochre,#f4ba17)]" href={`/products/${product.slug}`}>{product.title}</Link>
                     </h3>
                     <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{product.description}</p>
-                    <div className="mt-auto flex items-end justify-between gap-3 pt-6">
+                    <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">
                       <div>
                         {product.primaryOffer ? (
                           <>
@@ -322,7 +344,7 @@ export function Storefront({
                           </>
                         ) : <span className="cs-badge">{t("storefront.outOfStock")}</span>}
                       </div>
-                      <button className={`cs-button ${addedId === product.id ? "sv-added-pop" : ""}`} disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
+                      <button type="button" className={`cs-button shrink-0 ${addedId === product.id ? "sv-added-pop" : ""}`} disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
                         {addedId === product.id ? t("storefront.added") : t("storefront.addToCart")}
                       </button>
                     </div>
