@@ -151,8 +151,13 @@ export async function resetAuthStoreForTests() {
 }
 
 export async function bootstrapFirstAdmin(store, environment = process.env) {
-  const email = normalizeEmail(environment.BOOTSTRAP_ADMIN_EMAIL);
-  const passwordHash = environment.BOOTSTRAP_ADMIN_PASSWORD_HASH;
+  const email = normalizeEmail(environment.ADMIN_EMAIL || environment.BOOTSTRAP_ADMIN_EMAIL);
+  let passwordHash = null;
+  if (environment.ADMIN_PASSWORD) {
+    passwordHash = hashPassword(environment.ADMIN_PASSWORD);
+  } else if (environment.BOOTSTRAP_ADMIN_PASSWORD_HASH) {
+    passwordHash = environment.BOOTSTRAP_ADMIN_PASSWORD_HASH;
+  }
   const sessionSecret = environment.AUTH_SESSION_SECRET;
   if (!email || !passwordHash || !sessionSecret) return { created: false, reason: "not_configured" };
   requireSessionSecret(sessionSecret);

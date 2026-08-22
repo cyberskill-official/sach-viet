@@ -4,7 +4,8 @@
  *
  * Usage:
  *   BASE_URL=https://<production-host> npm run smoke:production
- *   BASE_URL=… BOOTSTRAP_ADMIN_EMAIL=… BOOTSTRAP_ADMIN_PASSWORD=… npm run smoke:production
+ *   BASE_URL=… ADMIN_EMAIL=… ADMIN_PASSWORD=… npm run smoke:production
+ *   (falls back to BOOTSTRAP_ADMIN_* or SMOKE_ADMIN_*)
  *
  * Optional: VERCEL_PROTECTION_BYPASS=<secret> for Deployment Protection.
  * Does not invent catalog seed data. Unpaid checkout is the commerce proof (Stripe deferred).
@@ -192,7 +193,7 @@ export async function runProductionSmoke(options) {
         id: "admin-login",
         ok: false,
         detail:
-          "Skipped — set BOOTSTRAP_ADMIN_EMAIL + BOOTSTRAP_ADMIN_PASSWORD (or SMOKE_*) to verify login",
+          "Skipped — set ADMIN_EMAIL + ADMIN_PASSWORD (or BOOTSTRAP_*/SMOKE_*) to verify login",
       },
       log,
     );
@@ -222,8 +223,16 @@ export async function runProductionSmoke(options) {
 async function main() {
   const outcome = await runProductionSmoke({
     baseUrl: process.env.BASE_URL || "",
-    adminEmail: process.env.BOOTSTRAP_ADMIN_EMAIL || process.env.SMOKE_ADMIN_EMAIL || "",
-    adminPassword: process.env.BOOTSTRAP_ADMIN_PASSWORD || process.env.SMOKE_ADMIN_PASSWORD || "",
+    adminEmail:
+      process.env.ADMIN_EMAIL ||
+      process.env.BOOTSTRAP_ADMIN_EMAIL ||
+      process.env.SMOKE_ADMIN_EMAIL ||
+      "",
+    adminPassword:
+      process.env.ADMIN_PASSWORD ||
+      process.env.BOOTSTRAP_ADMIN_PASSWORD ||
+      process.env.SMOKE_ADMIN_PASSWORD ||
+      "",
     bypass: process.env.VERCEL_PROTECTION_BYPASS || "",
   });
   if (outcome.error) {
