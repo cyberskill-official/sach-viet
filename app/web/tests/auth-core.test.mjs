@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { canAccessOwnedRecord, canAccessPortal, normalizeRole } from "../src/lib/access.mjs";
-import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, getIdentitySnapshot, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, syncAdminPasswordFromEnv, verifyPassword } from "../src/lib/auth-core.mjs";
+import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, getIdentitySnapshot, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, syncAdminEmailFromEnv, syncAdminPasswordFromEnv, verifyPassword } from "../src/lib/auth-core.mjs";
 
 const sessionSecret = "a-session-secret-that-is-long-enough-for-the-test-suite";
 
@@ -113,6 +113,56 @@ test("bootstrap returns users_exist without changing an existing admin", async (
     assert.equal(after.email, before.email);
     assert.equal(after.password_hash, before.password_hash);
     assert.equal((await testStore.store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count, 1);
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("syncAdminEmailFromEnv is disabled unless ADMIN_EMAIL_SYNC=1", async () => {
+  const testStore = await fixture();
+  try {
+    await bootstrap(testStore.store);
+    assert.deepEqual(await syncAdminEmailFromEnv(testStore.store, {}), { synced: false, reason: "disabled" });
+    assert.deepEqual(
+      await syncAdminEmailFromEnv(testStore.store, {
+        ADMIN_EMAIL_SYNC: "1",
+        ADMIN_EMAIL: "admin@sachviet.us",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { synced: true, reason: "updated" },
+    );
+    const row = await testStore.store.db.prepare("SELECT email FROM users").get();
+    assert.equal(row.email, "admin@sachviet.us");
+    assert.deepEqual(
+      await syncAdminEmailFromEnv(testStore.store, {
+        ADMIN_EMAIL_SYNC: "1",
+        ADMIN_EMAIL: "admin@sachviet.us",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { synced: false, reason: "already_current" },
+    );
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("syncAdminEmailFromEnv refuses when target email belongs to another user", async () => {
+  const testStore = await fixture();
+  try {
+    await bootstrap(testStore.store);
+    await testStore.store.db
+      .prepare("INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)")
+      .run("other-user", "admin@sachviet.us", hashPassword("other-user-password"), "customer", testStore.store.now());
+    assert.deepEqual(
+      await syncAdminEmailFromEnv(testStore.store, {
+        ADMIN_EMAIL_SYNC: "1",
+        ADMIN_EMAIL: "admin@sachviet.us",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { synced: false, reason: "email_taken" },
+    );
+    const admin = await testStore.store.db.prepare("SELECT email FROM users WHERE role = 'admin'").get();
+    assert.equal(admin.email, "admin@example.test");
   } finally {
     await testStore.close();
   }
