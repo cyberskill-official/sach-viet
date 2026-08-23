@@ -30,11 +30,6 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
     return () => window.clearTimeout(timer);
   }, [localeProp, setLocale]);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => setNavOpen(false), 0);
-    return () => window.clearTimeout(timer);
-  }, [pathname]);
-
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     window.location.assign("/login");
@@ -97,6 +92,7 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
                   className={`sv-nav-link ${active ? "is-active" : ""}`}
                   href={item.href}
                   aria-current={active ? "page" : undefined}
+                  onClick={() => setNavOpen(false)}
                 >
                   {item.label}
                 </Link>
