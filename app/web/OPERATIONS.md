@@ -51,12 +51,14 @@ cp app/.env.docker.example app/.env.docker
 openssl rand -hex 32
 ```
 
-3. Set `BOOTSTRAP_ADMIN_EMAIL`, then generate `BOOTSTRAP_ADMIN_PASSWORD_HASH` from `app/web` (prints one hash line; paste into `app/.env.docker` — never commit hash values or document sample hashes here). Prefer stdin so the password is not stored in shell history:
+3. Prefer `ADMIN_EMAIL` + `ADMIN_PASSWORD` (plain; hashed at runtime on first login when the user store is empty). Fallback: set `BOOTSTRAP_ADMIN_EMAIL`, then generate `BOOTSTRAP_ADMIN_PASSWORD_HASH` from `app/web` (prints one hash line; paste into `app/.env.docker` — never commit hash values or document sample hashes here). Prefer stdin so the password is not stored in shell history:
 
 ```bash
 cd app/web
 printf '%s' 'your-password' | npm run hash-password
 ```
+
+`ADMIN_*` / `BOOTSTRAP_*` create the first admin only when the user store is empty — they do **not** reset an existing admin password.
 
 4. From `app/` (explicit `cd` if you stayed in `app/web` after step 3), build and start in the background:
 
@@ -92,7 +94,7 @@ When SMTP, Zalo, Stripe webhook, or Meili env vars are unset, those integrations
 
 `app/web/scripts/seed-local.mjs` fills Postgres with a walkthrough dataset: three categories, ten Vietnamese book products (one deliberately out of stock), competing vendor offers, two vendors, two customers, one paid and one pending order, one vendor payout, one pending vendor application, notifications, a review, and a support ticket. It is **local development material only** and must never run against a deployed database. The script **refuses** when `NODE_ENV=production`.
 
-The seed is idempotent. Catalog rows are upserted; orders, payouts, applications, notifications, and support records are created only when the seeded user has none. It also runs the first-admin bootstrap before creating any seed user, so an operator-configured `BOOTSTRAP_ADMIN_EMAIL` account is still created rather than blocked by the seed data.
+The seed is idempotent. Catalog rows are upserted; orders, payouts, applications, notifications, and support records are created only when the seeded user has none. It also runs the first-admin bootstrap before creating any seed user, so an operator-configured `ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_EMAIL` account is still created rather than blocked by the seed data.
 
 **Password hygiene:** the seed no longer prints the shared account password to stdout by default.
 
@@ -249,7 +251,7 @@ Do these on a trusted machine against a **candidate** URL the operator names. Do
    BASE_URL=https://<candidate-host> npm run smoke:production
    ```
 
-   Optional: `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD`. Hard-fail ids: `health-postgres`, `catalog-list`, `admin-login`, `checkout-pending-path`.
+   Optional: `ADMIN_EMAIL` / `ADMIN_PASSWORD` (or `BOOTSTRAP_ADMIN_*` / `SMOKE_*`). Hard-fail ids: `health-postgres`, `catalog-list`, `admin-login`, `checkout-pending-path`.
 7. **Sandbox payments only.** Stripe `sk_test_…` and `PAYPAL_MODE=sandbox`. `commerce-core.mjs` still refuses `sk_live_` and `PAYPAL_MODE=live`. Never set those on Vercel.
 
 ### Local leftover (Wave 4)
@@ -307,9 +309,9 @@ The cutover plan lists go/no-go gates (parity evidence packet, quality/preview b
 
 The application uses Postgres via `DATABASE_URL` (Compose default and CI use `postgres://sachviet:sachviet@…/sachviet`). CapRover/SQLite `DATABASE_PATH` is transitional only and is no longer the local primary path.
 
-Do not commit `.env` files, credentials, session cookies, password hashes, or database dumps. On the first authorized cloud deployment, configure `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `DATABASE_URL`, and related secrets through **Vercel Environment Variables** (and Supabase for the database). See [`.env.vercel.example`](./.env.vercel.example) and [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). The application creates the first administrator only when the bootstrap trio is present and the user store is empty.
+Do not commit `.env` files, credentials, session cookies, password hashes, or database dumps. On the first authorized cloud deployment, configure `AUTH_SESSION_SECRET`, prefer `ADMIN_EMAIL` + `ADMIN_PASSWORD` (plain; hashed at runtime), or fall back to `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSWORD_HASH`, plus `DATABASE_URL` and related secrets through **Vercel Environment Variables** (and Supabase for the database). See [`.env.vercel.example`](./.env.vercel.example) and [`docs/deploy-vercel-supabase.md`](../../docs/deploy-vercel-supabase.md). The application creates the first administrator only when those credentials plus `AUTH_SESSION_SECRET` are present and the user store is empty. Setting `ADMIN_*` on Vercel does **not** reset an existing admin password — use account password-change / operator unlock paths after users exist.
 
-Generate the password hash with `npm run hash-password` from `app/web` (authorized operations path). Do not place a plain-text password in configuration or source control. Do not document or commit hash values.
+When using the hash fallback, generate the password hash with `npm run hash-password` from `app/web` (authorized operations path). Do not place a plain-text password in source control. Do not document or commit hash values.
 
 ## Stripe + PayPal sandbox paid path (TASK-PAYMENTS-001)
 
@@ -437,7 +439,7 @@ Canonical go: [`docs/ops/production-go-2026-07-26.md`](../../docs/ops/production
 |---|---|---|
 | 1 | Link Vercel to the repo with Root Directory `app/web`, Node **24.x**; deploy **Production** from `main` | `separate_deployment_instruction` (**met**) |
 | 2 | Provision Supabase Postgres; set pooler `DATABASE_URL` on Vercel Production; run `npm run migrate` via direct URL | — |
-| 3 | Set Vercel **Production** secrets (never in git): `AUTH_SESSION_SECRET`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD_HASH`, `AI_SETTINGS_SECRET`, optional `SMTP_*` / Meili/Zalo; **optional** `STRIPE_*` only after Stripe registration | — |
+| 3 | Set Vercel **Production** secrets (never in git): `AUTH_SESSION_SECRET`, prefer `ADMIN_EMAIL` + `ADMIN_PASSWORD` (or `BOOTSTRAP_ADMIN_EMAIL` + `BOOTSTRAP_ADMIN_PASSWORD_HASH`), `AI_SETTINGS_SECRET`, optional `SMTP_*` / Meili/Zalo; **optional** `STRIPE_*` only after Stripe registration | — |
 | 4 | Confirm Production HTTPS; auth cookies secure under `NODE_ENV=production` on the deployment | — |
 | 5 | **Deferred until Stripe registered:** webhook URL `https://<host>/api/webhooks/stripe` for `checkout.session.completed` | — |
 | 6 | Postgres backup/restore drill | `backup_verified` (**met** — see drill doc) |

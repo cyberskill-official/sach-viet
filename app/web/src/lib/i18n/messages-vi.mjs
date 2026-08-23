@@ -29,6 +29,8 @@ export const messagesVi = Object.freeze({
     refresh: "Làm mới",
     notifications: "Thông báo",
     close: "Đóng",
+    showNavigation: "Hiện điều hướng",
+    hideNavigation: "Ẩn điều hướng",
   },
   nav: {
     account: "Tài khoản",
@@ -61,6 +63,8 @@ export const messagesVi = Object.freeze({
     passwordUpdated: "Đã cập nhật mật khẩu. Bạn có thể đăng nhập.",
     signInHint: "Dùng tài khoản khách đã xác minh hoặc tài khoản vai trò do quản trị tạo.",
     registerHint: "Đăng ký bằng email. Xác minh trước khi đăng nhập. Không hỗ trợ checkout khách.",
+    forgotHint: "Nếu email tồn tại, hệ thống sẽ gửi liên kết đặt lại. Phản hồi không tiết lộ tài khoản có hay không.",
+    passwordHint: "Dùng ít nhất 8 ký tự.",
     accessDenied: "Không có quyền truy cập",
     accessDeniedBody: "Tài khoản của bạn không có quyền vào cổng này.",
     backToStorefront: "Về trang cửa hàng",

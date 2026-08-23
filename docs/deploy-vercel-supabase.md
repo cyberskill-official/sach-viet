@@ -72,8 +72,9 @@ Set these in the Vercel project **Environment Variables** UI. Prefer **Productio
 |---|---|
 | `AUTH_SESSION_SECRET` | Min 32 characters (`openssl rand -hex 32`) |
 | `DATABASE_URL` | Supabase **pooler** URL for runtime |
-| `BOOTSTRAP_ADMIN_EMAIL` | Optional; with hash, only when user store is empty |
-| `BOOTSTRAP_ADMIN_PASSWORD_HASH` | From `npm run hash-password` (no `$` escaping needed in Vercel UI) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | **Preferred** first-admin bootstrap (plain password hashed at runtime). Only when the user store is empty — does **not** reset an existing admin password. |
+| `BOOTSTRAP_ADMIN_EMAIL` | Fallback email when `ADMIN_EMAIL` unset; only when user store is empty |
+| `BOOTSTRAP_ADMIN_PASSWORD_HASH` | Fallback when `ADMIN_PASSWORD` unset; from `npm run hash-password` (no `$` escaping needed in Vercel UI) |
 | `STRIPE_SECRET_KEY` | Sandbox unlock (TASK-PAYMENTS-001): `sk_test_…` only on Production. Helpers refuse `sk_live_`. |
 | `STRIPE_SUCCESS_URL` / `STRIPE_CANCEL_URL` | Required when Stripe secret is set (Production: `/ecom/orders?paid=1` and `/ecom/cart`) |
 | `STRIPE_WEBHOOK_SECRET` | Required for `POST /api/webhooks/stripe` (register test-mode endpoint on Production URL) |

@@ -50,6 +50,74 @@ test("bootstrap requires every deployment input and creates one admin only", asy
   } finally { await testStore.close(); }
 });
 
+test("bootstrap prefers plain ADMIN_EMAIL and ADMIN_PASSWORD", async () => {
+  const testStore = await fixture();
+  try {
+    assert.deepEqual(
+      await bootstrapFirstAdmin(testStore.store, {
+        ADMIN_EMAIL: "plain-admin@example.test",
+        ADMIN_PASSWORD: "correct horse battery staple",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { created: true, reason: "created" },
+    );
+    const row = await testStore.store.db.prepare("SELECT email, password_hash, role FROM users").get();
+    assert.equal(row.email, "plain-admin@example.test");
+    assert.equal(row.role, "admin");
+    assert.equal(verifyPassword("correct horse battery staple", row.password_hash), true);
+    assert.deepEqual(
+      await bootstrapFirstAdmin(testStore.store, {
+        ADMIN_EMAIL: "plain-admin@example.test",
+        ADMIN_PASSWORD: "correct horse battery staple",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { created: false, reason: "users_exist" },
+    );
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("bootstrap falls back to BOOTSTRAP_ADMIN password hash", async () => {
+  const testStore = await fixture();
+  try {
+    assert.deepEqual(
+      await bootstrapFirstAdmin(testStore.store, {
+        BOOTSTRAP_ADMIN_EMAIL: "hash-admin@example.test",
+        BOOTSTRAP_ADMIN_PASSWORD_HASH: hashPassword("correct horse battery staple"),
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { created: true, reason: "created" },
+    );
+    const row = await testStore.store.db.prepare("SELECT email FROM users").get();
+    assert.equal(row.email, "hash-admin@example.test");
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("bootstrap returns users_exist without changing an existing admin", async () => {
+  const testStore = await fixture();
+  try {
+    await bootstrap(testStore.store);
+    const before = await testStore.store.db.prepare("SELECT email, password_hash FROM users").get();
+    assert.deepEqual(
+      await bootstrapFirstAdmin(testStore.store, {
+        ADMIN_EMAIL: "other@example.test",
+        ADMIN_PASSWORD: "totally-different-password",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { created: false, reason: "users_exist" },
+    );
+    const after = await testStore.store.db.prepare("SELECT email, password_hash FROM users").get();
+    assert.equal(after.email, before.email);
+    assert.equal(after.password_hash, before.password_hash);
+    assert.equal((await testStore.store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count, 1);
+  } finally {
+    await testStore.close();
+  }
+});
+
 test("failed login is throttled per email+client and never starts a session", async () => {
   const testStore = await fixture();
   try {

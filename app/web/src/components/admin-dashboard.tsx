@@ -136,16 +136,18 @@ function AdminApplicationsPanel() {
                 <span className="cs-badge">{application.status}</span>
               </div>
               {application.status === "pending" ? (
-                <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <input
-                    aria-label={t("admin.rejectionReason")}
-                    className="cs-field__control min-w-0 flex-1 basis-48"
-                    placeholder={t("admin.rejectionPlaceholder")}
-                    value={reasons[application.id] || ""}
-                    onChange={(event) => setReasons((current) => ({ ...current, [application.id]: event.target.value }))}
-                  />
-                  <button disabled={busyId === application.id} className="cs-button" onClick={() => void decide(application, "approved")}>{t("admin.approve")}</button>
-                  <button disabled={busyId === application.id} className="cs-button cs-button--secondary" onClick={() => void decide(application, "rejected")}>{t("admin.reject")}</button>
+                <div className="mt-4 flex flex-wrap items-end gap-3">
+                  <label className="cs-field min-w-0 flex-1 basis-48">
+                    <span className="cs-field__label">{t("admin.rejectionReason")}</span>
+                    <input
+                      className="cs-field__control w-full"
+                      placeholder={t("admin.rejectionPlaceholder")}
+                      value={reasons[application.id] || ""}
+                      onChange={(event) => setReasons((current) => ({ ...current, [application.id]: event.target.value }))}
+                    />
+                  </label>
+                  <button type="button" disabled={busyId === application.id} className="cs-button" onClick={() => void decide(application, "approved")}>{t("admin.approve")}</button>
+                  <button type="button" disabled={busyId === application.id} className="cs-button cs-button--secondary" onClick={() => void decide(application, "rejected")}>{t("admin.reject")}</button>
                 </div>
               ) : application.rejectionReason ? (
                 <p className="mt-3 text-sm text-muted">{t("admin.reasonLabel")}: {application.rejectionReason}</p>
@@ -311,37 +313,76 @@ function AdminCatalogPanel() {
           <div className="mt-6 grid gap-6 lg:grid-cols-3">
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void createCategory(); }}>
               <h3 className="font-semibold">{t("admin.createCategory")}</h3>
-              <input aria-label={t("admin.categorySlug")} className="cs-field__control w-full" placeholder="slug" value={categoryForm.slug} onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))} />
-              <input aria-label={t("admin.categoryName")} className="cs-field__control w-full" placeholder={t("admin.categoryName")} value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))} />
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.categorySlug")}</span>
+                <input className="cs-field__control w-full" placeholder="slug" value={categoryForm.slug} onChange={(event) => setCategoryForm((current) => ({ ...current, slug: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.categoryName")}</span>
+                <input className="cs-field__control w-full" value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))} />
+              </label>
               <button disabled={catalogBusy === "category"} className="cs-button" type="submit">{t("admin.createCategory")}</button>
             </form>
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void createProduct(); }}>
               <h3 className="font-semibold">{t("admin.createProduct")}</h3>
-              <select aria-label={t("admin.selectCategory")} className="cs-field__control w-full" value={productForm.categorySlug} onChange={(event) => setProductForm((current) => ({ ...current, categorySlug: event.target.value }))}>
-                <option value="">{t("admin.selectCategory")}</option>
-                {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
-              </select>
-              <input aria-label={t("admin.productSlug")} className="cs-field__control w-full" placeholder="slug" value={productForm.slug} onChange={(event) => setProductForm((current) => ({ ...current, slug: event.target.value }))} />
-              <input aria-label={t("admin.productTitle")} className="cs-field__control w-full" placeholder={t("admin.productTitle")} value={productForm.title} onChange={(event) => setProductForm((current) => ({ ...current, title: event.target.value }))} />
-              <input aria-label={t("admin.productDescription")} className="cs-field__control w-full" placeholder={t("admin.productDescription")} value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} />
-              <input aria-label={t("admin.variantSku")} className="cs-field__control w-full" placeholder={t("admin.variantSku")} value={productForm.variantSku} onChange={(event) => setProductForm((current) => ({ ...current, variantSku: event.target.value }))} />
-              <input aria-label={t("admin.variantTitle")} className="cs-field__control w-full" placeholder={t("admin.variantTitle")} value={productForm.variantTitle} onChange={(event) => setProductForm((current) => ({ ...current, variantTitle: event.target.value }))} />
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.selectCategory")}</span>
+                <select className="cs-field__control w-full" value={productForm.categorySlug} onChange={(event) => setProductForm((current) => ({ ...current, categorySlug: event.target.value }))}>
+                  <option value="">{t("admin.selectCategory")}</option>
+                  {categories.map((category) => <option key={category.id} value={category.slug}>{category.name}</option>)}
+                </select>
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.productSlug")}</span>
+                <input className="cs-field__control w-full" placeholder="slug" value={productForm.slug} onChange={(event) => setProductForm((current) => ({ ...current, slug: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.productTitle")}</span>
+                <input className="cs-field__control w-full" value={productForm.title} onChange={(event) => setProductForm((current) => ({ ...current, title: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.productDescription")}</span>
+                <input className="cs-field__control w-full" value={productForm.description} onChange={(event) => setProductForm((current) => ({ ...current, description: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.variantSku")}</span>
+                <input className="cs-field__control w-full" value={productForm.variantSku} onChange={(event) => setProductForm((current) => ({ ...current, variantSku: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.variantTitle")}</span>
+                <input className="cs-field__control w-full" value={productForm.variantTitle} onChange={(event) => setProductForm((current) => ({ ...current, variantTitle: event.target.value }))} />
+              </label>
               <button disabled={catalogBusy === "product"} className="cs-button" type="submit">{t("admin.createProduct")}</button>
             </form>
             <form className="space-y-3" onSubmit={(event) => { event.preventDefault(); void createOffer(); }}>
               <h3 className="font-semibold">{t("admin.createOffer")}</h3>
-              <select aria-label={t("admin.selectProduct")} className="cs-field__control w-full" value={offerForm.productId} onChange={(event) => {
-                const productId = event.target.value;
-                const product = products.find((item) => item.id === productId);
-                setOfferForm((current) => ({ ...current, productId, variantId: product?.variants?.[0]?.id || "" }));
-              }}>
-                <option value="">{t("admin.selectProduct")}</option>
-                {products.map((product) => <option key={product.id} value={product.id}>{product.title}</option>)}
-              </select>
-              <input aria-label={t("admin.variantId")} className="cs-field__control w-full" placeholder={t("admin.variantId")} value={offerForm.variantId} onChange={(event) => setOfferForm((current) => ({ ...current, variantId: event.target.value }))} />
-              <input aria-label={t("admin.vendorId")} className="cs-field__control w-full" placeholder={t("admin.vendorId")} value={offerForm.vendorId} onChange={(event) => setOfferForm((current) => ({ ...current, vendorId: event.target.value }))} />
-              <input aria-label={t("admin.priceUsd")} className="cs-field__control w-full" placeholder={t("admin.priceUsd")} value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />
-              <input aria-label={t("admin.stock")} className="cs-field__control w-full" placeholder={t("admin.stock")} value={offerForm.stockQuantity} onChange={(event) => setOfferForm((current) => ({ ...current, stockQuantity: event.target.value }))} />
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.selectProduct")}</span>
+                <select className="cs-field__control w-full" value={offerForm.productId} onChange={(event) => {
+                  const productId = event.target.value;
+                  const product = products.find((item) => item.id === productId);
+                  setOfferForm((current) => ({ ...current, productId, variantId: product?.variants?.[0]?.id || "" }));
+                }}>
+                  <option value="">{t("admin.selectProduct")}</option>
+                  {products.map((product) => <option key={product.id} value={product.id}>{product.title}</option>)}
+                </select>
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.variantId")}</span>
+                <input className="cs-field__control w-full" value={offerForm.variantId} onChange={(event) => setOfferForm((current) => ({ ...current, variantId: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.vendorId")}</span>
+                <input className="cs-field__control w-full" value={offerForm.vendorId} onChange={(event) => setOfferForm((current) => ({ ...current, vendorId: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.priceUsd")}</span>
+                <input className="cs-field__control w-full" inputMode="decimal" value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />
+              </label>
+              <label className="cs-field block">
+                <span className="cs-field__label">{t("admin.stock")}</span>
+                <input className="cs-field__control w-full" inputMode="numeric" value={offerForm.stockQuantity} onChange={(event) => setOfferForm((current) => ({ ...current, stockQuantity: event.target.value }))} />
+              </label>
               <button disabled={catalogBusy === "offer"} className="cs-button" type="submit">{t("admin.createOffer")}</button>
             </form>
           </div>
@@ -409,10 +450,10 @@ function AdminFlagsPanel() {
 export function AdminDashboard() {
   const { t } = useLocale();
   return (
-    <div className="space-y-8" data-tour="portal-panel">
-      <section data-tour="portal-primary">
+    <div className="space-y-8 md:space-y-10" data-tour="portal-panel">
+      <section data-tour="portal-primary" className="scroll-mt-28">
         <p className="cs-eyebrow text-accent-strong">{t("common.overview")}</p>
-        <h1 className="mt-2 text-4xl font-extrabold">{t("portals.adminTitle")}</h1>
+        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{t("portals.adminTitle")}</h1>
       </section>
       <AdminOverviewPanel />
       <AdminCatalogPanel />

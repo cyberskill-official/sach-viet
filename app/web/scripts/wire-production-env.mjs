@@ -10,9 +10,9 @@
  *   DATABASE_URL_DIRECT (Supabase direct — used for migrate only; not stored on Vercel)
  *   AUTH_SESSION_SECRET (min 32 chars)
  *
- * Optional:
- *   BOOTSTRAP_ADMIN_EMAIL
- *   BOOTSTRAP_ADMIN_PASSWORD_HASH
+ * Optional (prefer ADMIN_*; fall back to BOOTSTRAP_*):
+ *   ADMIN_EMAIL / ADMIN_PASSWORD
+ *   BOOTSTRAP_ADMIN_EMAIL / BOOTSTRAP_ADMIN_PASSWORD_HASH
  *   AI_SETTINGS_SECRET
  *   SKIP_MIGRATE=1
  *   SKIP_REDEPLOY=1
@@ -61,6 +61,8 @@ export function validateWireInputs(env) {
       authSecret,
       skipMigrate,
       skipRedeploy: env.SKIP_REDEPLOY === "1",
+      adminEmail: env.ADMIN_EMAIL || "",
+      adminPassword: env.ADMIN_PASSWORD || "",
       bootstrapEmail: env.BOOTSTRAP_ADMIN_EMAIL || "",
       bootstrapHash: env.BOOTSTRAP_ADMIN_PASSWORD_HASH || "",
       aiSecret: env.AI_SETTINGS_SECRET || "",
@@ -179,11 +181,19 @@ async function main() {
   await upsertProductionEnv(vercel, config.projectId, "AUTH_SESSION_SECRET", config.authSecret);
   console.log("Set Production env AUTH_SESSION_SECRET");
 
-  if (config.bootstrapEmail) {
+  if (config.adminEmail) {
+    await upsertProductionEnv(vercel, config.projectId, "ADMIN_EMAIL", config.adminEmail);
+    console.log("Set Production env ADMIN_EMAIL");
+  }
+  if (config.adminPassword) {
+    await upsertProductionEnv(vercel, config.projectId, "ADMIN_PASSWORD", config.adminPassword);
+    console.log("Set Production env ADMIN_PASSWORD");
+  }
+  if (!config.adminEmail && config.bootstrapEmail) {
     await upsertProductionEnv(vercel, config.projectId, "BOOTSTRAP_ADMIN_EMAIL", config.bootstrapEmail);
     console.log("Set Production env BOOTSTRAP_ADMIN_EMAIL");
   }
-  if (config.bootstrapHash) {
+  if (!config.adminPassword && config.bootstrapHash) {
     await upsertProductionEnv(
       vercel,
       config.projectId,
