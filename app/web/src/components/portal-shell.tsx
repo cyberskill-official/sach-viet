@@ -31,7 +31,8 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
   }, [localeProp, setLocale]);
 
   useEffect(() => {
-    setNavOpen(false);
+    const timer = window.setTimeout(() => setNavOpen(false), 0);
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   async function logout() {
