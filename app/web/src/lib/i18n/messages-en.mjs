@@ -40,6 +40,7 @@ export const messagesEn = Object.freeze({
     cart: "Cart",
     register: "Register",
     login: "Sign in",
+    portal: "Portal",
     features: "Features",
     home: "Home",
     moreMenu: "More",

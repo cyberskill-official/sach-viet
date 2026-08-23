@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { bootstrapFirstAdmin, getAuthStore, login, safeRedirect, syncAdminEmailFromEnv, syncAdminPasswordFromEnv } from "@/lib/auth-core.mjs";
+import { defaultHomeForRole } from "@/lib/access.mjs";
+import {
+  bootstrapFirstAdmin,
+  COOKIE_NAME,
+  getAuthStore,
+  login,
+  safeRedirect,
+  sessionCookieOptions,
+  syncAdminEmailFromEnv,
+  syncAdminPasswordFromEnv,
+} from "@/lib/auth-core.mjs";
 
 function clientKeyFromRequest(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -38,8 +48,10 @@ export async function POST(request: Request) {
       }
       return response;
     }
-    const response = NextResponse.json({ user: result.user, redirectTo: safeRedirect(body.redirect) });
-    response.headers.append("Set-Cookie", result.cookie);
+    const requested = safeRedirect(body.redirect);
+    const redirectTo = requested === "/" ? defaultHomeForRole(result.user.role) : requested;
+    const response = NextResponse.json({ user: result.user, redirectTo });
+    response.cookies.set(COOKIE_NAME, result.token, sessionCookieOptions(result.expiresAt));
     return response;
   } catch (error) {
     console.error(

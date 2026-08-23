@@ -54,6 +54,31 @@ export function portalForPath(pathname) {
   return segment && Object.hasOwn(portalRoles, segment) ? segment : null;
 }
 
+/** Default post-login destination when redirect is missing or `/`. */
+export function defaultHomeForRole(role) {
+  switch (normalizeRole(role)) {
+    case "admin":
+      return "/admin";
+    case "vendor":
+      return "/vendor";
+    case "publisher":
+      return "/publisher";
+    case "author":
+      return "/author";
+    case "school_librarian":
+      return "/institution";
+    case "employee":
+    case "employee_b2c":
+      return "/retail";
+    case "employee_b2b":
+      return "/b2b";
+    case "employee_supplier":
+      return "/supplier";
+    default:
+      return "/account";
+  }
+}
+
 /** B2C private pages that must redirect anonymous users to login (audit H4). */
 const privateB2cPrefixes = Object.freeze([
   "/account",

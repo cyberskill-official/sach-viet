@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
+import { defaultHomeForRole } from "@/lib/access.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 import { MotionReveal } from "@/components/motion-reveal";
@@ -78,6 +79,8 @@ export function Storefront({
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [category, setCategory] = useState("");
   const [loading, setLoading] = useState(initialProducts.length === 0);
+  const [sessionUser, setSessionUser] = useState<null | { email: string; role: string }>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [error, setError] = useState("");
@@ -98,6 +101,26 @@ export function Storefront({
         setCategories(body.categories as CategoryOption[]);
       })
       .catch(() => { /* keep SSR / derived categories */ });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/me", { credentials: "same-origin", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          setSessionUser(null);
+          return;
+        }
+        const body = await response.json();
+        if (body?.user?.email && body?.user?.role) {
+          setSessionUser({ email: String(body.user.email), role: String(body.user.role) });
+        } else {
+          setSessionUser(null);
+        }
+      })
+      .catch(() => setSessionUser(null))
+      .finally(() => setSessionReady(true));
     return () => controller.abort();
   }, []);
 
@@ -197,6 +220,12 @@ export function Storefront({
     } catch { /* ignore */ }
   }
 
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    window.location.assign("/");
+  }
+
+  const portalHome = sessionUser ? defaultHomeForRole(sessionUser.role) : "/account";
   const secondaryLinks = [
     { href: "/account", label: t("nav.account") },
     { href: "/wishlist", label: t("nav.wishlist") },
@@ -256,8 +285,20 @@ export function Storefront({
             >
               {locale === "en" ? "VI" : "EN"}
             </a>
-            <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
-            <Link className="cs-button" href="/login">{t("nav.login")}</Link>
+            {sessionReady && sessionUser ? (
+              <>
+                {portalHome !== "/account" ? (
+                  <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
+                ) : null}
+                <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/account">{t("nav.account")}</Link>
+                <button type="button" className="cs-button" onClick={logout}>{t("common.signOut")}</button>
+              </>
+            ) : sessionReady ? (
+              <>
+                <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
+                <Link className="cs-button" href="/login">{t("nav.login")}</Link>
+              </>
+            ) : null}
           </nav>
         </div>
       </header>

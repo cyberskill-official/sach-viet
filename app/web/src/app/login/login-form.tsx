@@ -21,15 +21,31 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     setPending(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.get("email"), password: form.get("password"), redirect: redirectTo }) });
-    const body = await response.json();
-    setPending(false);
-    if (!response.ok) return setError(body.error || t("auth.unableSignIn"));
+    let body: { error?: string; user?: { locale?: string }; redirectTo?: string } = {};
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password"), redirect: redirectTo }),
+      });
+      body = await response.json().catch(() => ({}));
+      setPending(false);
+      if (!response.ok || !body.user) {
+        return setError(body.error || t("auth.unableSignIn"));
+      }
+    } catch {
+      setPending(false);
+      return setError(t("auth.unableSignIn"));
+    }
     const userLocale = body.user?.locale;
     if (userLocale === "en" || userLocale === "vi") {
       setLocale(userLocale);
     }
-    window.location.assign(body.redirectTo);
+    const next = typeof body.redirectTo === "string" && body.redirectTo.startsWith("/") && !body.redirectTo.startsWith("//")
+      ? body.redirectTo
+      : "/";
+    window.location.assign(next);
   }
 
   return (
@@ -52,7 +68,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
       <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
       <h1 className="mt-3 text-3xl font-extrabold">{t("auth.signIn")}</h1>
       <p className="mt-2 text-sm leading-6 text-muted">{t("auth.signInHint")}</p>
-      <form className="mt-8 grid gap-4" method="post" data-tour="auth-form" onSubmit={submit}>
+      <form className="mt-8 grid gap-4" data-tour="auth-form" onSubmit={submit} noValidate>
         <label className="cs-field">
           <span className="cs-field__label">{t("common.email")}</span>
           <input required name="email" type="email" autoComplete="email" inputMode="email" className="cs-field__control w-full" aria-invalid={error ? true : undefined} aria-describedby={error ? errorId : undefined} />

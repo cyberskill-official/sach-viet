@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { portalForPath, requiresAuthPath } from "../src/lib/access.mjs";
+import { defaultHomeForRole, portalForPath, requiresAuthPath } from "../src/lib/access.mjs";
 
 test("requiresAuthPath gates account, wishlist, and order history", () => {
   assert.equal(requiresAuthPath("/account"), true);
@@ -19,4 +19,11 @@ test("portalForPath still resolves role portals only", () => {
   assert.equal(portalForPath("/admin"), "admin");
   assert.equal(portalForPath("/account"), null);
   assert.equal(portalForPath("/ecom/orders"), null);
+});
+
+test("defaultHomeForRole sends admins to portal not storefront", () => {
+  assert.equal(defaultHomeForRole("admin"), "/admin");
+  assert.equal(defaultHomeForRole("super_admin"), "/admin");
+  assert.equal(defaultHomeForRole("customer"), "/account");
+  assert.equal(defaultHomeForRole("vendor"), "/vendor");
 });

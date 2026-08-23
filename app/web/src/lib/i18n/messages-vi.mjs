@@ -40,6 +40,7 @@ export const messagesVi = Object.freeze({
     cart: "Giỏ hàng",
     register: "Đăng ký",
     login: "Đăng nhập",
+    portal: "Cổng",
     features: "Tính năng",
     home: "Trang chủ",
     moreMenu: "Thêm",
