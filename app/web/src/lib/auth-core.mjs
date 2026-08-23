@@ -321,7 +321,7 @@ export function expiredCookie() {
 export function sessionCookieOptions(expiresAt, now = Date.now()) {
   return {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: /** @type {"lax"} */ ("lax"),
     path: "/",
     secure: process.env.NODE_ENV === "production",
     maxAge: Math.max(0, Math.floor((expiresAt - now) / 1000)),
@@ -331,7 +331,7 @@ export function sessionCookieOptions(expiresAt, now = Date.now()) {
 export function clearSessionCookieOptions() {
   return {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: /** @type {"lax"} */ ("lax"),
     path: "/",
     secure: process.env.NODE_ENV === "production",
     maxAge: 0,
