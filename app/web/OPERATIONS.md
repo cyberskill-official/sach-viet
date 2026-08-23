@@ -62,6 +62,8 @@ printf '%s' 'your-password' | npm run hash-password
 
 **Production login fails with "Invalid email or password" after setting `ADMIN_*`:** the user store is almost certainly non-empty (check `GET /api/ready` → `identity.bootstrapEligible: false`). Bootstrap env vars only apply on an empty store. Use the credentials from the original Production bootstrap (2026-07-26/27 `wire:production` run), `/forgot` if SMTP is configured, or operator recovery: set `ADMIN_PASSWORD_SYNC=1` with `ADMIN_EMAIL` matching the **existing** admin row email (query Supabase `users` if unsure) and `ADMIN_PASSWORD` as the new password, redeploy, sign in once, then unset `ADMIN_PASSWORD_SYNC`.
 
+**Change admin email on an existing store:** set `ADMIN_EMAIL` to the desired address (e.g. `admin@sachviet.us`), set `ADMIN_EMAIL_SYNC=1`, redeploy, then sign in once at `/login` using the **new** email (and current or synced password). Unset `ADMIN_EMAIL_SYNC` and redeploy. Requires exactly one admin row; fails if the target email is already taken by another user. Combine with `ADMIN_PASSWORD_SYNC=1` in the same deploy if you also need a new password.
+
 4. From `app/` (explicit `cd` if you stayed in `app/web` after step 3), build and start in the background:
 
 ```bash

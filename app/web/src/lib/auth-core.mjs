@@ -170,6 +170,29 @@ export async function bootstrapFirstAdmin(store, environment = process.env) {
 }
 
 /**
+ * Operator recovery: when ADMIN_EMAIL_SYNC=1, set the sole admin user's email to
+ * ADMIN_EMAIL (or BOOTSTRAP_ADMIN_EMAIL). Requires exactly one admin row. Does not
+ * create users; revokes existing sessions for that admin.
+ */
+export async function syncAdminEmailFromEnv(store, environment = process.env) {
+  if (environment.ADMIN_EMAIL_SYNC !== "1") return { synced: false, reason: "disabled" };
+  const email = normalizeEmail(environment.ADMIN_EMAIL || environment.BOOTSTRAP_ADMIN_EMAIL);
+  if (!email || !environment.AUTH_SESSION_SECRET) return { synced: false, reason: "not_configured" };
+  requireSessionSecret(environment.AUTH_SESSION_SECRET);
+  const admins = await store.db.prepare("SELECT id, email FROM users WHERE role = 'admin'").all();
+  if (admins.length === 0) return { synced: false, reason: "no_admin" };
+  if (admins.length > 1) return { synced: false, reason: "multiple_admins" };
+  const admin = admins[0];
+  if (normalizeEmail(admin.email) === email) return { synced: false, reason: "already_current" };
+  const taken = await store.db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+  if (taken && taken.id !== admin.id) return { synced: false, reason: "email_taken" };
+  await store.db.prepare("UPDATE users SET email = ? WHERE id = ?").run(email, admin.id);
+  await store.db.prepare("DELETE FROM sessions WHERE user_id = ?").run(admin.id);
+  store.log("auth_admin_email_synced", { result: "accepted" });
+  return { synced: true, reason: "updated" };
+}
+
+/**
  * Operator recovery: when ADMIN_PASSWORD_SYNC=1, set the admin user's password to
  * ADMIN_PASSWORD for the configured ADMIN_EMAIL (or BOOTSTRAP_ADMIN_EMAIL). Does not
  * create users; does not run unless explicitly enabled. Revokes existing sessions.
