@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { canAccessOwnedRecord, canAccessPortal, normalizeRole } from "../src/lib/access.mjs";
-import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, verifyPassword } from "../src/lib/auth-core.mjs";
+import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, getIdentitySnapshot, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, syncAdminPasswordFromEnv, verifyPassword } from "../src/lib/auth-core.mjs";
 
 const sessionSecret = "a-session-secret-that-is-long-enough-for-the-test-suite";
 
@@ -113,6 +113,62 @@ test("bootstrap returns users_exist without changing an existing admin", async (
     assert.equal(after.email, before.email);
     assert.equal(after.password_hash, before.password_hash);
     assert.equal((await testStore.store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count, 1);
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("syncAdminPasswordFromEnv is disabled unless ADMIN_PASSWORD_SYNC=1", async () => {
+  const testStore = await fixture();
+  try {
+    await bootstrap(testStore.store);
+    assert.deepEqual(await syncAdminPasswordFromEnv(testStore.store, {}), { synced: false, reason: "disabled" });
+    assert.deepEqual(
+      await syncAdminPasswordFromEnv(testStore.store, {
+        ADMIN_PASSWORD_SYNC: "1",
+        ADMIN_EMAIL: "admin@example.test",
+        ADMIN_PASSWORD: "new-password-for-sync-test",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { synced: true, reason: "updated" },
+    );
+    const row = await testStore.store.db.prepare("SELECT password_hash FROM users").get();
+    assert.equal(verifyPassword("new-password-for-sync-test", row.password_hash), true);
+    assert.deepEqual(
+      await syncAdminPasswordFromEnv(testStore.store, {
+        ADMIN_PASSWORD_SYNC: "1",
+        ADMIN_EMAIL: "admin@example.test",
+        ADMIN_PASSWORD: "new-password-for-sync-test",
+        AUTH_SESSION_SECRET: sessionSecret,
+      }),
+      { synced: false, reason: "already_current" },
+    );
+    const loginResult = await login(testStore.store, {
+      email: "admin@example.test",
+      password: "new-password-for-sync-test",
+      sessionSecret,
+      clientKey: "test-client",
+    });
+    assert.equal(loginResult.ok, true);
+  } finally {
+    await testStore.close();
+  }
+});
+
+test("getIdentitySnapshot reports user counts without emails", async () => {
+  const testStore = await fixture();
+  try {
+    assert.deepEqual(await getIdentitySnapshot(testStore.store), {
+      userCount: 0,
+      adminCount: 0,
+      bootstrapEligible: true,
+    });
+    await bootstrap(testStore.store);
+    assert.deepEqual(await getIdentitySnapshot(testStore.store), {
+      userCount: 1,
+      adminCount: 1,
+      bootstrapEligible: false,
+    });
   } finally {
     await testStore.close();
   }

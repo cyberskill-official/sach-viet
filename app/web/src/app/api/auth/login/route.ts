@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bootstrapFirstAdmin, getAuthStore, login, safeRedirect } from "@/lib/auth-core.mjs";
+import { bootstrapFirstAdmin, getAuthStore, login, safeRedirect, syncAdminPasswordFromEnv } from "@/lib/auth-core.mjs";
 
 function clientKeyFromRequest(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");
@@ -18,6 +18,7 @@ export async function POST(request: Request) {
   const store = await getAuthStore();
   try {
     await bootstrapFirstAdmin(store);
+    await syncAdminPasswordFromEnv(store);
     const result = await login(store, {
       email: body.email,
       password: body.password,

@@ -60,6 +60,8 @@ printf '%s' 'your-password' | npm run hash-password
 
 `ADMIN_*` / `BOOTSTRAP_*` create the first admin only when the user store is empty — they do **not** reset an existing admin password.
 
+**Production login fails with "Invalid email or password" after setting `ADMIN_*`:** the user store is almost certainly non-empty (check `GET /api/ready` → `identity.bootstrapEligible: false`). Bootstrap env vars only apply on an empty store. Use the credentials from the original Production bootstrap (2026-07-26/27 `wire:production` run), `/forgot` if SMTP is configured, or operator recovery: set `ADMIN_PASSWORD_SYNC=1` with `ADMIN_EMAIL` matching the **existing** admin row email (query Supabase `users` if unsure) and `ADMIN_PASSWORD` as the new password, redeploy, sign in once, then unset `ADMIN_PASSWORD_SYNC`.
+
 4. From `app/` (explicit `cd` if you stayed in `app/web` after step 3), build and start in the background:
 
 ```bash

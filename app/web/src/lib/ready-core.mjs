@@ -1,4 +1,5 @@
 import { MIGRATIONS } from "../../migrations/registry.mjs";
+import { getIdentitySnapshot } from "./auth-core.mjs";
 import { openDatabase } from "./db.mjs";
 import { listAppliedMigrations } from "./migrate.mjs";
 import { releaseFingerprint, schemaFingerprint } from "./obs-fingerprint.mjs";
@@ -27,7 +28,7 @@ function envPresence(env, keys) {
 export async function getReadiness({ env = process.env, db = null, now = Date.now } = {}) {
   const required = envPresence(env, REQUIRED_READY_ENV);
   const expectedLatest = MIGRATIONS[MIGRATIONS.length - 1]?.id || null;
-  /** @type {{ ok: boolean, db: string, migration: { latest: string | null }, outbox: { oldestPendingAgeMs: number | null }, env: Record<string, boolean>, release: { sha: string | null, deploymentEnv: string | null }, schema: { name: string, targetDeferred: string }, storage: { mode: string, supabaseEnvPresent: Record<string, boolean> } }} */
+  /** @type {{ ok: boolean, db: string, migration: { latest: string | null }, outbox: { oldestPendingAgeMs: number | null }, env: Record<string, boolean>, release: { sha: string | null, deploymentEnv: string | null }, schema: { name: string, targetDeferred: string }, storage: { mode: string, supabaseEnvPresent: Record<string, boolean> }, identity: { userCount: number | null, adminCount: number | null, bootstrapEligible: boolean | null } }} */
   const snapshot = {
     ok: false,
     db: "error",
@@ -37,6 +38,7 @@ export async function getReadiness({ env = process.env, db = null, now = Date.no
     release: releaseFingerprint(env),
     schema: schemaFingerprint(),
     storage: storageFingerprint(env),
+    identity: { userCount: null, adminCount: null, bootstrapEligible: null },
   };
 
   if (!db && !required.presence.DATABASE_URL) {
@@ -63,6 +65,7 @@ export async function getReadiness({ env = process.env, db = null, now = Date.no
     if (oldest?.oldest != null) {
       snapshot.outbox.oldestPendingAgeMs = Math.max(0, Number(now()) - Number(oldest.oldest));
     }
+    snapshot.identity = await getIdentitySnapshot({ db: database });
   } catch {
     snapshot.db = "error";
     snapshot.migration.latest = null;
