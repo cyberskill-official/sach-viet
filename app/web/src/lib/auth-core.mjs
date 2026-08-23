@@ -317,6 +317,27 @@ export function expiredCookie() {
   return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
+/** Cookie options for NextResponse.cookies.set (preferred over raw Set-Cookie headers). */
+export function sessionCookieOptions(expiresAt, now = Date.now()) {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: Math.max(0, Math.floor((expiresAt - now) / 1000)),
+  };
+}
+
+export function clearSessionCookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 0,
+  };
+}
+
 export async function readSession(store, token, sessionSecret) {
   if (typeof token !== "string") return null;
   const [id, signature] = token.split(".");
