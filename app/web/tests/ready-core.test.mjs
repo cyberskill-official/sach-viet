@@ -49,6 +49,7 @@ test("getReadiness reports db, latest migration, outbox age, and env presence wi
     assert.equal(ready.release.deploymentEnv, "preview");
     assert.equal(ready.schema.name, "public");
     assert.equal(ready.storage.mode, "postgres_bytea");
+    assert.deepEqual(ready.identity, { userCount: 0, adminCount: 0, bootstrapEligible: true });
     assert.equal(JSON.stringify(ready).includes("x".repeat(32)), false);
   } finally {
     await db.close();

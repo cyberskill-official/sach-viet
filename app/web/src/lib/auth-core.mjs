@@ -169,6 +169,44 @@ export async function bootstrapFirstAdmin(store, environment = process.env) {
   return { created: true, reason: "created" };
 }
 
+/**
+ * Operator recovery: when ADMIN_PASSWORD_SYNC=1, set the admin user's password to
+ * ADMIN_PASSWORD for the configured ADMIN_EMAIL (or BOOTSTRAP_ADMIN_EMAIL). Does not
+ * create users; does not run unless explicitly enabled. Revokes existing sessions.
+ */
+export async function syncAdminPasswordFromEnv(store, environment = process.env) {
+  if (environment.ADMIN_PASSWORD_SYNC !== "1") return { synced: false, reason: "disabled" };
+  const email = normalizeEmail(environment.ADMIN_EMAIL || environment.BOOTSTRAP_ADMIN_EMAIL);
+  if (!email || typeof environment.ADMIN_PASSWORD !== "string" || !environment.AUTH_SESSION_SECRET) {
+    return { synced: false, reason: "not_configured" };
+  }
+  requireSessionSecret(environment.AUTH_SESSION_SECRET);
+  let passwordHash;
+  try {
+    passwordHash = hashPassword(environment.ADMIN_PASSWORD);
+  } catch {
+    return { synced: false, reason: "invalid_password" };
+  }
+  const user = await store.db
+    .prepare("SELECT id, password_hash FROM users WHERE email = ? AND role = 'admin'")
+    .get(email);
+  if (!user) return { synced: false, reason: "no_matching_admin" };
+  if (verifyPassword(environment.ADMIN_PASSWORD, user.password_hash)) {
+    return { synced: false, reason: "already_current" };
+  }
+  await store.db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(passwordHash, user.id);
+  await store.db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+  store.log("auth_admin_password_synced", { result: "accepted" });
+  return { synced: true, reason: "updated" };
+}
+
+/** Non-destructive identity snapshot for readiness checks (no emails or secrets). */
+export async function getIdentitySnapshot(store) {
+  const users = Number((await store.db.prepare("SELECT COUNT(*) AS count FROM users").get()).count);
+  const admins = Number((await store.db.prepare("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'").get()).count);
+  return { userCount: users, adminCount: admins, bootstrapEligible: users === 0 };
+}
+
 async function lockState(store, email, clientKey) {
   const attempt = await store.db
     .prepare("SELECT failures, window_started_at, locked_until FROM login_attempts WHERE email = ? AND client_key = ?")

@@ -73,6 +73,7 @@ Set these in the Vercel project **Environment Variables** UI. Prefer **Productio
 | `AUTH_SESSION_SECRET` | Min 32 characters (`openssl rand -hex 32`) |
 | `DATABASE_URL` | Supabase **pooler** URL for runtime |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | **Preferred** first-admin bootstrap (plain password hashed at runtime). Only when the user store is empty — does **not** reset an existing admin password. |
+| `ADMIN_PASSWORD_SYNC` | Set to `1` for operator recovery: updates the existing admin row matching `ADMIN_EMAIL` to `ADMIN_PASSWORD` on login (revokes sessions). Unset after successful login. |
 | `BOOTSTRAP_ADMIN_EMAIL` | Fallback email when `ADMIN_EMAIL` unset; only when user store is empty |
 | `BOOTSTRAP_ADMIN_PASSWORD_HASH` | Fallback when `ADMIN_PASSWORD` unset; from `npm run hash-password` (no `$` escaping needed in Vercel UI) |
 | `STRIPE_SECRET_KEY` | Sandbox unlock (TASK-PAYMENTS-001): `sk_test_…` only on Production. Helpers refuse `sk_live_`. |
