@@ -1,9 +1,10 @@
 import { ForbiddenPanel } from "./forbidden-panel";
+import { LuxuryAuthFrame } from "@/components/luxury-shell";
 
 export default function ForbiddenPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl items-center px-6 py-12">
+    <LuxuryAuthFrame>
       <ForbiddenPanel />
-    </main>
+    </LuxuryAuthFrame>
   );
 }

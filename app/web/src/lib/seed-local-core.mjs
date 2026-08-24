@@ -249,6 +249,21 @@ async function upsertMedia(catalog, productId, url, altText) {
   return { id: (await addProductMedia(catalog, { productId, url, altText })).id, created: true };
 }
 
+const SEED_COVER_URLS = [
+  "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=600&h=800&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&h=800&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1544716278-e513176f20b5?w=600&h=800&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=600&h=800&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=600&h=800&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1524995993474-eeb1c808c547?w=600&h=800&fit=crop&q=80",
+];
+
+function seedCoverUrl(slug) {
+  let hash = 0;
+  for (let i = 0; i < slug.length; i += 1) hash = (hash + slug.charCodeAt(i) * (i + 3)) % SEED_COVER_URLS.length;
+  return SEED_COVER_URLS[hash];
+}
+
 async function seedCatalog(catalog, vendors, counters) {
   const categories = new Map();
   for (const definition of SEED_CATEGORIES) {
@@ -262,7 +277,7 @@ async function seedCatalog(catalog, vendors, counters) {
     if (!categoryId) throw new Error(`Seed product ${definition.slug} references an unknown category.`);
     const product = await upsertProduct(catalog, definition, categoryId);
     if (product.created) counters.products += 1;
-    if ((await upsertMedia(catalog, product.id, `https://cdn.example.test/covers/${definition.slug}.jpg`, definition.title)).created) {
+    if ((await upsertMedia(catalog, product.id, seedCoverUrl(definition.slug), definition.title)).created) {
       counters.media += 1;
     }
     for (const variant of definition.variants) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CART_KEY, formatUsd, normalizeCart, updateCartQuantity } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
+import { LuxuryShell } from "@/components/luxury-shell";
 
 type CartItem = {
   vendorOfferId: string;
@@ -161,26 +162,26 @@ export function CartPanel() {
   const shipToReady = Boolean(shipTo.name.trim() && shipTo.line1.trim() && shipTo.city.trim() && shipTo.postal.trim() && (shipTo.country === "US" || shipTo.country === "VN"));
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12" data-tour="cart-panel">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">
+    <LuxuryShell width="xl" tourId="tour.product_cart">
+      <Link className="inline-flex min-h-11 items-center text-sm text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href="/">
         ← {t("cart.continueShopping")}
       </Link>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="cs-eyebrow text-accent-strong">{t("orders.title")}</p>
-          <h1 className="mt-2 text-4xl font-extrabold">{t("cart.title")}</h1>
+          <p className="sv-lux-eyebrow">{t("orders.title")}</p>
+          <h1 className="sv-font-display mt-2 text-4xl tracking-tight">{t("cart.title")}</h1>
           <p className="mt-2 text-muted">{totalItems}</p>
         </div>
-        <Link className="cs-button cs-button--secondary" href="/ecom/orders">
+        <Link className="cs-button cs-button--secondary min-h-11" href="/ecom/orders">
           {t("nav.orders")}
         </Link>
       </div>
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_20rem]" data-tour="cart-panel">
         <div className="space-y-4">
           {items.length === 0 ? (
-            <div className="cs-empty-state cs-surface-standard rounded-2xl p-10">
-              <h2>{t("cart.empty")}</h2>
-              <Link className="cs-button" href="/">
+            <div className="sv-glass-card cs-empty-state rounded-2xl p-10">
+              <h2 className="sv-font-display text-2xl">{t("cart.empty")}</h2>
+              <Link className="cs-button mt-6 min-h-11" href="/">
                 {t("cart.continueShopping")}
               </Link>
             </div>
@@ -188,7 +189,7 @@ export function CartPanel() {
             items.map((item) => (
               <article
                 key={item.vendorOfferId}
-                className="cs-surface-standard flex flex-wrap items-center justify-between gap-5 rounded-2xl p-5"
+                className="sv-glass-card flex flex-wrap items-center justify-between gap-5 rounded-2xl p-5"
               >
                 <div className="min-w-0">
                   <p className="font-bold">{item.title}</p>
@@ -223,8 +224,8 @@ export function CartPanel() {
             ))
           )}
         </div>
-        <aside className="cs-surface-heavy h-fit rounded-2xl p-6">
-          <p className="cs-eyebrow">{t("cart.shipTo")}</p>
+        <aside className="sv-glass-heavy h-fit rounded-2xl p-6">
+          <p className="sv-lux-eyebrow">{t("cart.shipTo")}</p>
           <div className="mt-3 space-y-2 text-sm">
             <input className="cs-field__control w-full" placeholder={t("cart.name")} value={shipTo.name} onChange={(e) => setShipTo((s) => ({ ...s, name: e.target.value }))} />
             <input className="cs-field__control w-full" placeholder={t("cart.line1")} value={shipTo.line1} onChange={(e) => setShipTo((s) => ({ ...s, line1: e.target.value }))} />
@@ -244,8 +245,8 @@ export function CartPanel() {
               </select>
             </div>
           </div>
-          <p className="cs-eyebrow mt-6">{t("cart.total")}</p>
-          <p className="mt-2 text-3xl font-extrabold">{formatUsd(displayTotal, locale)}</p>
+          <p className="sv-lux-eyebrow mt-6">{t("cart.total")}</p>
+          <p className="sv-font-display mt-2 text-3xl">{formatUsd(displayTotal, locale)}</p>
           <dl className="mt-4 space-y-1 text-sm text-muted">
             <div className="flex justify-between gap-3">
               <dt>{t("cart.subtotal")}</dt>
@@ -299,6 +300,6 @@ export function CartPanel() {
           ) : null}
         </aside>
       </div>
-    </main>
+    </LuxuryShell>
   );
 }

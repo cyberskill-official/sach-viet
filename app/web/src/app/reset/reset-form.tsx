@@ -33,9 +33,9 @@ export function ResetForm({ token }: { token: string }) {
   }
 
   return (
-    <section className="cs-surface-heavy w-full rounded-2xl p-7">
-      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
-      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.updatePassword")}</h1>
+    <section className="w-full">
+      <p className="sv-lux-eyebrow">{t("common.brand")}</p>
+      <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.updatePassword")}</h1>
       <form className="mt-8 grid gap-4" onSubmit={submit}>
         <label className="cs-field">
           <span className="cs-field__label">{t("account.newPassword")}</span>

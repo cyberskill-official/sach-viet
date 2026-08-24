@@ -50,9 +50,9 @@ export default async function PortalPage({
 
   return (
     <PortalShell portal={portal} locale={locale} user={user}>
-      <section className="cs-surface-standard rounded-2xl p-6">
-        <p className="cs-eyebrow text-accent-strong">{config.label}</p>
-        <h1 className="mt-3 text-3xl font-extrabold">{translate(locale, "overview")}</h1>
+      <section className="sv-glass-card rounded-2xl p-6">
+        <p className="sv-lux-eyebrow">{config.label}</p>
+        <h1 className="sv-font-display mt-3 text-3xl tracking-tight sm:text-4xl">{translate(locale, "overview")}</h1>
         {financeDeferred ? (
           <div className="cs-alert cs-alert--warning mt-5">
             <strong>{translate(locale, "portals.policyPending")}</strong>

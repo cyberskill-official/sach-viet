@@ -66,11 +66,11 @@ function AdminOverviewPanel() {
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-3">
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.totalOrders")}</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.orderCount ?? 0}</p></article>
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.paidOrders")}</p><p className="mt-2 text-3xl font-extrabold">{dashboard?.paidOrderCount ?? 0}</p></article>
-        <article className="cs-surface-standard rounded-2xl p-5"><p className="cs-eyebrow text-muted">{t("portals.paidRevenue")}</p><p className="mt-2 text-3xl font-extrabold">{formatUsd(dashboard?.paidRevenueUsd, locale)}</p></article>
+        <article className="sv-glass-card rounded-2xl p-5"><p className="sv-lux-eyebrow">{t("portals.totalOrders")}</p><p className="sv-font-display mt-2 text-3xl">{dashboard?.orderCount ?? 0}</p></article>
+        <article className="sv-glass-card rounded-2xl p-5"><p className="sv-lux-eyebrow">{t("portals.paidOrders")}</p><p className="sv-font-display mt-2 text-3xl">{dashboard?.paidOrderCount ?? 0}</p></article>
+        <article className="sv-glass-card rounded-2xl p-5"><p className="sv-lux-eyebrow">{t("portals.paidRevenue")}</p><p className="sv-font-display mt-2 text-3xl">{formatUsd(dashboard?.paidRevenueUsd, locale)}</p></article>
       </section>
-      <section className="cs-surface-standard rounded-2xl p-6"><h2 className="text-2xl font-bold">{t("portals.recentOrders")}</h2><div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>{t("portals.orderId")}</th><th>{t("portals.status")}</th><th>{t("portals.value")}</th><th>{t("portals.time")}</th></tr></thead><tbody>{dashboard?.recentOrders.length ? dashboard.recentOrders.map((order) => <tr key={order.id}><td>#{order.id.slice(0, 10)}</td><td><span className="cs-badge">{order.status}</span></td><td>{formatUsd(order.subtotalUsd, locale)}</td><td>{new Date(order.createdAt).toLocaleString(dateLocale)}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">{t("portals.noOrders")}</td></tr>}</tbody></table></div></section>
+      <section className="sv-glass-card rounded-2xl p-6"><h2 className="sv-font-display text-2xl">{t("portals.recentOrders")}</h2><div className="mt-4 overflow-x-auto"><table className="cs-table w-full"><thead><tr><th>{t("portals.orderId")}</th><th>{t("portals.status")}</th><th>{t("portals.value")}</th><th>{t("portals.time")}</th></tr></thead><tbody>{dashboard?.recentOrders.length ? dashboard.recentOrders.map((order) => <tr key={order.id}><td>#{order.id.slice(0, 10)}</td><td><span className="cs-badge">{order.status}</span></td><td>{formatUsd(order.subtotalUsd, locale)}</td><td>{new Date(order.createdAt).toLocaleString(dateLocale)}</td></tr>) : <tr><td colSpan={4} className="py-8 text-center text-muted">{t("portals.noOrders")}</td></tr>}</tbody></table></div></section>
     </>
   );
 }
@@ -117,9 +117,9 @@ function AdminApplicationsPanel() {
     finally { setBusyId(""); }
   }
   return (
-    <section id="vendors" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6">
+    <section id="vendors" className="sv-glass-card scroll-mt-24 rounded-2xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold">{t("admin.vendorApplications")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("admin.vendorApplications")}</h2>
         <button className="cs-button cs-button--secondary" onClick={() => void load()}>{t("common.refresh")}</button>
       </div>
       {loading ? <div className="cs-skeleton mt-4 h-32 rounded-xl" /> : null}
@@ -182,9 +182,9 @@ function AdminPayoutsPanel() {
   }, []);
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
   return (
-    <section id="payouts" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6">
+    <section id="payouts" className="sv-glass-card scroll-mt-24 rounded-2xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold">{t("portals.payouts")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("portals.payouts")}</h2>
         <button className="cs-button cs-button--secondary" onClick={() => void load()}>{t("common.refresh")}</button>
       </div>
       <div className="cs-alert cs-alert--warning mt-3">
@@ -295,9 +295,9 @@ function AdminCatalogPanel() {
     finally { setCatalogBusy(""); }
   }
   return (
-    <section id="catalog" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6">
+    <section id="catalog" className="sv-glass-card scroll-mt-24 rounded-2xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold">{t("admin.catalogTitle")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("admin.catalogTitle")}</h2>
         <button className="cs-button cs-button--secondary" onClick={() => void load()}>{t("common.refresh")}</button>
       </div>
       <p className="mt-2 text-sm text-muted">{t("admin.catalogHelp")}</p>
@@ -428,9 +428,9 @@ function AdminFlagsPanel() {
   }, []);
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timer); }, [load]);
   return (
-    <section id="flags" className="cs-surface-standard scroll-mt-24 rounded-2xl p-6">
+    <section id="flags" className="sv-glass-card scroll-mt-24 rounded-2xl p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-bold">{t("admin.flagsTitle")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("admin.flagsTitle")}</h2>
         <button className="cs-button cs-button--secondary" onClick={() => void load()}>{t("common.refresh")}</button>
       </div>
       <p className="mt-2 text-sm text-muted">{t("admin.flagsHelp")}</p>
@@ -452,8 +452,8 @@ export function AdminDashboard() {
   return (
     <div className="space-y-8 md:space-y-10" data-tour="portal-panel">
       <section data-tour="portal-primary" className="scroll-mt-28">
-        <p className="cs-eyebrow text-accent-strong">{t("common.overview")}</p>
-        <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl">{t("portals.adminTitle")}</h1>
+        <p className="sv-lux-eyebrow">{t("common.overview")}</p>
+        <h1 className="sv-font-display mt-2 text-3xl tracking-tight sm:text-4xl">{t("portals.adminTitle")}</h1>
       </section>
       <AdminOverviewPanel />
       <AdminCatalogPanel />
