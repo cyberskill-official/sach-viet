@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Cormorant, Montserrat } from "next/font/google";
 import { cookies } from "next/headers";
 import "@cyberskill/design/styles.css";
 import "./globals.css";
@@ -7,9 +8,23 @@ import { LocaleProvider } from "@/components/locale-provider";
 import { TourProvider } from "@/components/tours/tour-provider";
 import { DEFAULT_LOCALE, LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n/index.mjs";
 
+const cormorant = Cormorant({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-serif",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin", "vietnamese"],
+  variable: "--font-sans-luxury",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Sách Việt",
-  description: "Vietnamese books for readers and partners",
+  description: "Curated Vietnamese literature — a refined reading experience",
 };
 
 /**
@@ -28,11 +43,11 @@ export default async function RootLayout({
   const initialLocale = normalizeLocale(cookieLocale || DEFAULT_LOCALE) as "en" | "vi";
 
   return (
-    <html lang={initialLocale} data-theme="light" data-cs-element="thuy" data-cs-variant="ocean" className="h-full" suppressHydrationWarning>
+    <html lang={initialLocale} data-theme="light" data-cs-element="thuy" data-cs-variant="ocean" className={`${cormorant.variable} ${montserrat.variable} h-full`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: bootScript }} />
       </head>
-      <body className="min-h-full">
+      <body className="min-h-full font-sans antialiased">
         <ThemeProvider>
           <LocaleProvider initialLocale={initialLocale}>
             <TourProvider>{children}</TourProvider>

@@ -15,7 +15,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  "img-src 'self' data: blob: https://images.unsplash.com https://covers.openlibrary.org",
   "font-src 'self' data:",
   "connect-src 'self'",
   "frame-ancestors 'none'",
@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
   // Standalone is for Docker/self-host; omit on Vercel so serverless tracing
   // keeps the async `pg` pool layout intact.
   ...(process.env.VERCEL ? {} : { output: "standalone" as const }),
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com", pathname: "/**" },
+      { protocol: "https", hostname: "covers.openlibrary.org", pathname: "/**" },
+    ],
+  },
   poweredByHeader: false,
   serverExternalPackages: ["pg"],
   outputFileTracingIncludes: {

@@ -1,9 +1,10 @@
 import { ForgotForm } from "./forgot-form";
+import { LuxuryAuthFrame } from "@/components/luxury-shell";
 
 export default function ForgotPage() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-6 py-12">
+    <LuxuryAuthFrame>
       <ForgotForm />
-    </main>
+    </LuxuryAuthFrame>
   );
 }

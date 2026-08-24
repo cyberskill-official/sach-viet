@@ -202,21 +202,36 @@ function targetExists(selector) {
   }
 }
 
-export function joyrideStepsFor(tourId, locale, options = {}) {
+/** Map registry placement to driver.js popover `side` (omit for auto/default). */
+function mapPlacement(placement) {
+  if (placement === "top" || placement === "bottom" || placement === "left" || placement === "right") {
+    return placement;
+  }
+  return undefined;
+}
+
+/**
+ * Build driver.js DriveStep[] for a tour id.
+ * Filters missing DOM targets for multi-route tours (product_cart, optional portal CTAs).
+ */
+export function driverStepsFor(tourId, locale, options = {}) {
   const def = getTourDefinition(tourId);
   if (!def) return [];
-  // Drop steps whose targets are absent (multi-route product_cart, optional portal CTAs).
   const filterMissing = options.onlyPresent !== false && typeof document !== "undefined";
-  const steps = def.steps
+  return def.steps
     .filter((step) => !filterMissing || targetExists(step.target))
-    .map((step) => ({
-      target: step.target,
-      content: translate(locale, step.contentKey),
-      placement: step.placement || "auto",
-      // react-joyride v3 renamed disableBeacon → skipBeacon (disableBeacon is ignored).
-      skipBeacon: true,
-    }));
-  return steps;
+    .map((step) => {
+      const side = mapPlacement(step.placement);
+      const popover = {
+        description: translate(locale, step.contentKey),
+        align: "start",
+      };
+      if (side) popover.side = side;
+      return {
+        element: step.target,
+        popover,
+      };
+    });
 }
 
 export function isTerminalTourStatus(status) {

@@ -2,8 +2,13 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import { ArrowLeft, Heart, ShoppingBag } from "@phosphor-icons/react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
+import { LuxuryShell } from "@/components/luxury-shell";
+import { MotionReveal } from "@/components/motion-reveal";
+import { ProductCover } from "@/components/product-cover";
+import type { ProductMedia } from "@/lib/product-cover";
 
 type Product = {
   id: string;
@@ -11,6 +16,7 @@ type Product = {
   title: string;
   description: string;
   category: { name: string };
+  media?: ProductMedia[];
   variants: Array<{ id: string; title: string; sku: string; attributes: Record<string, unknown> }>;
   primaryOffer: null | { id: string; priceUsd: string; listPriceUsd?: string | null; stockQuantity: number };
 };
@@ -96,24 +102,44 @@ export function ProductDetail({ slug }: { slug: string }) {
 
   if (error) {
     return (
-      <main className="mx-auto min-h-screen max-w-4xl px-6 py-16">
+      <LuxuryShell width="4xl" tourId="tour.product_cart">
         <div className="cs-alert cs-alert--danger" role="alert">{error}</div>
-        <Link className="cs-button cs-button--secondary mt-5" href="/">{t("nav.home")}</Link>
-      </main>
+        <Link className="cs-button cs-button--secondary mt-5 inline-flex min-h-11 items-center gap-2" href="/">
+          <ArrowLeft size={16} weight="bold" aria-hidden="true" />
+          {t("nav.home")}
+        </Link>
+      </LuxuryShell>
     );
   }
-  if (!product) return <main className="mx-auto min-h-screen max-w-5xl px-6 py-16"><div className="cs-skeleton h-96 rounded-3xl" /></main>;
+  if (!product) {
+    return (
+      <LuxuryShell width="7xl" tourId="tour.product_cart">
+        <div className="cs-skeleton h-96 rounded-3xl" aria-busy="true" aria-label={t("common.loading")} />
+      </LuxuryShell>
+    );
+  }
 
   return (
-    <main className="min-h-screen">
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <Link className="text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
-        <section className="mt-7 grid gap-10 lg:grid-cols-[.8fr_1.2fr]">
-          <div className="cs-surface-heavy grid min-h-[28rem] place-items-center rounded-[2rem] bg-accent-tint text-7xl font-extrabold text-accent-strong">{product.title.slice(0, 2).toUpperCase()}</div>
-          <div className="py-4">
-            <p className="cs-eyebrow text-accent-strong">{product.category.name}</p>
-            <h1 className="mt-3 text-4xl font-extrabold leading-tight sm:text-5xl">{product.title}</h1>
-            <p className="mt-6 whitespace-pre-line text-lg leading-8 text-muted">{product.description}</p>
+    <LuxuryShell width="7xl" tourId="tour.product_cart">
+        <Link className="inline-flex min-h-11 items-center gap-2 text-sm text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href="/">
+          <ArrowLeft size={16} weight="bold" aria-hidden="true" />
+          {t("nav.home")}
+        </Link>
+        <section className="mt-8 grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+          <MotionReveal className="sv-glass-heavy sv-product-spotlight overflow-hidden rounded-[2rem]">
+            <ProductCover
+              slug={product.slug}
+              title={product.title}
+              media={product.media}
+              className="min-h-[28rem] w-full rounded-[2rem]"
+              sizes="(max-width: 1024px) 100vw, 42vw"
+              priority
+            />
+          </MotionReveal>
+          <MotionReveal delayMs={80} className="py-2">
+            <p className="sv-lux-eyebrow">{product.category.name}</p>
+            <h1 className="sv-font-display mt-4 text-4xl leading-tight tracking-tight sm:text-5xl">{product.title}</h1>
+            <p className="mt-6 whitespace-pre-line text-base leading-8 text-muted sm:text-lg">{product.description}</p>
             {product.variants.length ? (
               <div className="mt-7">
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -123,17 +149,23 @@ export function ProductDetail({ slug }: { slug: string }) {
                 </div>
               </div>
             ) : null}
-            <div className="cs-surface-standard mt-8 rounded-2xl p-6">
+            <div className="sv-glass-card mt-8 rounded-2xl p-6">
               {product.primaryOffer ? (
                 <div className="flex flex-wrap items-center justify-between gap-5">
                   <div>
-                    <p className="text-3xl font-extrabold">{formatUsd(product.primaryOffer.priceUsd, locale)}</p>
+                    <p className="sv-font-display text-3xl">{formatUsd(product.primaryOffer.priceUsd, locale)}</p>
                     <p className="mt-1 text-sm text-muted">{t("storefront.inStock", { count: product.primaryOffer.stockQuantity })}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <button className="cs-button" data-tour="product-add-cart" onClick={add}>{t("product.addToCart")}</button>
-                    <button className="cs-button cs-button--secondary" type="button" onClick={saveWishlist}>{t("product.wishlist")}</button>
-                    <Link className="cs-button cs-button--secondary" href="/ecom/cart">{t("nav.cart")}</Link>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button className="cs-button inline-flex min-h-11 items-center gap-2" data-tour="product-add-cart" onClick={add}>
+                      <ShoppingBag size={18} weight="regular" aria-hidden="true" />
+                      {t("product.addToCart")}
+                    </button>
+                    <button className="cs-button cs-button--secondary inline-flex min-h-11 items-center gap-2" type="button" onClick={saveWishlist}>
+                      <Heart size={18} weight="duotone" aria-hidden="true" />
+                      {t("product.wishlist")}
+                    </button>
+                    <Link className="cs-button cs-button--secondary min-h-11" href="/ecom/cart">{t("nav.cart")}</Link>
                   </div>
                 </div>
               ) : (
@@ -144,11 +176,11 @@ export function ProductDetail({ slug }: { slug: string }) {
               {added ? <p className="mt-4 text-sm font-semibold text-accent-strong" role="status">{t("product.addToCart")}</p> : null}
               {wishState ? <p className="mt-2 text-sm font-semibold text-accent-strong" role="status">{wishState}</p> : null}
             </div>
-            <form className="cs-surface-standard mt-6 grid gap-3 rounded-2xl p-6" onSubmit={submitReview}>
-              <h2 className="text-lg font-bold">{t("product.reviews")}</h2>
+            <form className="sv-glass-card mt-6 grid gap-3 rounded-2xl p-6" onSubmit={submitReview}>
+              <h2 className="sv-font-display text-xl">{t("product.reviews")}</h2>
               <label className="grid gap-2 text-sm">
                 {t("product.rating")}
-                <select required name="rating" className="cs-field__control" defaultValue="5">
+                <select required name="rating" className="cs-field__control min-h-11" defaultValue="5">
                   <option value="5">5</option>
                   <option value="4">4</option>
                   <option value="3">3</option>
@@ -160,14 +192,13 @@ export function ProductDetail({ slug }: { slug: string }) {
                 {t("product.comment")}
                 <textarea required name="body" className="cs-field__control min-h-24" maxLength={2000} />
               </label>
-              <button className="cs-button cs-button--secondary" disabled={reviewPending} type="submit">
+              <button className="cs-button cs-button--secondary min-h-11" disabled={reviewPending} type="submit">
                 {reviewPending ? t("common.loading") : t("product.submitReview")}
               </button>
               {reviewState ? <p className="text-sm font-semibold text-accent-strong" role="status">{reviewState}</p> : null}
             </form>
-          </div>
+          </MotionReveal>
         </section>
-      </div>
-    </main>
+    </LuxuryShell>
   );
 }

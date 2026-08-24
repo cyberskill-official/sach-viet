@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
-import { TourLauncher } from "@/components/tours/tour-provider";
+import { LuxuryShell } from "@/components/luxury-shell";
 
 type Ticket = { id: string; subject: string; status: string; createdAt: number };
 type Message = { id: string; body: string; createdAt: number; userId: string };
@@ -28,7 +27,7 @@ async function readJson(url: string, init?: RequestInit) {
 }
 
 export function SupportPanel() {
-  const { locale, setLocale, t } = useLocale();
+  const { t } = useLocale();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [goodsRequests, setGoodsRequests] = useState<GoodsRequest[]>([]);
   const [activeId, setActiveId] = useState("");
@@ -156,36 +155,23 @@ export function SupportPanel() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border bg-panel/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="font-bold">{t("common.brand")}</Link>
-          <nav className="flex flex-wrap items-center gap-2 text-sm">
-            <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
-            <TourLauncher tourId="tour.support" />
-            <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
-              {locale === "en" ? "VI" : "EN"}
-            </button>
-          </nav>
-        </div>
-      </header>
-      <div className="mx-auto max-w-4xl px-6 py-12">
-      <p className="cs-eyebrow text-accent-strong" data-tour="support-heading">{t("support.title")}</p>
-      <h1 className="mt-2 text-4xl font-extrabold">{t("support.title")}</h1>
+    <LuxuryShell width="lg" tourId="tour.support">
+      <p className="sv-lux-eyebrow" data-tour="support-heading">{t("support.title")}</p>
+      <h1 className="sv-font-display mt-2 text-4xl tracking-tight">{t("support.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
 
       <section className="mt-10 grid gap-8 lg:grid-cols-2">
-        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" data-tour="support-ticket-form" onSubmit={createTicket}>
-          <h2 className="text-xl font-bold">{t("support.openTicket")}</h2>
+        <form className="sv-glass-card grid gap-3 rounded-2xl p-6" data-tour="support-ticket-form" onSubmit={createTicket}>
+          <h2 className="sv-font-display text-xl">{t("support.openTicket")}</h2>
           <label className="grid gap-2 text-sm">
             {t("support.subject")}
             <input required name="subject" className="cs-field__control" maxLength={200} />
           </label>
           <button className="cs-button" disabled={pending} type="submit">{t("support.submitTicket")}</button>
         </form>
-        <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={createGoodsRequest}>
-          <h2 className="text-xl font-bold">{t("support.bookRequest")}</h2>
+        <form className="sv-glass-card grid gap-3 rounded-2xl p-6" onSubmit={createGoodsRequest}>
+          <h2 className="sv-font-display text-xl">{t("support.bookRequest")}</h2>
           <label className="grid gap-2 text-sm">
             {t("support.body")}
             <textarea required name="details" className="cs-field__control min-h-24" maxLength={2000} />
@@ -199,13 +185,13 @@ export function SupportPanel() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">{t("support.title")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("support.title")}</h2>
         {tickets.length === 0 && !loading ? <p className="mt-3 text-muted">{t("support.empty")}</p> : null}
         <ul className="mt-4 grid gap-2">
           {tickets.map((ticket) => (
             <li key={ticket.id}>
               <button
-                className={`cs-surface-standard w-full rounded-xl p-4 text-left ${activeId === ticket.id ? "ring-2 ring-accent-strong" : ""}`}
+              className={`sv-glass-card w-full rounded-xl p-4 text-left ${activeId === ticket.id ? "ring-2 ring-accent-strong" : ""}`}
                 type="button"
                 onClick={() => {
                   setActiveId(ticket.id);
@@ -219,7 +205,7 @@ export function SupportPanel() {
           ))}
         </ul>
         {activeId ? (
-          <div className="cs-surface-standard mt-4 rounded-2xl p-6">
+          <div className="sv-glass-card mt-4 rounded-2xl p-6">
             <h3 className="font-bold">{t("support.body")}</h3>
             <ul className="mt-3 grid gap-2">
               {messages.map((message) => (
@@ -238,18 +224,17 @@ export function SupportPanel() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">{t("support.bookRequest")}</h2>
+        <h2 className="sv-font-display text-2xl">{t("support.bookRequest")}</h2>
         {goodsRequests.length === 0 && !loading ? <p className="mt-3 text-muted">{t("support.empty")}</p> : null}
         <ul className="mt-4 grid gap-2">
           {goodsRequests.map((item) => (
-            <li key={item.id} className="cs-surface-standard rounded-xl p-4">
+            <li key={item.id} className="sv-glass-card rounded-xl p-4">
               <p>{item.details}</p>
               <p className="mt-1 text-sm text-muted">{item.status}</p>
             </li>
           ))}
         </ul>
       </section>
-      </div>
-    </main>
+    </LuxuryShell>
   );
 }

@@ -24,8 +24,8 @@ export function ForgotForm() {
 
   if (done) {
     return (
-      <section className="cs-surface-heavy w-full rounded-2xl p-7">
-        <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
+      <section className="w-full">
+        <p className="sv-lux-eyebrow">{t("common.brand")}</p>
         <p className="cs-alert mt-8" role="status">
           {t("auth.resetSent")}{" "}
           <Link className="sv-text-link" href="/login">{t("auth.signIn")}</Link>
@@ -35,9 +35,9 @@ export function ForgotForm() {
   }
 
   return (
-    <section className="cs-surface-heavy w-full rounded-2xl p-7">
-      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
-      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.forgotPassword")}</h1>
+    <section className="w-full">
+      <p className="sv-lux-eyebrow">{t("common.brand")}</p>
+      <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.forgotPassword")}</h1>
       <p className="mt-2 text-sm leading-6 text-muted">{t("auth.forgotHint")}</p>
       <form className="mt-8 grid gap-4" onSubmit={submit}>
         <label className="cs-field">

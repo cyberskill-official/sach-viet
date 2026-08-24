@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
+import { LuxuryShell } from "@/components/luxury-shell";
 import { displayTier, displayTierLabel, formatRoleForDisplay } from "@/lib/access.mjs";
 
 type Account = { id: string; email: string; role: string; locale: string; createdAt: number };
@@ -157,10 +158,10 @@ export function AccountPanel() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">{t("nav.account")}</p>
-      <h1 className="mt-2 text-4xl font-extrabold">{t("account.title")}</h1>
+    <LuxuryShell width="lg" tourId="tour.account">
+      <Link className="inline-flex min-h-11 items-center text-sm text-accent-strong hover:underline" href="/">← {t("nav.home")}</Link>
+      <p className="sv-lux-eyebrow mt-8">{t("nav.account")}</p>
+      <h1 className="sv-font-display mt-2 text-4xl tracking-tight">{t("account.title")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-40 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
       {notice ? <p className="cs-alert mt-8" role="status">{notice}</p> : null}
@@ -168,11 +169,11 @@ export function AccountPanel() {
       {account ? (
         <section className="mt-10 grid gap-8 lg:grid-cols-2">
           <form
-            className="cs-surface-standard grid gap-3 rounded-2xl p-6"
+            className="sv-glass-card grid gap-3 rounded-2xl p-6"
             data-tour="account-profile"
             onSubmit={(event) => { void saveProfile(event); }}
           >
-            <h2 className="text-xl font-bold">{t("account.title")}</h2>
+            <h2 className="sv-font-display text-xl">{t("account.title")}</h2>
             <label className="grid gap-2 text-sm">
               {t("common.email")}
               <input required type="email" className="cs-field__control" value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -190,8 +191,8 @@ export function AccountPanel() {
             </p>
             <button className="cs-button" disabled={busy === "profile"} type="submit">{t("common.save")}</button>
           </form>
-          <form className="cs-surface-standard grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void changePassword(event); }}>
-            <h2 className="text-xl font-bold">{t("account.changePassword")}</h2>
+          <form className="sv-glass-card grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void changePassword(event); }}>
+            <h2 className="sv-font-display text-xl">{t("account.changePassword")}</h2>
             <label className="grid gap-2 text-sm">
               {t("account.currentPassword")}
               <input required type="password" name="currentPassword" className="cs-field__control" autoComplete="current-password" />
@@ -206,8 +207,8 @@ export function AccountPanel() {
       ) : null}
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold">{t("account.addresses")}</h2>
-        <form className="cs-surface-standard mt-4 grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void addAddress(event); }}>
+        <h2 className="sv-font-display text-2xl">{t("account.addresses")}</h2>
+        <form className="sv-glass-card mt-4 grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void addAddress(event); }}>
           <label className="grid gap-2 text-sm">
             {t("account.label")}
             <input required name="label" className="cs-field__control" />
@@ -242,7 +243,7 @@ export function AccountPanel() {
         </form>
         <ul className="mt-4 grid gap-2">
           {addresses.map((address) => (
-            <li key={address.id} className="cs-surface-standard flex flex-wrap items-start justify-between gap-3 rounded-xl p-4">
+            <li key={address.id} className="sv-glass-card flex flex-wrap items-start justify-between gap-3 rounded-xl p-4">
               <div>
                 <strong>{address.label}</strong>
                 <p className="mt-1 text-sm text-muted">{address.line1}{address.line2 ? `, ${address.line2}` : ""} · {address.city}</p>
@@ -253,6 +254,6 @@ export function AccountPanel() {
         </ul>
         {!loading && addresses.length === 0 ? <p className="mt-3 text-muted">{t("account.noAddresses")}</p> : null}
       </section>
-    </main>
+    </LuxuryShell>
   );
 }
