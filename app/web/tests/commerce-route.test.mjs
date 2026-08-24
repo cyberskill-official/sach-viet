@@ -14,7 +14,7 @@ test("commerce routes use signed sessions and Stripe/PayPal checkout + webhooks"
   const orders = readFileSync(resolve(root, "src/app/api/orders/route.ts"), "utf8");
   const cart = readFileSync(resolve(root, "src/components/cart-panel.tsx"), "utf8");
   assert.match(checkout, /handleCheckout/);
-  assert.match(checkoutHttp, /readSession/);
+  assert.match(checkoutHttp, /requireApiPermission/);
   assert.match(checkoutHttp, /createStripeCheckoutSession/);
   assert.match(checkoutHttp, /createPayPalCheckoutOrder/);
   assert.match(checkoutHttp, /normalizeCheckoutProvider/);

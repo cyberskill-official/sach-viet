@@ -10,7 +10,7 @@ test("notification routes use signed sessions and server-side repository calls",
   const preferences = readFileSync(resolve(root, "src/app/api/notifications/preferences/route.ts"), "utf8");
   const markRead = readFileSync(resolve(root, "src/app/api/notifications/[id]/read/route.ts"), "utf8");
   const vendorPreferences = readFileSync(resolve(root, "src/app/api/vendor/notification-preferences/route.ts"), "utf8");
-  for (const source of [inbox, preferences, markRead, vendorPreferences]) assert.match(source, /readSession/);
+  for (const source of [inbox, preferences, markRead, vendorPreferences]) assert.match(source, /requireApiPermission/);
   assert.match(inbox, /listNotifications/);
   assert.match(preferences, /getUserNotificationPreferences/);
   assert.match(preferences, /updateUserNotificationPreferences/);

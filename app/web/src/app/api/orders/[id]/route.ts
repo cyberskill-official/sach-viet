@@ -1,17 +1,16 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { API_ERROR_CODES, createRequestId, errorStatusForMessage, jsonError, jsonOk } from "@/lib/api-contract.mjs";
 import { createCommerceStore, getCustomerOrder } from "@/lib/commerce-core.mjs";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = createRequestId(request);
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const { id } = await context.params;
     const store = await createCommerceStore();
     try {
-      return jsonOk({ order: await getCustomerOrder(store, session.user, id) });
+      return jsonOk({ order: await getCustomerOrder(store, auth.user, id) });
     } finally {
       await store.close();
     }

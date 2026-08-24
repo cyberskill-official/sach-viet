@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { SETTLEMENT_POLICY } from "@/lib/finance-policy-core.mjs";
 import { createVendorCommerceStore, listVendorPayouts } from "@/lib/vendor-commerce-core.mjs";
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const vendorId = new URL(request.url).searchParams.get("vendorId") || undefined;
     const store = await createVendorCommerceStore();
     try {
       return NextResponse.json({
-        payouts: await listVendorPayouts(store, session.user, { vendorId }),
+        payouts: await listVendorPayouts(store, auth.user, { vendorId }),
         settlementPolicy: SETTLEMENT_POLICY,
         note: "Operational payout ledger only; commission computation refused until DEC-SET-001.",
       });

@@ -13,7 +13,7 @@ test("publisher routes use signed sessions and domain operations", async () => {
     "utf8",
   );
   const marc = readFileSync(resolve(root, "src/app/api/publisher/marc/route.ts"), "utf8");
-  for (const source of [dashboard, requests, withdraw, marc]) assert.match(source, /readSession/);
+  for (const source of [dashboard, requests, withdraw, marc]) assert.match(source, /requireApiPermission/);
   assert.match(dashboard, /getPublisherDashboard/);
   assert.match(requests, /createPublishingRequest/);
   assert.match(requests, /listPublishingRequests/);

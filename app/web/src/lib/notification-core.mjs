@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission } from "./access.mjs";
 import { dispatchExternalNotificationChannels } from "./email-zalo-integrations-core.mjs";
 import { publishNotificationCreated } from "./live-notifications-core.mjs";
 
@@ -32,9 +32,7 @@ function requireUser(user) {
 }
 
 function requireVendor(user) {
-  requireUser(user);
-  const role = normalizeRole(user.role);
-  if (role !== "vendor" && role !== "admin") throw new Error("Vendor access is required.");
+  assertPermission(user, "vendor.notifications", "Vendor access is required.");
   return user;
 }
 

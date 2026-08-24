@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { createEmployeeRetailStore, listHomeSections, upsertHomeSection } from "@/lib/employee-retail-core.mjs";
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ sections: await listHomeSections(store, session.user) });
+      return NextResponse.json({ sections: await listHomeSections(store, auth.user) });
     } finally {
       await store.close();
     }
@@ -20,13 +19,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await request.json();
     const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ section: await upsertHomeSection(store, session.user, body) });
+      return NextResponse.json({ section: await upsertHomeSection(store, auth.user, body) });
     } finally {
       await store.close();
     }

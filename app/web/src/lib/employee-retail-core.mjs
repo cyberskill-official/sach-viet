@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase, tableExists } from "./db.mjs";
-import { canAccessPortal, normalizeRole } from "./access.mjs";
+import { assertPermission, normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 const required = (value, label) => {
@@ -9,14 +9,12 @@ const required = (value, label) => {
 };
 
 function employeeActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  if (!canAccessPortal(user.role, "employee")) throw new Error("Employee access is required.");
+  assertPermission(user, "employee.dashboard", "Employee access is required.");
   return normalizeRole(user.role);
 }
 
 function retailActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  if (!canAccessPortal(user.role, "retail")) throw new Error("Retail access is required.");
+  assertPermission(user, "retail.orders", "Retail access is required.");
   return normalizeRole(user.role);
 }
 

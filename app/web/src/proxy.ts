@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { COOKIE_NAME, verifySessionTokenSignature } from "@/lib/auth-core.mjs";
-import { portalForPath, requiresAuthPath } from "@/lib/access.mjs";
+import { COOKIE_NAME, decodeSessionRoleFromToken, verifySessionTokenSignature } from "@/lib/auth-core.mjs";
+import { canAccessPortal, portalForPath, requiresApiAuth, requiresAuthPath } from "@/lib/access.mjs";
 import { isSameOriginRequest } from "@/lib/csrf.mjs";
 import { isRetiredSupplierPath } from "@/lib/production-retirement.mjs";
 
@@ -12,9 +12,20 @@ function redirectToLogin(request: NextRequest, pathname: string) {
   return NextResponse.redirect(login);
 }
 
+function redirectToForbidden(request: NextRequest) {
+  return NextResponse.redirect(new URL("/forbidden", request.url));
+}
+
+function sessionToken(request: NextRequest) {
+  return request.cookies.get(COOKIE_NAME)?.value;
+}
+
 function hasSignedSession(request: NextRequest) {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
-  return verifySessionTokenSignature(token, process.env.AUTH_SESSION_SECRET);
+  return verifySessionTokenSignature(sessionToken(request), process.env.AUTH_SESSION_SECRET);
+}
+
+function sessionRoleFromRequest(request: NextRequest) {
+  return decodeSessionRoleFromToken(sessionToken(request), process.env.AUTH_SESSION_SECRET);
 }
 
 export function proxy(request: NextRequest) {
@@ -48,6 +59,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
   }
 
+  // Defense-in-depth: require a signed session for private APIs (role still enforced in handlers).
+  if (requiresApiAuth(pathname) && !hasSignedSession(request)) {
+    return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+  }
+
   if (requiresAuthPath(pathname) && !hasSignedSession(request)) {
     return redirectToLogin(request, pathname);
   }
@@ -57,6 +73,10 @@ export function proxy(request: NextRequest) {
 
   if (!hasSignedSession(request)) {
     return redirectToLogin(request, pathname);
+  }
+  const role = sessionRoleFromRequest(request);
+  if (!role || !canAccessPortal(role, portal)) {
+    return redirectToForbidden(request);
   }
   return NextResponse.next();
 }

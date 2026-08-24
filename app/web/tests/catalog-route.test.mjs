@@ -19,9 +19,9 @@ test("public catalog routes use the catalog repository without an auth requireme
   assert.doesNotMatch(listHttp, /readSession/);
 });
 
-test("vendor offer route reads the signed session before writing an offer", async () => {
+test("vendor offer route enforces matrix permission before writing an offer", async () => {
   const route = readFileSync(resolve(root, "src/app/api/vendor/offers/route.ts"), "utf8");
-  assert.match(route, /readSession/);
+  assert.match(route, /requireApiPermission/);
   assert.match(route, /writeVendorOffer/);
-  assert.match(route, /Unauthenticated/);
+  assert.match(route, /API_ERROR_CODES\.unauthenticated|auth\.response/);
 });

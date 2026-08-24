@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission, normalizeRole } from "./access.mjs";
 import { requireStoredObjectKey } from "./storage-core.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -22,10 +22,8 @@ export const ROYALTY_DECISION_REGISTER = Object.freeze([
 ]);
 
 function publisherActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  const role = normalizeRole(user.role);
-  if (role !== "publisher" && role !== "admin") throw new Error("Publisher access is required.");
-  return role;
+  assertPermission(user, "publisher.dashboard", "Publisher access is required.");
+  return normalizeRole(user.role);
 }
 
 function resolvePublisherId(actor, requestedPublisherId) {

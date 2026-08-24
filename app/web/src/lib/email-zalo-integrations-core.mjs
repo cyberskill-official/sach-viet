@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission } from "./access.mjs";
 import { submitSmtpMessage } from "./smtp-submitter.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
@@ -15,8 +15,7 @@ function requireUser(user) {
 }
 
 function requireAdmin(user) {
-  requireUser(user);
-  if (normalizeRole(user.role) !== "admin") throw new Error("Admin access is required.");
+  assertPermission(user, "admin.integrations", "Admin access is required.");
   return user;
 }
 

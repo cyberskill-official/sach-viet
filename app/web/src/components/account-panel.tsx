@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
 import { LuxuryShell } from "@/components/luxury-shell";
+import { displayTier, displayTierLabel, formatRoleForDisplay } from "@/lib/access.mjs";
 
 type Account = { id: string; email: string; role: string; locale: string; createdAt: number };
 type Address = { id: string; label: string; line1: string; line2?: string | null; city: string; region?: string | null; postalCode?: string | null; country: string };
@@ -184,7 +185,10 @@ export function AccountPanel() {
                 <option value="vi">Tiếng Việt</option>
               </select>
             </label>
-            <p className="text-sm text-muted">{account.role}</p>
+            <p className="text-sm text-muted" data-access-tier={displayTier(account.role)}>
+              <span className="cs-badge mr-2">{displayTierLabel(account.role, locale === "vi" ? "vi" : "en")}</span>
+              {formatRoleForDisplay(account.role, locale === "vi" ? "vi" : "en")}
+            </p>
             <button className="cs-button" disabled={busy === "profile"} type="submit">{t("common.save")}</button>
           </form>
           <form className="sv-glass-card grid gap-3 rounded-2xl p-6" onSubmit={(event) => { void changePassword(event); }}>

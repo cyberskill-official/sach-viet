@@ -14,7 +14,7 @@ import {
   UsersThree,
 } from "@phosphor-icons/react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
-import { defaultHomeForRole } from "@/lib/access.mjs";
+import { displayTier, displayTierLabel, formatRoleForDisplay, portalNavHrefForRole } from "@/lib/access.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 import { MotionReveal } from "@/components/motion-reveal";
@@ -226,7 +226,9 @@ export function Storefront({
     window.location.assign("/");
   }
 
-  const portalHome = sessionUser ? defaultHomeForRole(sessionUser.role) : "/account";
+  const portalHome = sessionUser ? portalNavHrefForRole(sessionUser.role) : null;
+  const accessLabel = displayTierLabel(sessionUser?.role ?? null, locale === "vi" ? "vi" : "en");
+  const tier = displayTier(sessionUser?.role ?? null);
   const featuredProducts = products.slice(0, 3);
   const brandValues = [
     { icon: Sparkle, titleKey: "storefront.valueCuratedTitle", bodyKey: "storefront.valueCuratedBody" },
@@ -234,12 +236,14 @@ export function Storefront({
     { icon: Heart, titleKey: "storefront.valueServiceTitle", bodyKey: "storefront.valueServiceBody" },
     { icon: UsersThree, titleKey: "storefront.valueCommunityTitle", bodyKey: "storefront.valueCommunityBody" },
   ] as const;
-  const secondaryLinks = [
-    { href: "/account", label: t("nav.account") },
-    { href: "/wishlist", label: t("nav.wishlist") },
-    { href: "/support", label: t("nav.support") },
-    { href: "/ecom/orders", label: t("nav.orders") },
-  ] as const;
+  const secondaryLinks = sessionUser
+    ? ([
+        { href: "/account", label: t("nav.account") },
+        { href: "/wishlist", label: t("nav.wishlist") },
+        { href: "/support", label: t("nav.support") },
+        { href: "/ecom/orders", label: t("nav.orders") },
+      ] as const)
+    : ([{ href: "/support", label: t("nav.support") }] as const);
 
   return (
     <main className="sv-luxury min-h-screen bg-background text-foreground">
@@ -301,7 +305,10 @@ export function Storefront({
             </a>
             {sessionReady && sessionUser ? (
               <>
-                {portalHome !== "/account" ? (
+                <span className="cs-badge hidden sm:inline-flex" data-access-tier={tier} title={formatRoleForDisplay(sessionUser.role, locale === "vi" ? "vi" : "en")}>
+                  {accessLabel}
+                </span>
+                {portalHome ? (
                   <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
                 ) : null}
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/account">{t("nav.account")}</Link>
@@ -309,6 +316,7 @@ export function Storefront({
               </>
             ) : sessionReady ? (
               <>
+                <span className="cs-badge hidden sm:inline-flex" data-access-tier="guest">{t("common.roleGuest")}</span>
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
                 <Link className="cs-button min-h-11" href="/login">{t("nav.login")}</Link>
               </>

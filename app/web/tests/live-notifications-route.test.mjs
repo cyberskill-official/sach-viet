@@ -7,7 +7,7 @@ const root = resolve(import.meta.dirname, "..");
 
 test("live notification stream route requires signed session and SSE headers", async () => {
   const stream = readFileSync(resolve(root, "src/app/api/notifications/stream/route.ts"), "utf8");
-  assert.match(stream, /readSession/);
+  assert.match(stream, /requireApiPermission/);
   assert.match(stream, /createOwnerNotificationSseStream/);
   assert.match(stream, /text\/event-stream/);
   assert.doesNotMatch(stream, /Pusher|Reverb|SMTP|Zalo|WebSocket/);

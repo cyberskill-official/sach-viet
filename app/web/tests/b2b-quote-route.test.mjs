@@ -12,7 +12,7 @@ test("B2B quote routes use signed sessions and server-side domain operations", a
   const lists = readFileSync(resolve(root, "src/app/api/institution/selection-lists/route.ts"), "utf8");
   const quotes = readFileSync(resolve(root, "src/app/api/institution/quotes/route.ts"), "utf8");
   const quoteDetail = readFileSync(resolve(root, "src/app/api/institution/quotes/[id]/route.ts"), "utf8");
-  for (const source of [organizations, pipeline, staffQuote, lists, quotes, quoteDetail]) assert.match(source, /readSession/);
+  for (const source of [organizations, pipeline, staffQuote, lists, quotes, quoteDetail]) assert.match(source, /requireApiPermission/);
   assert.match(pipeline, /listQuotesPipeline/);
   assert.match(staffQuote, /getStaffQuote/);
   assert.match(staffQuote, /transitionQuoteStatus/);

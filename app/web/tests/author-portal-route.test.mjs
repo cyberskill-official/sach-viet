@@ -13,7 +13,7 @@ test("author routes use signed sessions and domain operations", async () => {
     resolve(root, "src/app/api/author/manuscript-requests/[id]/withdraw/route.ts"),
     "utf8",
   );
-  for (const source of [dashboard, requests, detail, withdraw]) assert.match(source, /readSession/);
+  for (const source of [dashboard, requests, detail, withdraw]) assert.match(source, /requireApiPermission/);
   assert.match(dashboard, /getAuthorDashboard/);
   assert.match(requests, /createAuthorManuscriptRequest/);
   assert.match(requests, /listAuthorManuscriptRequests/);

@@ -53,7 +53,7 @@ export function jsonOk(body, { status = 200, headers } = {}) {
 export function errorStatusForMessage(message, fallback = 400) {
   const text = typeof message === "string" ? message : "";
   if (/Unauthenticated|signed-in customer is required|Authentication is required/i.test(text)) return 401;
-  if (/denied|Administrator|Vendor access|Employee access|Retail access|B2B staff|Institution access|Publisher access|Author access|Admin access|cannot write|cannot read|cannot change|cannot access another/i.test(text)) {
+  if (/denied|Administrator|Vendor access|Employee access|Retail access|B2B staff|Institution access|Publisher access|Author access|Admin access|cannot write|cannot read|cannot change|cannot access another|discount authority is admin-only/i.test(text)) {
     return 403;
   }
   if (/does not exist|not found/i.test(text)) return 404;

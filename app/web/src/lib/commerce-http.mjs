@@ -1,4 +1,4 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "./auth-core.mjs";
+import { requireApiPermission } from "./authz-http.mjs";
 import {
   assertPayPalSandboxMode,
   assertSandboxPaymentsOnly,
@@ -60,14 +60,8 @@ export async function handleCheckout(request, environment = process.env) {
     return jsonError(commerceMutationsDisabledMessage(), 503);
   }
 
-  const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-  let session;
-  try {
-    session = await readSession(await getAuthStore(), token, environment.AUTH_SESSION_SECRET);
-  } catch {
-    return jsonError("Authentication is not configured.", 503);
-  }
-  if (!session) return jsonError("Unauthenticated.", 401);
+  const auth = await requireApiPermission(request);
+  if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => null);
   let provider;
@@ -89,7 +83,7 @@ export async function handleCheckout(request, environment = process.env) {
     if (idempotencyKey) {
       const existing = await store.db
         .prepare("SELECT response_json AS responseJson FROM checkout_idempotency WHERE key = ? AND user_id = ?")
-        .get(idempotencyKey, session.user.id);
+        .get(idempotencyKey, auth.user.id);
       if (existing?.responseJson) {
         return Response.json(JSON.parse(existing.responseJson), { status: 201 });
       }
@@ -97,7 +91,7 @@ export async function handleCheckout(request, environment = process.env) {
 
     const shipTo = normalizeShipToAddress(body?.shipTo, { requireAddress: true });
     stubTaxShippingLines({ carrierId: body?.carrierId });
-    const order = await createPendingOrder(store, session.user, body?.items);
+    const order = await createPendingOrder(store, auth.user, body?.items);
     order.shipTo = shipTo;
     order.carrierId = typeof body?.carrierId === "string" && body.carrierId.trim() ? body.carrierId.trim().toLowerCase() : "none";
     const checkout =
@@ -125,12 +119,12 @@ export async function handleCheckout(request, environment = process.env) {
           .prepare(
             "INSERT INTO checkout_idempotency (key, user_id, response_json, created_at) VALUES (?, ?, ?, ?)",
           )
-          .run(idempotencyKey, session.user.id, JSON.stringify(payload), store.clock());
+          .run(idempotencyKey, auth.user.id, JSON.stringify(payload), store.clock());
       } catch (error) {
         if (isUniqueViolationError(error)) {
           const raced = await store.db
             .prepare("SELECT response_json AS responseJson FROM checkout_idempotency WHERE key = ? AND user_id = ?")
-            .get(idempotencyKey, session.user.id);
+            .get(idempotencyKey, auth.user.id);
           if (raced?.responseJson) return Response.json(JSON.parse(raced.responseJson), { status: 201 });
         } else {
           throw error;

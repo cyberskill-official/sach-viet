@@ -20,7 +20,9 @@ for (const required of [
 }
 
 if (!route.includes("text/event-stream")) throw new Error("Stream route must emit SSE content type.");
-if (!route.includes("readSession")) throw new Error("Stream route must require a signed session.");
+if (!route.includes("requireApiPermission") && !route.includes("requirePermission")) {
+  throw new Error("Stream route must enforce matrix permissions.");
+}
 if (!notificationCore.includes("publishNotificationCreated")) {
   throw new Error("Notification core must publish live events after create.");
 }

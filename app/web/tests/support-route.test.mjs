@@ -10,7 +10,7 @@ test("support routes use signed sessions and server-side domain operations", asy
   const messages = readFileSync(resolve(root, "src/app/api/support/tickets/[id]/messages/route.ts"), "utf8");
   const requests = readFileSync(resolve(root, "src/app/api/support/goods-requests/route.ts"), "utf8");
   const reviews = readFileSync(resolve(root, "src/app/api/support/reviews/route.ts"), "utf8");
-  for (const source of [tickets, messages, requests, reviews]) assert.match(source, /readSession/);
+  for (const source of [tickets, messages, requests, reviews]) assert.match(source, /requireApiPermission/);
   assert.match(messages, /listTicketMessages/);
   assert.match(messages, /addTicketMessage/);
   assert.match(requests, /createGoodsRequest/);

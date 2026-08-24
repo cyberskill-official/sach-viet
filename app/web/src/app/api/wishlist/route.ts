@@ -1,19 +1,14 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { addWishlistItem, createWishlistStore, listWishlist, removeWishlistItem } from "@/lib/wishlist-core.mjs";
-
-async function sessionFor(request: Request) {
-  const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-  return readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-}
 
 export async function GET(request: Request) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createWishlistStore();
     try {
-      return NextResponse.json({ items: await listWishlist(store, session.user) });
+      return NextResponse.json({ items: await listWishlist(store, auth.user) });
     } finally {
       await store.close();
     }
@@ -27,12 +22,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await request.json().catch(() => null);
     const store = await createWishlistStore();
     try {
-      return NextResponse.json({ item: await addWishlistItem(store, session.user, body?.productId) }, { status: 201 });
+      return NextResponse.json({ item: await addWishlistItem(store, auth.user, body?.productId) }, { status: 201 });
     } finally {
       await store.close();
     }
@@ -46,13 +41,13 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const url = new URL(request.url);
     const productId = url.searchParams.get("productId") || (await request.json().catch(() => null))?.productId;
     const store = await createWishlistStore();
     try {
-      return NextResponse.json(await removeWishlistItem(store, session.user, productId));
+      return NextResponse.json(await removeWishlistItem(store, auth.user, productId));
     } finally {
       await store.close();
     }

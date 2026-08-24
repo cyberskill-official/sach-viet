@@ -29,7 +29,9 @@ for (const required of [
 if (!catalog.includes("export async function listCategories")) throw new Error("catalog-core must export listCategories.");
 
 for (const source of routes) {
-  if (!source.includes("readSession")) throw new Error("Admin catalog routes must use readSession.");
+  if (!source.includes("requireApiPermission") && !source.includes("requirePermission")) {
+    throw new Error("Admin catalog routes must enforce matrix permissions.");
+  }
   if (!source.includes("createAdminCatalogStore")) throw new Error("Admin catalog routes must use createAdminCatalogStore.");
 }
 

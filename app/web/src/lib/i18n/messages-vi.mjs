@@ -31,6 +31,10 @@ export const messagesVi = Object.freeze({
     close: "Đóng",
     showNavigation: "Hiện điều hướng",
     hideNavigation: "Ẩn điều hướng",
+    roleGuest: "Khách",
+    roleUser: "Người dùng",
+    roleAdmin: "Quản trị",
+    accessTier: "Quyền truy cập",
   },
   nav: {
     account: "Tài khoản",
@@ -70,6 +74,8 @@ export const messagesVi = Object.freeze({
     accessDenied: "Không có quyền truy cập",
     accessDeniedBody: "Tài khoản của bạn không có quyền vào cổng này.",
     backToStorefront: "Về trang cửa hàng",
+    signInRequired: "Đăng nhập để mở",
+    unauthorizedAction: "Không khả dụng với mức truy cập của bạn",
   },
   storefront: {
     eyebrow: "Ngôi nhà của chữ Việt tuyển chọn",

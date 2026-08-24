@@ -15,6 +15,14 @@ test("requiresAuthPath gates account, wishlist, and order history", () => {
   assert.equal(requiresAuthPath(""), false);
 });
 
+test("requiresApiAuth gates private APIs at the proxy boundary", async () => {
+  const { requiresApiAuth } = await import("../src/lib/access.mjs");
+  assert.equal(requiresApiAuth("/api/admin/flags"), true);
+  assert.equal(requiresApiAuth("/api/wishlist"), true);
+  assert.equal(requiresApiAuth("/api/catalog/products"), false);
+  assert.equal(requiresApiAuth("/api/auth/login"), false);
+});
+
 test("portalForPath still resolves role portals only", () => {
   assert.equal(portalForPath("/admin"), "admin");
   assert.equal(portalForPath("/account"), null);
@@ -26,4 +34,7 @@ test("defaultHomeForRole sends admins to portal not storefront", () => {
   assert.equal(defaultHomeForRole("super_admin"), "/admin");
   assert.equal(defaultHomeForRole("customer"), "/account");
   assert.equal(defaultHomeForRole("vendor"), "/vendor");
+  assert.equal(defaultHomeForRole("employee"), "/employee");
+  assert.equal(defaultHomeForRole("employee_b2c"), "/retail");
+  assert.equal(defaultHomeForRole("employee_supplier"), "/account");
 });

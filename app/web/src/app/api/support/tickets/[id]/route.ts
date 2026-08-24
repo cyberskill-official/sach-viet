@@ -1,4 +1,4 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import {
   API_ERROR_CODES,
   createRequestId,
@@ -12,18 +12,14 @@ import { assignTicket, createSupportStore } from "@/lib/support-core.mjs";
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const requestId = createRequestId(request);
   try {
-    const session = await readSession(
-      await getAuthStore(),
-      request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
-      process.env.AUTH_SESSION_SECRET,
-    );
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const { id } = await context.params;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid assignment request.", { status: 400, requestId });
     const store = await createSupportStore();
     try {
-      return jsonOk({ ticket: await assignTicket(store, session.user, { ...body, ticketId: id }) });
+      return jsonOk({ ticket: await assignTicket(store, auth.user, { ...body, ticketId: id }) });
     } finally {
       await store.close();
     }

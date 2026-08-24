@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { createCommerceStore, recordPaymentEvent } from "@/lib/commerce-core.mjs";
 
 /**
@@ -17,14 +17,8 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(cartPath, request.url));
   }
 
-  const sessionToken = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-  let session = null;
-  try {
-    session = await readSession(await getAuthStore(), sessionToken, process.env.AUTH_SESSION_SECRET);
-  } catch {
-    session = null;
-  }
-  if (!session) {
+  const auth = await requireApiPermission(request);
+  if (!auth.ok) {
     const login = new URL("/login", request.url);
     login.searchParams.set("redirect", `${url.pathname}${url.search}`);
     return NextResponse.redirect(login);
@@ -35,7 +29,7 @@ export async function GET(request: Request) {
     const local = await store.db
       .prepare("SELECT id, user_id, status FROM orders WHERE paypal_order_id = ?")
       .get(token);
-    if (!local || local.user_id !== session.user.id) {
+    if (!local || local.user_id !== auth.user.id) {
       return NextResponse.redirect(new URL(cartPath, request.url));
     }
     await recordPaymentEvent(store, {

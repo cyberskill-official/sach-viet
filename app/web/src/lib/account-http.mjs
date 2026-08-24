@@ -1,4 +1,4 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "./auth-core.mjs";
+import { requireApiPermission } from "./authz-http.mjs";
 import {
   changeAccountPassword,
   createAccountStore,
@@ -16,7 +16,6 @@ import {
   jsonOk,
   jsonPage,
   readJsonBody,
-  sessionTokenFrom,
 } from "./api-contract.mjs";
 import {
   createTourStore,
@@ -24,10 +23,6 @@ import {
   mergeAndPersistTourProgress,
   upsertTourProgress,
 } from "./tours/tour-core.mjs";
-
-async function sessionFor(request) {
-  return await readSession(await getAuthStore(), sessionTokenFrom(request) || request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
-}
 
 function fail(error, requestId, fallback = API_ERROR_CODES.invalid_request) {
   const message = error instanceof Error ? error.message : "Account request failed.";
@@ -40,11 +35,11 @@ function fail(error, requestId, fallback = API_ERROR_CODES.invalid_request) {
 export async function handleGetAccount(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createAccountStore();
     try {
-      return jsonOk({ account: await getAccount(store, session.user) });
+      return jsonOk({ account: await getAccount(store, auth.user) });
     } finally {
       await store.close();
     }
@@ -56,13 +51,13 @@ export async function handleGetAccount(request) {
 export async function handleUpdateAccount(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid account request.", { status: 400, requestId });
     const store = await createAccountStore();
     try {
-      return jsonOk({ account: await updateAccount(store, session.user, body) });
+      return jsonOk({ account: await updateAccount(store, auth.user, body) });
     } finally {
       await store.close();
     }
@@ -74,13 +69,13 @@ export async function handleUpdateAccount(request) {
 export async function handleChangeAccountPassword(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid password request.", { status: 400, requestId });
     const store = await createAccountStore();
     try {
-      return jsonOk(await changeAccountPassword(store, session.user, body));
+      return jsonOk(await changeAccountPassword(store, auth.user, body));
     } finally {
       await store.close();
     }
@@ -92,12 +87,12 @@ export async function handleChangeAccountPassword(request) {
 export async function handleListAddresses(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const url = new URL(request.url);
     const store = await createAccountStore();
     try {
-      const page = await listAddresses(store, session.user, {
+      const page = await listAddresses(store, auth.user, {
         after: url.searchParams.get("after") || undefined,
         limit: url.searchParams.get("limit") ? Number(url.searchParams.get("limit")) : 24,
       });
@@ -113,13 +108,13 @@ export async function handleListAddresses(request) {
 export async function handleCreateAddress(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid address request.", { status: 400, requestId });
     const store = await createAccountStore();
     try {
-      return jsonOk({ address: await createAddress(store, session.user, body) }, { status: 201 });
+      return jsonOk({ address: await createAddress(store, auth.user, body) }, { status: 201 });
     } finally {
       await store.close();
     }
@@ -131,11 +126,11 @@ export async function handleCreateAddress(request) {
 export async function handleDeleteAddress(request, addressId) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createAccountStore();
     try {
-      return jsonOk(await deleteAddress(store, session.user, addressId));
+      return jsonOk(await deleteAddress(store, auth.user, addressId));
     } finally {
       await store.close();
     }
@@ -147,11 +142,11 @@ export async function handleDeleteAddress(request, addressId) {
 export async function handleGetTours(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createTourStore();
     try {
-      return jsonOk({ tours: await listTourProgress(store, session.user) });
+      return jsonOk({ tours: await listTourProgress(store, auth.user) });
     } finally {
       await store.close();
     }
@@ -163,18 +158,18 @@ export async function handleGetTours(request) {
 export async function handlePatchTours(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid tour request.", { status: 400, requestId });
     const store = await createTourStore();
     try {
       if (body.merge && typeof body.merge === "object") {
-        return jsonOk({ tours: await mergeAndPersistTourProgress(store, session.user, body.merge) });
+        return jsonOk({ tours: await mergeAndPersistTourProgress(store, auth.user, body.merge) });
       }
       if (typeof body.tourId === "string" && body.status) {
-        await upsertTourProgress(store, session.user, body.tourId, body.status);
-        return jsonOk({ tours: await listTourProgress(store, session.user) });
+        await upsertTourProgress(store, auth.user, body.tourId, body.status);
+        return jsonOk({ tours: await listTourProgress(store, auth.user) });
       }
       return jsonError(API_ERROR_CODES.invalid_request, "Invalid tour request.", { status: 400, requestId });
     } finally {

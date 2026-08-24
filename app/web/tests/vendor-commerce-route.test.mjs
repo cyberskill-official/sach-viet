@@ -10,7 +10,7 @@ test("vendor commerce routes use signed sessions and server-side repository call
   const payouts = readFileSync(resolve(root, "src/app/api/vendor/payouts/route.ts"), "utf8");
   const dashboard = readFileSync(resolve(root, "src/app/api/vendor/dashboard/route.ts"), "utf8");
   const adminPayouts = readFileSync(resolve(root, "src/app/api/admin/payouts/route.ts"), "utf8");
-  for (const source of [orders, payouts, dashboard, adminPayouts]) assert.match(source, /readSession/);
+  for (const source of [orders, payouts, dashboard, adminPayouts]) assert.match(source, /requireApiPermission/);
   assert.match(orders, /listVendorIncomingOrders/);
   assert.match(payouts, /listVendorPayouts/);
   assert.match(dashboard, /getVendorDashboard/);

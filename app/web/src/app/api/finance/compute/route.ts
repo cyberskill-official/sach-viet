@@ -1,27 +1,32 @@
-import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
 import { computeRoyaltyStatement, computeVendorSettlement } from "@/lib/finance-policy-core.mjs";
+import { API_ERROR_CODES, createRequestId, jsonError, jsonOk, readJsonBody } from "@/lib/api-contract.mjs";
+import { requirePermission } from "@/lib/authz-http.mjs";
 
 /** Admin-only settlement / royalty compute previews from DEC-SET / DEC-ROY rates. */
 export async function POST(request: Request) {
+  const requestId = createRequestId(request);
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
-    if (session.user.role !== "admin") return NextResponse.json({ error: "Administrator access is required." }, { status: 403 });
+    const auth = await requirePermission(request, "admin.finance.compute", {
+      message: "Administrator access is required.",
+    });
+    if (!auth.ok) return auth.response;
 
-    const body = await request.json().catch(() => null);
-    if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid compute request." }, { status: 400 });
+    const body = await readJsonBody(request);
+    if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid compute request.", { status: 400, requestId: auth.requestId });
 
     const kind = typeof body.kind === "string" ? body.kind.trim() : "";
     if (kind === "settlement") {
-      return NextResponse.json({ settlement: computeVendorSettlement(body) });
+      return jsonOk({ settlement: computeVendorSettlement(body) });
     }
     if (kind === "royalty") {
-      return NextResponse.json({ royalty: computeRoyaltyStatement(body) });
+      return jsonOk({ royalty: computeRoyaltyStatement(body) });
     }
-    return NextResponse.json({ error: "kind must be settlement or royalty." }, { status: 400 });
+    return jsonError(API_ERROR_CODES.invalid_request, "kind must be settlement or royalty.", {
+      status: 400,
+      requestId: auth.requestId,
+    });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Finance compute failed." }, { status: 400 });
+    const message = error instanceof Error ? error.message : "Finance compute failed.";
+    return jsonError(API_ERROR_CODES.invalid_request, message, { status: 400, requestId });
   }
 }
