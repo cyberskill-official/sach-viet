@@ -1,25 +1,17 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { createOwnerNotificationSseStream } from "@/lib/live-notifications-core.mjs";
 import { createNotificationStore } from "@/lib/notification-core.mjs";
 
-async function sessionFor(request: Request) {
-  return await readSession(
-    await getAuthStore(),
-    request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
-    process.env.AUTH_SESSION_SECRET,
-  );
-}
-
 export async function GET(request: Request) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const cursor = new URL(request.url).searchParams.get("cursor") ?? undefined;
     const store = await createNotificationStore();
     const stream = createOwnerNotificationSseStream({
       store,
-      user: session.user,
+      user: auth.user,
       cursor,
       signal: request.signal,
       onClose: () => store.close(),

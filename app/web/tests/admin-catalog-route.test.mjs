@@ -10,7 +10,7 @@ test("admin catalog routes use signed sessions and admin-catalog-core writers", 
   const products = readFileSync(resolve(root, "src/app/api/admin/catalog/products/route.ts"), "utf8");
   const offers = readFileSync(resolve(root, "src/app/api/admin/catalog/offers/route.ts"), "utf8");
   for (const source of [categories, products, offers]) {
-    assert.match(source, /readSession/);
+    assert.match(source, /requireApiPermission/);
     assert.match(source, /createAdminCatalogStore/);
   }
   assert.match(categories, /listAdminCategories/);

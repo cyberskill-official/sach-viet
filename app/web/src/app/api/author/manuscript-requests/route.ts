@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import {
   createAuthorManuscriptRequest,
   createAuthorPortalStore,
@@ -8,14 +8,13 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const authorId = new URL(request.url).searchParams.get("authorId") || undefined;
     const store = await createAuthorPortalStore();
     try {
       return NextResponse.json({
-        manuscriptRequests: await listAuthorManuscriptRequests(store, session.user, { authorId }),
+        manuscriptRequests: await listAuthorManuscriptRequests(store, auth.user, { authorId }),
       });
     } finally {
       await store.close();
@@ -30,13 +29,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createAuthorPortalStore();
     try {
       return NextResponse.json(
-        { manuscriptRequest: await createAuthorManuscriptRequest(store, session.user, await request.json()) },
+        { manuscriptRequest: await createAuthorManuscriptRequest(store, auth.user, await request.json()) },
         { status: 201 },
       );
     } finally {

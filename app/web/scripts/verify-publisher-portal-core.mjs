@@ -50,7 +50,9 @@ for (const route of [
   "src/app/api/publisher/marc/route.ts",
 ]) {
   const body = readFileSync(resolve(root, route), "utf8");
-  if (!body.includes("readSession")) throw new Error(`${route} must use signed sessions.`);
+  if (!body.includes("requireApiPermission") && !body.includes("requirePermission")) {
+    throw new Error(`${route} must enforce matrix permissions.`);
+  }
 }
 
 console.info(JSON.stringify({ event: "publisher_portal_core_verified", task_id: "TASK-REBUILD-017", result: "passed" }));

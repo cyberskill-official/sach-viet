@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { attachArtifact, createB2bOrderStore, getStaffOrder, transitionOrderStatus } from "@/lib/b2b-order-core.mjs";
-
-async function sessionFor(request: Request) {
-  return await readSession(await getAuthStore(), request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1], process.env.AUTH_SESSION_SECRET);
-}
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const { id } = await context.params;
     const store = await createB2bOrderStore();
     try {
-      return NextResponse.json({ order: await getStaffOrder(store, session.user, id) });
+      return NextResponse.json({ order: await getStaffOrder(store, auth.user, id) });
     } finally {
       await store.close();
     }
@@ -24,15 +20,15 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const { id } = await context.params;
     const body = await request.json();
     const store = await createB2bOrderStore();
     try {
       if (body?.artifact) {
         return NextResponse.json({
-          order: await attachArtifact(store, session.user, {
+          order: await attachArtifact(store, auth.user, {
             orderId: id,
             kind: body.artifact.kind,
             referenceNumber: body.artifact.referenceNumber,
@@ -40,7 +36,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
           }),
         });
       }
-      return NextResponse.json({ order: await transitionOrderStatus(store, session.user, { orderId: id, status: body?.status }) });
+      return NextResponse.json({ order: await transitionOrderStatus(store, auth.user, { orderId: id, status: body?.status }) });
     } finally {
       await store.close();
     }

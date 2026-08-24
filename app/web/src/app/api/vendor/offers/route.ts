@@ -1,4 +1,4 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import {
   API_ERROR_CODES,
   createRequestId,
@@ -10,20 +10,15 @@ import {
 } from "@/lib/api-contract.mjs";
 import { createCatalogStore, listVendorOffers, writeVendorOffer } from "@/lib/catalog-core.mjs";
 
-async function sessionFor(request: Request) {
-  const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-  return await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-}
-
 export async function GET(request: Request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const url = new URL(request.url);
     const store = await createCatalogStore();
     try {
-      const page = await listVendorOffers(store, session.user, {
+      const page = await listVendorOffers(store, auth.user, {
         vendorId: url.searchParams.get("vendorId") || undefined,
         after: url.searchParams.get("after") || undefined,
         limit: url.searchParams.get("limit") ? Number(url.searchParams.get("limit")) : 24,
@@ -44,14 +39,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body) return jsonError(API_ERROR_CODES.invalid_request, "Invalid offer request.", { status: 400, requestId });
     const store = await createCatalogStore();
     try {
-      const payload = { ...body, vendorId: body.vendorId || session.user.id };
-      return jsonOk({ offer: await writeVendorOffer(store, session.user, payload) }, { status: 201 });
+      const payload = { ...body, vendorId: body.vendorId || auth.user.id };
+      return jsonOk({ offer: await writeVendorOffer(store, auth.user, payload) }, { status: 201 });
     } finally {
       await store.close();
     }

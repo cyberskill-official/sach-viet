@@ -11,7 +11,7 @@ test("institution buyer routes use signed sessions and domain operations", async
   const marcList = readFileSync(resolve(root, "src/app/api/institution/marc/route.ts"), "utf8");
   const marcDetail = readFileSync(resolve(root, "src/app/api/institution/marc/[productId]/route.ts"), "utf8");
   const staffMarc = readFileSync(resolve(root, "src/app/api/b2b/marc/route.ts"), "utf8");
-  for (const source of [budget, purchaseOrder, marcList, marcDetail, staffMarc]) assert.match(source, /readSession/);
+  for (const source of [budget, purchaseOrder, marcList, marcDetail, staffMarc]) assert.match(source, /requireApiPermission/);
   assert.match(budget, /getInstitutionBudget/);
   assert.match(budget, /upsertInstitutionBudget/);
   assert.match(purchaseOrder, /submitInstitutionPurchaseOrder/);

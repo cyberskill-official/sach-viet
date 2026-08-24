@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { createEmployeeRetailStore, getEmployeeDashboard } from "@/lib/employee-retail-core.mjs";
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1];
-    const session = await readSession(await getAuthStore(), token, process.env.AUTH_SESSION_SECRET);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const store = await createEmployeeRetailStore();
     try {
-      return NextResponse.json({ dashboard: await getEmployeeDashboard(store, session.user) });
+      return NextResponse.json({ dashboard: await getEmployeeDashboard(store, auth.user) });
     } finally {
       await store.close();
     }

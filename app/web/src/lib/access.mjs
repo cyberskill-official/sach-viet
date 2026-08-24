@@ -143,7 +143,6 @@ const apiAuthPrefixes = Object.freeze([
   "/api/storage",
   "/api/finance/compute",
   "/api/auth/me",
-  "/api/auth/logout",
 ]);
 
 /** Map API pathname → permission (first match wins). */

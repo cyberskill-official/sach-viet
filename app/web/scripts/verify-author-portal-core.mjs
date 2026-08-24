@@ -57,7 +57,9 @@ for (const route of [
   "src/app/api/author/manuscript-requests/[id]/withdraw/route.ts",
 ]) {
   const body = readFileSync(resolve(root, route), "utf8");
-  if (!body.includes("readSession")) throw new Error(`${route} must use signed sessions.`);
+  if (!body.includes("requireApiPermission") && !body.includes("requirePermission")) {
+    throw new Error(`${route} must enforce matrix permissions.`);
+  }
 }
 
 console.info(JSON.stringify({ event: "author_portal_core_verified", task_id: "TASK-REBUILD-018", result: "passed" }));

@@ -10,8 +10,8 @@ test("admin commerce routes use signed sessions and server-side queue operations
   const applications = readFileSync(resolve(root, "src/app/api/admin/vendor-applications/route.ts"), "utf8");
   const resolution = readFileSync(resolve(root, "src/app/api/admin/vendor-applications/[id]/route.ts"), "utf8");
   const submission = readFileSync(resolve(root, "src/app/api/vendor/applications/route.ts"), "utf8");
-  for (const source of [dashboard, applications, submission]) assert.match(source, /readSession/);
-  assert.match(resolution, /requirePermission|readSession/);
+  for (const source of [dashboard, applications, submission]) assert.match(source, /requireApiPermission/);
+  assert.match(resolution, /requirePermission/);
   assert.match(dashboard, /getAdminCommerceDashboard/);
   assert.match(applications, /listVendorApplications/);
   assert.match(resolution, /resolveVendorApplication/);

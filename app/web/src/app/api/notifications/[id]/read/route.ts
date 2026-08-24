@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAME, getAuthStore, readSession } from "@/lib/auth-core.mjs";
+import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { createNotificationStore, markNotificationRead } from "@/lib/notification-core.mjs";
-
-async function sessionFor(request: Request) {
-  return await readSession(
-    await getAuthStore(),
-    request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
-    process.env.AUTH_SESSION_SECRET,
-  );
-}
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const session = await sessionFor(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const { id } = await context.params;
     const store = await createNotificationStore();
     try {
-      return NextResponse.json({ notification: await markNotificationRead(store, session.user, id) });
+      return NextResponse.json({ notification: await markNotificationRead(store, auth.user, id) });
     } finally {
       await store.close();
     }

@@ -1,4 +1,4 @@
-import { COOKIE_NAME, getAuthStore, readSession } from "./auth-core.mjs";
+import { requireApiPermission } from "./authz-http.mjs";
 import { createStorageStore, putStoredObject } from "./storage-core.mjs";
 import {
   API_ERROR_CODES,
@@ -7,22 +7,13 @@ import {
   jsonError,
   jsonOk,
   readJsonBody,
-  sessionTokenFrom,
 } from "./api-contract.mjs";
-
-async function sessionFor(request) {
-  return await readSession(
-    await getAuthStore(),
-    sessionTokenFrom(request) || request.headers.get("cookie")?.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))?.[1],
-    process.env.AUTH_SESSION_SECRET,
-  );
-}
 
 export async function handlePutStoredObject(request) {
   const requestId = createRequestId(request);
   try {
-    const session = await sessionFor(request);
-    if (!session) return jsonError(API_ERROR_CODES.unauthenticated, "Unauthenticated.", { status: 401, requestId });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await readJsonBody(request);
     if (!body || typeof body.bytesBase64 !== "string") {
       return jsonError(API_ERROR_CODES.invalid_request, "Stored object bytes are required.", { status: 400, requestId });
@@ -38,7 +29,7 @@ export async function handlePutStoredObject(request) {
       const object = await putStoredObject(store, {
         bytes,
         contentType: typeof body.contentType === "string" ? body.contentType : "application/octet-stream",
-        ownerId: session.user.id,
+        ownerId: auth.user.id,
         key: typeof body.key === "string" ? body.key : null,
       });
       return jsonOk({ object }, { status: 201 });

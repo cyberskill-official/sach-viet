@@ -9,9 +9,9 @@ test("wordpress import admin routes exist and gate through session + core helper
   const statusRoute = readFileSync(resolve(root, "src/app/api/admin/wordpress-import/status/route.ts"), "utf8");
   const applyRoute = readFileSync(resolve(root, "src/app/api/admin/wordpress-import/apply/route.ts"), "utf8");
   assert.match(statusRoute, /getWordpressImportStatus/);
-  assert.match(statusRoute, /readSession/);
+  assert.match(statusRoute, /requireApiPermission/);
   assert.match(applyRoute, /applyWordpressImportAsAdmin/);
-  assert.match(applyRoute, /readSession/);
+  assert.match(applyRoute, /requireApiPermission/);
   assert.match(applyRoute, /assertNotProductionRetired/);
   assert.match(applyRoute, /status: 410/);
 });
