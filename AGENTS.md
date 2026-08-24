@@ -21,3 +21,5 @@ The app lives in `app/web` (Next.js 16 / React 19 / Postgres). Standard commands
 - Demo data + auth caveat: login rejects **unverified** accounts, so a freshly registered user cannot log in until email verification (email uses recording stubs locally). Use `SEED_PASSWORD='<pw>' npm run seed:local` to create verified demo accounts across every role (e.g. customer `khach-hang.seed@sachviet.test`, admin `admin.seed@sachviet.test`) plus a 10-book catalog for end-to-end testing.
 
 - The full test suite (`npm test`) is large (~300 tests, several minutes) and requires a live Postgres.
+
+- Browser testing must use `http://localhost:3000`, **not** `http://127.0.0.1:3000`. Next.js 16 blocks cross-origin dev resources (`/_next/*`) when the browser origin is not an allowed dev origin, and `127.0.0.1` is not the dev server's own origin. Loading `next dev` over `127.0.0.1` leaves the server-rendered shell visible but silently prevents client hydration, so client-fetched pages (e.g. `/products/[slug]`, catalog) render a blank/skeleton area even though the underlying APIs return 200. Server-side `curl` smokes are unaffected; only the browser origin matters.
