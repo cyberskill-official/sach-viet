@@ -311,7 +311,7 @@ export function Storefront({
               <>
                 <span className="cs-badge hidden sm:inline-flex" data-access-tier="guest">{t("common.roleGuest")}</span>
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
-                <Link className="cs-button min-h-11" href="/login">{t("nav.login")}</Link>
+                <Link className="cs-button min-h-11 hidden sm:inline-flex" href="/login">{t("nav.login")}</Link>
               </>
             ) : null}
             <div className="relative" ref={menuRef}>
