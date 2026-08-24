@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ProductMedia } from "@/lib/product-cover";
 import { BOOK_COVER_PLACEHOLDERS, coverAltText, pickCoverUrl } from "@/lib/product-cover";
 
@@ -34,13 +34,10 @@ export function ProductCover({
 }: ProductCoverProps) {
   const preferred = pickCoverUrl(media, slug);
   const fallback = placeholderForSlug(slug);
-  const [failed, setFailed] = useState(false);
+  // Track which preferred URL failed so a new preferred resets without an effect.
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+  const failed = failedFor === preferred;
   const alt = coverAltText(media, title);
-
-  useEffect(() => {
-    setFailed(false);
-  }, [preferred]);
-
   const src = failed ? fallback : preferred;
 
   return (
@@ -53,7 +50,7 @@ export function ProductCover({
         sizes={sizes}
         priority={priority}
         onError={() => {
-          if (!failed && preferred !== fallback) setFailed(true);
+          if (!failed && preferred !== fallback) setFailedFor(preferred);
         }}
       />
     </div>
