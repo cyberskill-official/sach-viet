@@ -101,6 +101,8 @@ const definitions = Object.freeze({
   "tour.features": {
     id: "tour.features",
     routeHints: ["/features"],
+    /** Manual launch — auto-start overlays the catalog and blocks browsing. */
+    autoStart: false,
     steps: [
       { target: "[data-tour='features-availability']", contentKey: "tours.features_availability", placement: "bottom" },
       { target: "[data-tour='features-categories']", contentKey: "tours.features_categories", placement: "bottom" },
@@ -218,11 +220,13 @@ export function driverStepsFor(tourId, locale, options = {}) {
   const def = getTourDefinition(tourId);
   if (!def) return [];
   const filterMissing = options.onlyPresent !== false && typeof document !== "undefined";
+  const title = translate(locale, tourTitleKey(tourId));
   return def.steps
     .filter((step) => !filterMissing || targetExists(step.target))
     .map((step) => {
       const side = mapPlacement(step.placement);
       const popover = {
+        title,
         description: translate(locale, step.contentKey),
         align: "start",
       };

@@ -35,7 +35,7 @@ test("EN and VI catalogs have key parity", () => {
 
 test("translate resolves nested and legacy flat keys", () => {
   assert.equal(translate("en", "storefront.heroTitle"), "Literature, considered with care");
-  assert.equal(translate("vi", "storefront.heroTitle"), "Văn học, được chọn lọa tỉ mỉ");
+  assert.equal(translate("vi", "storefront.heroTitle"), "Văn học, được chọn lựa tỉ mỉ");
   assert.equal(translate("en", "empty"), "No data available");
   assert.equal(foundationsTranslate("en", "navigation"), "Navigation");
   assert.equal(translate("en", "storefront.inStock", { count: 3 }), "In stock: 3");

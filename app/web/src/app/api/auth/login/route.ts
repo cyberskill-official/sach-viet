@@ -24,7 +24,12 @@ function clientKeyFromRequest(request: Request) {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
-  if (!body || typeof body !== "object") return NextResponse.json({ error: "Invalid login request." }, { status: 400 });
+  if (!body || typeof body !== "object") {
+    return NextResponse.json(
+      { error: "Invalid login request.", code: "invalid_request" },
+      { status: 400 },
+    );
+  }
   const store = await getAuthStore();
   try {
     await bootstrapFirstAdmin(store);
@@ -37,11 +42,21 @@ export async function POST(request: Request) {
       clientKey: clientKeyFromRequest(request),
     });
     if (!("user" in result)) {
+      const code =
+        result.reason === "unverified"
+          ? "unverified"
+          : result.reason === "throttled"
+            ? "throttled"
+            : "invalid_credentials";
       const message =
-        result.reason === "unverified" ? "Email is not verified." : "Invalid email or password.";
+        code === "unverified"
+          ? "Email is not verified."
+          : code === "throttled"
+            ? "Too many sign-in attempts. Try again shortly."
+            : "Invalid email or password.";
       const response = NextResponse.json(
-        { error: message },
-        { status: result.reason === "throttled" ? 429 : result.reason === "unverified" ? 403 : 401 },
+        { error: message, code },
+        { status: code === "throttled" ? 429 : code === "unverified" ? 403 : 401 },
       );
       if (typeof result.retryAfterMs === "number" && result.retryAfterMs > 0) {
         response.headers.set("Retry-After", String(Math.ceil(result.retryAfterMs / 1000)));
@@ -61,6 +76,9 @@ export async function POST(request: Request) {
         reason: error instanceof Error ? error.message : "auth_not_configured",
       }),
     );
-    return NextResponse.json({ error: "Authentication is not configured." }, { status: 503 });
+    return NextResponse.json(
+      { error: "Authentication is not configured.", code: "auth_not_configured" },
+      { status: 503 },
+    );
   }
 }

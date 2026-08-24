@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
-import { TourLauncher } from "@/components/tours/tour-provider";
 
 export function RegisterForm({ fromCircle = false }: { fromCircle?: boolean }) {
-  const { locale, setLocale, t } = useLocale();
+  const { t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -48,21 +47,6 @@ export function RegisterForm({ fromCircle = false }: { fromCircle?: boolean }) {
 
   return (
     <section className="w-full">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <Link className="cs-button cs-button--ghost text-sm" href="/membership">{t("storefront.membershipEyebrow")}</Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <TourLauncher tourId="tour.auth" />
-          <button
-            type="button"
-            className="cs-button cs-button--ghost"
-            data-tour="auth-lang"
-            aria-label={t("common.language")}
-            onClick={() => setLocale(locale === "en" ? "vi" : "en")}
-          >
-            {locale === "en" ? "VI" : "EN"}
-          </button>
-        </div>
-      </div>
       <p className="sv-lux-eyebrow">{t("common.brand")}</p>
       <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.createAccount")}</h1>
       <p className="mt-2 text-sm leading-6 text-muted">{fromCircle ? t("auth.registerCircleHint") : t("auth.registerHint")}</p>
@@ -82,6 +66,8 @@ export function RegisterForm({ fromCircle = false }: { fromCircle?: boolean }) {
         </button>
         <p className="text-sm text-muted">
           <Link className="sv-text-link" href="/login">{t("auth.signIn")}</Link>
+          {" · "}
+          <Link className="sv-text-link" href="/membership">{t("storefront.membershipEyebrow")}</Link>
         </p>
       </form>
     </section>

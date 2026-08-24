@@ -7,11 +7,13 @@ import {
   BookOpen,
   Crown,
   Heart,
+  List,
   MagnifyingGlass,
   SealCheck,
   ShoppingBag,
   Sparkle,
   UsersThree,
+  X,
 } from "@phosphor-icons/react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { displayTier, displayTierLabel, formatRoleForDisplay, portalNavHrefForRole } from "@/lib/access.mjs";
@@ -53,8 +55,14 @@ function readCart() {
 
 function shelfBadgeLabel(loading: boolean, count: number, t: (key: string, vars?: Record<string, string | number>) => string) {
   if (loading) return t("storefront.shelfWarming");
+  if (count === 1) return t("storefront.shelfCountOne", { count });
   if (count > 0) return t("storefront.shelfCount", { count });
   return t("storefront.shelfEmpty");
+}
+
+/** Hide known Day-2 seed/demo titles from the public shelf when present. */
+function isDemoShelfJunk(product: Product) {
+  return /day[\s-]*2\s*demo/i.test(product.title) || /sách việt day[\s-]*2/i.test(product.title);
 }
 
 type StorefrontProps = {
@@ -229,7 +237,8 @@ export function Storefront({
   const portalHome = sessionUser ? portalNavHrefForRole(sessionUser.role) : null;
   const accessLabel = displayTierLabel(sessionUser?.role ?? null, locale === "vi" ? "vi" : "en");
   const tier = displayTier(sessionUser?.role ?? null);
-  const featuredProducts = products.slice(0, 3);
+  const shelfProducts = products.filter((product) => !isDemoShelfJunk(product));
+  const featuredProducts = shelfProducts.slice(0, 3);
   const brandValues = [
     { icon: Sparkle, titleKey: "storefront.valueCuratedTitle", bodyKey: "storefront.valueCuratedBody" },
     { icon: SealCheck, titleKey: "storefront.valueAuthenticTitle", bodyKey: "storefront.valueAuthenticBody" },
@@ -238,12 +247,16 @@ export function Storefront({
   ] as const;
   const secondaryLinks = sessionUser
     ? ([
+        { href: "/features", label: t("nav.features") },
         { href: "/account", label: t("nav.account") },
         { href: "/wishlist", label: t("nav.wishlist") },
         { href: "/support", label: t("nav.support") },
         { href: "/ecom/orders", label: t("nav.orders") },
       ] as const)
-    : ([{ href: "/support", label: t("nav.support") }] as const);
+    : ([
+        { href: "/features", label: t("nav.features") },
+        { href: "/support", label: t("nav.support") },
+      ] as const);
 
   return (
     <main className="sv-luxury min-h-screen bg-background text-foreground">
@@ -258,42 +271,22 @@ export function Storefront({
               <small className="hidden text-xs tracking-[0.14em] text-muted uppercase sm:block">{t("common.tagline")}</small>
             </span>
           </Link>
-          <nav className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-2" data-tour="storefront-nav" aria-label={t("common.navigation")}>
-            <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/features">{t("nav.features")}</Link>
-            <div className="relative hidden lg:flex lg:items-center lg:gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2" data-tour="storefront-nav">
+            <nav className="hidden items-center gap-1.5 text-sm lg:flex" aria-label={t("common.navigation")}>
               {secondaryLinks.map((link) => (
-                <Link key={link.href} className="cs-button cs-button--ghost" href={link.href}>{link.label}</Link>
+                <Link key={link.href} className="cs-button cs-button--ghost min-h-11" href={link.href}>{link.label}</Link>
               ))}
-            </div>
-            <div className="relative lg:hidden" ref={menuRef}>
-              <button
-                type="button"
-                className="cs-button cs-button--ghost min-h-11 min-w-11"
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-                aria-controls="storefront-more-menu"
-                aria-label={t("nav.moreMenu")}
-                onClick={() => setMenuOpen((open) => !open)}
-              >
-                {t("nav.moreMenu")}
-              </button>
-              {menuOpen ? (
-                <div id="storefront-more-menu" role="menu" className="sv-glass-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
-                  <Link className="cs-button cs-button--ghost flex w-full justify-start sm:hidden" href="/features" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.features")}</Link>
-                  {secondaryLinks.map((link) => (
-                    <Link key={link.href} className="cs-button cs-button--ghost flex w-full justify-start" href={link.href} role="menuitem" onClick={() => setMenuOpen(false)}>{link.label}</Link>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-            <Link className="cs-button cs-button--secondary inline-flex min-h-11 items-center gap-2" href="/ecom/cart" aria-label={`${t("nav.cart")} (${cartCount})`}>
+            </nav>
+            <Link className="cs-button cs-button--secondary inline-flex min-h-11 min-w-11 items-center justify-center gap-2" href="/ecom/cart" aria-label={`${t("nav.cart")} (${cartCount})`}>
               <ShoppingBag size={18} weight="regular" aria-hidden="true" />
               <span className="hidden sm:inline">{t("nav.cart")}</span>
-              <span aria-hidden="true">({cartCount})</span>
+              <span className="hidden sm:inline" aria-hidden="true">({cartCount})</span>
             </Link>
-            <TourLauncher tourId="tour.storefront" />
+            <div className="hidden sm:block">
+              <TourLauncher tourId="tour.storefront" />
+            </div>
             <a
-              className="cs-button cs-button--ghost min-h-11 min-w-11"
+              className="cs-button cs-button--ghost hidden min-h-11 min-w-11 sm:inline-flex sm:items-center sm:justify-center"
               href={`?lang=${locale === "en" ? "vi" : "en"}`}
               aria-label={t("common.language")}
               onClick={(event) => {
@@ -321,7 +314,55 @@ export function Storefront({
                 <Link className="cs-button min-h-11" href="/login">{t("nav.login")}</Link>
               </>
             ) : null}
-          </nav>
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                className="cs-button cs-button--ghost inline-flex min-h-11 min-w-11 items-center justify-center lg:hidden"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+                aria-controls="storefront-more-menu"
+                aria-label={menuOpen ? t("common.hideNavigation") : t("common.showNavigation")}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                {menuOpen ? <X size={22} weight="bold" aria-hidden="true" /> : <List size={22} weight="bold" aria-hidden="true" />}
+              </button>
+              {menuOpen ? (
+                <div id="storefront-more-menu" role="menu" className="sv-glass-heavy absolute right-0 top-12 z-50 max-h-[min(70vh,28rem)] w-[min(18rem,calc(100vw-2.5rem))] overflow-y-auto rounded-2xl p-2 shadow-xl lg:hidden">
+                  {secondaryLinks.map((link) => (
+                    <Link key={link.href} className="cs-button cs-button--ghost flex min-h-11 w-full justify-start" href={link.href} role="menuitem" onClick={() => setMenuOpen(false)}>{link.label}</Link>
+                  ))}
+                  <div className="px-1 py-1 sm:hidden" role="none">
+                    <TourLauncher tourId="tour.storefront" className="cs-button cs-button--ghost flex min-h-11 w-full justify-start" />
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="cs-button cs-button--ghost flex min-h-11 w-full justify-start sm:hidden"
+                    aria-label={t("common.language")}
+                    onClick={() => {
+                      toggleLocale();
+                      setMenuOpen(false);
+                    }}
+                  >
+                    {locale === "en" ? "VI" : "EN"}
+                  </button>
+                  {sessionReady && sessionUser ? (
+                    <>
+                      {portalHome ? (
+                        <Link className="cs-button cs-button--ghost flex min-h-11 w-full justify-start" href={portalHome} role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.portal")}</Link>
+                      ) : null}
+                      <button type="button" role="menuitem" className="cs-button cs-button--ghost flex min-h-11 w-full justify-start sm:hidden" onClick={() => { setMenuOpen(false); void logout(); }}>{t("common.signOut")}</button>
+                    </>
+                  ) : sessionReady ? (
+                    <>
+                      <Link className="cs-button cs-button--ghost flex min-h-11 w-full justify-start" href="/register" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.register")}</Link>
+                      <Link className="cs-button flex min-h-11 w-full justify-start sm:hidden" href="/login" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.login")}</Link>
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -349,7 +390,7 @@ export function Storefront({
               </button>
             </form>
             <div className="sv-motion-fade-up sv-motion-delay-4 mt-8 flex flex-wrap items-center gap-3 text-sm">
-              <span className="sv-glass inline-flex min-h-11 items-center rounded-full px-4 py-2 text-muted" aria-live="polite">{shelfBadgeLabel(loading, products.length, t)}</span>
+              <span className="sv-glass inline-flex min-h-11 items-center rounded-full px-4 py-2 text-muted" aria-live="polite">{shelfBadgeLabel(loading, shelfProducts.length, t)}</span>
               <a className="sv-chip-link min-h-11" href="#catalog">{t("storefront.browseCatalog")}</a>
               <Link className="sv-chip-link min-h-11 inline-flex items-center gap-2" href="/membership">
                 <Crown size={16} weight="duotone" aria-hidden="true" />
@@ -390,13 +431,13 @@ export function Storefront({
                     <div className="relative flex h-full items-end p-6 text-white">
                       <div>
                         <p className="text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-white/75">{product.category.name}</p>
-                        <p className="sv-font-display mt-2 max-w-[12ch] text-3xl leading-tight">{product.title.slice(0, 32)}</p>
+                        <p className="sv-font-display mt-2 max-w-[12ch] truncate text-3xl leading-tight">{product.title}</p>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-1 flex-col p-6 pt-5">
                     <h3 className="sv-font-display text-2xl leading-snug">
-                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
+                      <Link className="inline-flex min-h-11 items-center rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
                     </h3>
                     <p className="mt-3 line-clamp-3 text-sm leading-7 text-muted">{product.description}</p>
                     <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">
@@ -489,7 +530,7 @@ export function Storefront({
 
         {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-live="polite">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="cs-skeleton h-96 rounded-3xl" aria-hidden="true" />)}</div> : null}
         {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert" tabIndex={-1}>{error}<button type="button" className="sv-text-link ml-3" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>{t("common.retry")}</button></div> : null}
-        {!loading && !error && products.length === 0 ? (
+        {!loading && !error && shelfProducts.length === 0 ? (
           <div className="sv-glass-card mt-8 overflow-hidden rounded-3xl">
             <div className="border-b border-border bg-[radial-gradient(circle_at_top,color-mix(in_oklab,var(--sv-lux-gold)_16%,transparent),transparent_60%)] px-6 py-10 sm:px-10">
               <h3 className="sv-font-display text-2xl">{t("storefront.emptyTitle")}</h3>
@@ -498,25 +539,25 @@ export function Storefront({
             </div>
           </div>
         ) : null}
-        {!loading && products.length ? (
+        {!loading && shelfProducts.length ? (
           <>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {products.map((product, index) => (
+              {shelfProducts.map((product, index) => (
                 <MotionReveal key={product.id} as="article" delayMs={Math.min(index, 8) * 55} className="sv-glass-card sv-card-lift group flex min-h-[26rem] flex-col overflow-hidden rounded-3xl">
                   <div className="sv-cover-sheen relative mx-4 mt-4 h-40 overflow-hidden rounded-2xl">
                     <ProductCover slug={product.slug} title={product.title} media={product.media} className="h-full w-full rounded-2xl" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                     <div className="absolute inset-y-0 left-0 w-2 bg-black/20" />
                     <div className="relative flex h-full items-end p-5 text-white">
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs uppercase tracking-[0.18em] text-white/70">{product.category.name}</p>
-                        <p className="sv-font-display mt-2 max-w-[14ch] text-2xl leading-tight">{product.title.slice(0, 28)}</p>
+                        <p className="sv-font-display mt-2 max-w-[14ch] truncate text-2xl leading-tight">{product.title}</p>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-1 flex-col p-6 pt-5">
                     <h3 className="sv-font-display text-xl leading-snug">
-                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
+                      <Link className="inline-flex min-h-11 items-center rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
                     </h3>
                     <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{product.description}</p>
                     <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">

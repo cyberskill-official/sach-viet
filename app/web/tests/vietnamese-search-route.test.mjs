@@ -20,6 +20,11 @@ test("suggestions route is public and uses suggestCatalogQueries", async () => {
   assert.doesNotMatch(route, /readSession/);
 });
 
+test("catalog search alias reuses public products handler", async () => {
+  const route = readFileSync(resolve(root, "src/app/api/catalog/search/route.ts"), "utf8");
+  assert.match(route, /handleListPublicProducts/);
+});
+
 test("public suggest source never reads raw search_logs", async () => {
   const core = readFileSync(resolve(root, "src/lib/vietnamese-search-core.mjs"), "utf8");
   const suggestSource = core.slice(core.indexOf("export function suggestCatalogQueries"));
