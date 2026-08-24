@@ -70,15 +70,19 @@ test("resolveTourIdForPath maps major surfaces", () => {
   assert.equal(resolveTourIdForPath("/supplier"), "tour.portal_supplier");
 });
 
-test("auth tour does not auto-start", () => {
+test("auth and features tours do not auto-start", () => {
   assert.equal(shouldAutoStartTour("tour.auth"), false);
+  assert.equal(shouldAutoStartTour("tour.features"), false);
   assert.equal(shouldAutoStartTour("tour.storefront"), true);
   assert.equal(shouldAutoStartTour("tour.portal_vendor"), true);
 });
 
-test("driver steps localize description and use data-tour elements", () => {
+test("driver steps localize title + description and use data-tour elements", () => {
   const en = driverStepsFor("tour.storefront", "en", { onlyPresent: false });
   const vi = driverStepsFor("tour.storefront", "vi", { onlyPresent: false });
+  assert.equal(en[0].popover.title, translate("en", "tours.title_storefront"));
+  assert.equal(vi[0].popover.title, translate("vi", "tours.title_storefront"));
+  assert.notEqual(en[0].popover.title, "Popover Title");
   assert.ok(
     en[0].popover.description.includes("Welcome") || en[0].popover.description.includes("Sách"),
   );

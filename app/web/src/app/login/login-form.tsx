@@ -3,10 +3,31 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
-import { TourLauncher } from "@/components/tours/tour-provider";
+
+const AUTH_ERROR_CODES: Record<string, string> = {
+  invalid_credentials: "auth.invalidCredentials",
+  unverified: "auth.emailUnverified",
+  throttled: "auth.loginThrottled",
+  invalid_request: "auth.invalidLoginRequest",
+  auth_not_configured: "auth.authNotConfigured",
+};
+
+function localizeAuthError(
+  body: { error?: string; code?: string },
+  t: (key: string) => string,
+): string {
+  if (body.code && AUTH_ERROR_CODES[body.code]) return t(AUTH_ERROR_CODES[body.code]);
+  const raw = typeof body.error === "string" ? body.error : "";
+  if (/invalid email or password/i.test(raw)) return t("auth.invalidCredentials");
+  if (/not verified/i.test(raw)) return t("auth.emailUnverified");
+  if (/too many/i.test(raw)) return t("auth.loginThrottled");
+  if (/not configured/i.test(raw)) return t("auth.authNotConfigured");
+  if (/invalid login request/i.test(raw)) return t("auth.invalidLoginRequest");
+  return raw || t("auth.unableSignIn");
+}
 
 export function LoginForm({ redirectTo }: { redirectTo: string }) {
-  const { locale, setLocale, t } = useLocale();
+  const { setLocale, t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const errorId = useId();
@@ -21,7 +42,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
     setPending(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    let body: { error?: string; user?: { locale?: string }; redirectTo?: string } = {};
+    let body: { error?: string; code?: string; user?: { locale?: string }; redirectTo?: string } = {};
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -32,7 +53,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
       body = await response.json().catch(() => ({}));
       setPending(false);
       if (!response.ok || !body.user) {
-        return setError(body.error || t("auth.unableSignIn"));
+        return setError(localizeAuthError(body, t));
       }
     } catch {
       setPending(false);
@@ -50,21 +71,6 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
 
   return (
     <section className="w-full">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <Link className="cs-button cs-button--ghost text-sm" href="/features">{t("nav.features")}</Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <TourLauncher tourId="tour.auth" />
-          <button
-            type="button"
-            className="cs-button cs-button--ghost"
-            data-tour="auth-lang"
-            aria-label={t("common.language")}
-            onClick={() => setLocale(locale === "en" ? "vi" : "en")}
-          >
-            {locale === "en" ? "VI" : "EN"}
-          </button>
-        </div>
-      </div>
       <p className="sv-lux-eyebrow">{t("common.brand")}</p>
       <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.signIn")}</h1>
       <p className="mt-2 text-sm leading-6 text-muted">{t("auth.signInHint")}</p>

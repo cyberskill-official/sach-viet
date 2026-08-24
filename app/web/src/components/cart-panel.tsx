@@ -168,9 +168,13 @@ export function CartPanel() {
       </Link>
       <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="sv-lux-eyebrow">{t("orders.title")}</p>
+          <p className="sv-lux-eyebrow">{t("cart.eyebrow")}</p>
           <h1 className="sv-font-display mt-2 text-4xl tracking-tight">{t("cart.title")}</h1>
-          <p className="mt-2 text-muted">{totalItems}</p>
+          <p className="mt-2 text-muted">
+            {totalItems === 1
+              ? t("cart.itemCountOne", { count: totalItems })
+              : t("cart.itemCount", { count: totalItems })}
+          </p>
         </div>
         <Link className="cs-button cs-button--secondary min-h-11" href="/ecom/orders">
           {t("nav.orders")}
@@ -203,11 +207,12 @@ export function CartPanel() {
                   <label className="text-sm text-muted">
                     {t("cart.quantity")}{" "}
                     <input
-                      className="cs-field__control ml-2 w-20"
+                      className="cs-field__control ml-2 w-20 min-h-11"
                       min="1"
                       max="99"
                       type="number"
                       value={item.quantity}
+                      aria-label={t("cart.quantityFor", { title: item.title })}
                       onChange={(event) =>
                         update(updateCartQuantity(items, item.vendorOfferId, Number(event.target.value)))
                       }
@@ -235,11 +240,11 @@ export function CartPanel() {
               <input className="cs-field__control w-full" placeholder={t("cart.postal")} value={shipTo.postal} onChange={(e) => setShipTo((s) => ({ ...s, postal: e.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <select className="cs-field__control w-full" value={shipTo.country} onChange={(e) => setShipTo((s) => ({ ...s, country: e.target.value as "US" | "VN" }))} aria-label={t("cart.country")}>
+              <select className="cs-field__control min-w-0 w-full" value={shipTo.country} onChange={(e) => setShipTo((s) => ({ ...s, country: e.target.value as "US" | "VN" }))} aria-label={t("cart.country")}>
                 <option value="VN">VN</option>
                 <option value="US">US</option>
               </select>
-              <select className="cs-field__control w-full" value={carrierId} onChange={(e) => setCarrierId(e.target.value as CarrierId)} aria-label={t("cart.carrier")}>
+              <select className="cs-field__control min-w-0 w-full truncate" value={carrierId} onChange={(e) => setCarrierId(e.target.value as CarrierId)} aria-label={t("cart.carrier")} title={carrierId === "none" ? t("cart.carrierNone") : t("cart.carrierPickup")}>
                 <option value="none">{t("cart.carrierNone")}</option>
                 <option value="manual_pickup">{t("cart.carrierPickup")}</option>
               </select>
@@ -270,8 +275,6 @@ export function CartPanel() {
               ? t("common.loading")
               : t("cart.reservationNote", { minutes: ttlMinutes })}
           </p>
-          <p className="mt-2 text-sm leading-6 text-muted">{t("cart.policyTaxStub")}</p>
-          <p className="mt-2 text-sm leading-6 text-muted">{t("cart.policyPayments")}</p>
           {quoteError ? (
             <p role="alert" className="cs-alert cs-alert--danger mt-3">
               {quoteError}

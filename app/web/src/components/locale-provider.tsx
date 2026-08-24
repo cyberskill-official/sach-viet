@@ -92,6 +92,7 @@ export function LocaleProvider({
         const response = await fetch("/api/auth/me");
         if (!response.ok) return;
         const body = await response.json();
+        if (!body?.user) return;
         const next = body?.user?.locale;
         if (!cancelled && (next === "en" || next === "vi")) {
           const resolved = resolveLocale({

@@ -25,6 +25,7 @@ type TourContextValue = {
   restartTour: (tourId: string) => void;
   skipTour: () => void;
   progress: Record<string, { status: string; updatedAt: number }>;
+  activeTourId: string | null;
 };
 
 type TourOutcome = "completed" | "dismissed";
@@ -34,11 +35,27 @@ const TourContext = createContext<TourContextValue>({
   restartTour: () => {},
   skipTour: () => {},
   progress: {},
+  activeTourId: null,
 });
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") return false;
   return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function waitForDriverSteps(id: string, locale: string, attempts = 12, delayMs = 120) {
+  for (let i = 0; i < attempts; i += 1) {
+    const steps = driverStepsFor(id, locale);
+    if (steps.length) return steps;
+    await sleep(delayMs);
+  }
+  return driverStepsFor(id, locale);
 }
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
@@ -71,6 +88,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       try {
         const me = await fetch("/api/auth/me");
         if (!me.ok) return;
+        const meBody = await me.json().catch(() => null);
+        if (!meBody?.user) return;
         if (cancelled) return;
         setAuthenticated(true);
         const local = readLocalTourProgress();
@@ -117,8 +136,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const launchDriver = useCallback((id: string) => {
-    const steps = driverStepsFor(id, locale);
+  const launchDriver = useCallback((id: string, steps = driverStepsFor(id, locale)) => {
     if (!steps.length) return false;
 
     destroyActiveDriver({ skipPersist: true });
@@ -172,9 +190,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [destroyActiveDriver, locale, persistStatus, t]);
 
-  const startTour = useCallback((id: string) => {
+  const startTour = useCallback(async (id: string) => {
     if (!TOUR_IDS.includes(id)) return;
-    const steps = driverStepsFor(id, locale);
+    destroyActiveDriver({ skipPersist: true });
+    const steps = await waitForDriverSteps(id, locale);
     if (!steps.length) {
       const targetPath = pathForTourId(id);
       const here = typeof window !== "undefined" ? window.location.pathname : pathname || "";
@@ -185,8 +204,8 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    launchDriver(id);
-  }, [launchDriver, locale, pathname, router]);
+    launchDriver(id, steps);
+  }, [destroyActiveDriver, launchDriver, locale, pathname, router]);
 
   const restartTour = useCallback((id: string) => {
     destroyActiveDriver({ skipPersist: true });
@@ -210,16 +229,31 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     const params = new URLSearchParams(window.location.search);
     const requested = params.get("tour");
     if (!requested || !TOUR_IDS.includes(requested)) return;
-    if (queryTourHandledRef.current === `${pathname}:${requested}`) return;
-    queryTourHandledRef.current = `${pathname}:${requested}`;
+    const handleKey = `${pathname}:${requested}`;
+    if (queryTourHandledRef.current === handleKey) return;
+
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      startTour(requested);
-      params.delete("tour");
-      const qs = params.toString();
-      router.replace(`${pathname || "/"}${qs ? `?${qs}` : ""}`);
-    }, 400);
-    return () => window.clearTimeout(timer);
-  }, [pathname, router, startTour]);
+      void (async () => {
+        destroyActiveDriver({ skipPersist: true });
+        const steps = await waitForDriverSteps(requested, locale);
+        if (cancelled) return;
+        if (!steps.length) {
+          // Targets not ready yet — allow another attempt on next effect.
+          return;
+        }
+        queryTourHandledRef.current = handleKey;
+        launchDriver(requested, steps);
+        params.delete("tour");
+        const qs = params.toString();
+        router.replace(`${pathname || "/"}${qs ? `?${qs}` : ""}`);
+      })();
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [destroyActiveDriver, launchDriver, locale, pathname, router]);
 
   // Auto-start once per tour id when route matches and status is pending (not completed/dismissed).
   useEffect(() => {
@@ -229,13 +263,19 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     if (autoStartedRef.current.has(id)) return;
     const status = progressRef.current[id]?.status || "pending";
     if (isTerminalTourStatus(status) || status === "in_progress") return;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      const steps = driverStepsFor(id, locale);
-      if (!steps.length) return;
-      autoStartedRef.current.add(id);
-      launchDriver(id);
+      void (async () => {
+        const steps = await waitForDriverSteps(id, locale);
+        if (cancelled || !steps.length) return;
+        autoStartedRef.current.add(id);
+        launchDriver(id, steps);
+      })();
     }, 600);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [pathname, locale, launchDriver]);
 
   // Tear down overlay on route change / unmount so it does not leak across pages.
@@ -246,7 +286,10 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, destroyActiveDriver]);
 
-  const value = useMemo(() => ({ startTour, restartTour, skipTour, progress }), [startTour, restartTour, skipTour, progress]);
+  const value = useMemo(
+    () => ({ startTour, restartTour, skipTour, progress, activeTourId: tourId }),
+    [startTour, restartTour, skipTour, progress, tourId],
+  );
 
   return (
     <TourContext.Provider value={value}>
@@ -261,14 +304,17 @@ export function useTour() {
 
 export function TourLauncher({ tourId, className }: { tourId: string; className?: string }) {
   const { t } = useLocale();
-  const { startTour, restartTour, progress } = useTour();
+  const { startTour, restartTour, progress, activeTourId } = useTour();
   const status = progress[tourId]?.status || "pending";
   const label = isTerminalTourStatus(status) ? t("tours.restart") : t("tours.takeTour");
+  const busy = Boolean(activeTourId);
   return (
     <button
       type="button"
       className={className || "cs-button cs-button--ghost min-h-11"}
       aria-label={label}
+      aria-disabled={busy || undefined}
+      disabled={busy}
       data-tour="tour-launcher"
       onClick={() => (isTerminalTourStatus(status) ? restartTour(tourId) : startTour(tourId))}
     >
