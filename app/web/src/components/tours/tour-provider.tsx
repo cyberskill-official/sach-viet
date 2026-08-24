@@ -2,11 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ACTIONS, EVENTS, Joyride, STATUS } from "react-joyride";
-import type { EventData } from "react-joyride";
+import { driver, type Driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import { useLocale } from "@/components/locale-provider";
 import {
-  joyrideStepsFor,
+  driverStepsFor,
   isTerminalTourStatus,
   pathForTourId,
   resolveTourIdForPath,
@@ -27,6 +27,8 @@ type TourContextValue = {
   progress: Record<string, { status: string; updatedAt: number }>;
 };
 
+type TourOutcome = "completed" | "dismissed";
+
 const TourContext = createContext<TourContextValue>({
   startTour: () => {},
   restartTour: () => {},
@@ -44,17 +46,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [progress, setProgress] = useState(() => readLocalTourProgress());
-  const [run, setRun] = useState(false);
   const [tourId, setTourId] = useState<string | null>(null);
-  const [stepIndex, setStepIndex] = useState(0);
   const [authenticated, setAuthenticated] = useState(false);
   const progressRef = useRef(progress);
   const autoStartedRef = useRef<Set<string>>(new Set());
   const queryTourHandledRef = useRef<string | null>(null);
+  const driverRef = useRef<Driver | null>(null);
+  const tourIdRef = useRef<string | null>(null);
+  const outcomeRef = useRef<TourOutcome | null>(null);
+  /** When true, onDestroyed skips progress write (restart / unmount teardown). */
+  const skipPersistOnDestroyRef = useRef(false);
 
   useEffect(() => {
     progressRef.current = progress;
   }, [progress]);
+
+  useEffect(() => {
+    tourIdRef.current = tourId;
+  }, [tourId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,9 +104,77 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     } catch { /* offline ok */ }
   }, [authenticated]);
 
+  const destroyActiveDriver = useCallback((opts?: { skipPersist?: boolean; outcome?: TourOutcome }) => {
+    if (opts?.skipPersist) skipPersistOnDestroyRef.current = true;
+    if (opts?.outcome) outcomeRef.current = opts.outcome;
+    const active = driverRef.current;
+    if (active) {
+      active.destroy();
+      driverRef.current = null;
+    } else {
+      skipPersistOnDestroyRef.current = false;
+      outcomeRef.current = null;
+    }
+  }, []);
+
+  const launchDriver = useCallback((id: string) => {
+    const steps = driverStepsFor(id, locale);
+    if (!steps.length) return false;
+
+    destroyActiveDriver({ skipPersist: true });
+
+    outcomeRef.current = null;
+    skipPersistOnDestroyRef.current = false;
+    tourIdRef.current = id;
+    setTourId(id);
+
+    const reduced = prefersReducedMotion();
+    const instance = driver({
+      showProgress: true,
+      showButtons: ["next", "previous", "close"],
+      allowClose: true,
+      overlayClickBehavior: "close",
+      stagePadding: 10,
+      stageRadius: 12,
+      smoothScroll: !reduced,
+      animate: !reduced,
+      popoverClass: "sv-driver-popover",
+      nextBtnText: t("tours.next"),
+      prevBtnText: t("tours.back"),
+      doneBtnText: t("tours.last"),
+      steps,
+      onCloseClick: (_element, _step, { driver: d }) => {
+        outcomeRef.current = "dismissed";
+        d.destroy();
+      },
+      onDoneClick: (_element, _step, { driver: d }) => {
+        outcomeRef.current = "completed";
+        d.destroy();
+      },
+      onDestroyed: () => {
+        const activeId = tourIdRef.current;
+        const skipPersist = skipPersistOnDestroyRef.current;
+        const outcome = outcomeRef.current ?? "dismissed";
+        skipPersistOnDestroyRef.current = false;
+        outcomeRef.current = null;
+        driverRef.current = null;
+        tourIdRef.current = null;
+        setTourId(null);
+        if (!skipPersist && activeId) {
+          void persistStatus(activeId, outcome);
+        }
+      },
+    });
+
+    driverRef.current = instance;
+    instance.drive();
+    void persistStatus(id, "in_progress");
+    return true;
+  }, [destroyActiveDriver, locale, persistStatus, t]);
+
   const startTour = useCallback((id: string) => {
     if (!TOUR_IDS.includes(id)) return;
-    const steps = joyrideStepsFor(id, locale);
+    const steps = driverStepsFor(id, locale);
     if (!steps.length) {
       const targetPath = pathForTourId(id);
       const here = typeof window !== "undefined" ? window.location.pathname : pathname || "";
@@ -108,21 +185,24 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
       }
       return;
     }
-    setTourId(id);
-    setStepIndex(0);
-    setRun(true);
-    void persistStatus(id, "in_progress");
-  }, [locale, pathname, persistStatus, router]);
+    launchDriver(id);
+  }, [launchDriver, locale, pathname, router]);
 
   const restartTour = useCallback((id: string) => {
+    destroyActiveDriver({ skipPersist: true });
     void persistStatus(id, "pending").then(() => startTour(id));
-  }, [persistStatus, startTour]);
+  }, [destroyActiveDriver, persistStatus, startTour]);
 
   const skipTour = useCallback(() => {
-    if (tourId) void persistStatus(tourId, "dismissed");
-    setRun(false);
-    setTourId(null);
-  }, [persistStatus, tourId]);
+    const id = tourIdRef.current;
+    if (driverRef.current) {
+      destroyActiveDriver({ outcome: "dismissed" });
+    } else if (id) {
+      void persistStatus(id, "dismissed");
+      tourIdRef.current = null;
+      setTourId(null);
+    }
+  }, [destroyActiveDriver, persistStatus]);
 
   // Deep-link / Features off-page launch: ?tour=tour.features
   useEffect(() => {
@@ -150,68 +230,27 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     const status = progressRef.current[id]?.status || "pending";
     if (isTerminalTourStatus(status) || status === "in_progress") return;
     const timer = window.setTimeout(() => {
-      const steps = joyrideStepsFor(id, locale);
+      const steps = driverStepsFor(id, locale);
       if (!steps.length) return;
       autoStartedRef.current.add(id);
-      setTourId(id);
-      setStepIndex(0);
-      setRun(true);
-      void persistStatus(id, "in_progress");
+      launchDriver(id);
     }, 600);
     return () => window.clearTimeout(timer);
-  }, [pathname, locale, persistStatus]);
+  }, [pathname, locale, launchDriver]);
 
-  const steps = useMemo(() => (tourId ? joyrideStepsFor(tourId, locale) : []), [tourId, locale]);
-
-  const handleEvent = useCallback((data: EventData) => {
-    const { status, action, type, index } = data;
-    if (action === ACTIONS.CLOSE || action === ACTIONS.SKIP || status === STATUS.SKIPPED) {
-      if (tourId) void persistStatus(tourId, "dismissed");
-      setRun(false);
-      setTourId(null);
-      return;
-    }
-    if (status === STATUS.FINISHED && tourId) {
-      void persistStatus(tourId, "completed");
-      setRun(false);
-      setTourId(null);
-      return;
-    }
-    if (type === EVENTS.STEP_AFTER || type === EVENTS.TARGET_NOT_FOUND) {
-      setStepIndex(index + (action === ACTIONS.PREV ? -1 : 1));
-    }
-  }, [persistStatus, tourId]);
+  // Tear down overlay on route change / unmount so it does not leak across pages.
+  // Destroy without finishing → dismissed (default outcome in onDestroyed).
+  useEffect(() => {
+    return () => {
+      destroyActiveDriver();
+    };
+  }, [pathname, destroyActiveDriver]);
 
   const value = useMemo(() => ({ startTour, restartTour, skipTour, progress }), [startTour, restartTour, skipTour, progress]);
 
   return (
     <TourContext.Provider value={value}>
       {children}
-      <Joyride
-        steps={steps}
-        run={run && steps.length > 0}
-        stepIndex={stepIndex}
-        continuous
-        scrollToFirstStep
-        onEvent={handleEvent}
-        locale={{
-          back: t("tours.back"),
-          close: t("tours.close"),
-          last: t("tours.last"),
-          next: t("tours.next"),
-          skip: t("tours.skip"),
-        }}
-        options={{
-          buttons: ["back", "close", "primary", "skip"],
-          overlayClickAction: "close",
-          skipScroll: prefersReducedMotion(),
-          skipBeacon: true,
-          // Keep page usable: do not trap focus behind the spotlight overlay.
-          disableFocusTrap: true,
-          primaryColor: "var(--cs-accent, #0e7490)",
-          zIndex: 10000,
-        }}
-      />
     </TourContext.Provider>
   );
 }
@@ -228,7 +267,7 @@ export function TourLauncher({ tourId, className }: { tourId: string; className?
   return (
     <button
       type="button"
-      className={className || "cs-button cs-button--ghost"}
+      className={className || "cs-button cs-button--ghost min-h-11"}
       aria-label={label}
       data-tour="tour-launcher"
       onClick={() => (isTerminalTourStatus(status) ? restartTour(tourId) : startTour(tourId))}

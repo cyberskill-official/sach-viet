@@ -49,7 +49,7 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <section className="cs-surface-heavy w-full rounded-2xl p-7">
+    <section className="w-full">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
         <Link className="cs-button cs-button--ghost text-sm" href="/features">{t("nav.features")}</Link>
         <div className="flex flex-wrap items-center gap-2">
@@ -65,8 +65,8 @@ export function LoginForm({ redirectTo }: { redirectTo: string }) {
           </button>
         </div>
       </div>
-      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
-      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.signIn")}</h1>
+      <p className="sv-lux-eyebrow">{t("common.brand")}</p>
+      <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.signIn")}</h1>
       <p className="mt-2 text-sm leading-6 text-muted">{t("auth.signInHint")}</p>
       <form className="mt-8 grid gap-4" data-tour="auth-form" onSubmit={submit} noValidate>
         <label className="cs-field">

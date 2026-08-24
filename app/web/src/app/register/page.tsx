@@ -1,9 +1,12 @@
 import { RegisterForm } from "./register-form";
+import { LuxuryAuthFrame } from "@/components/luxury-shell";
 
-export default function RegisterPage() {
+export default async function RegisterPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+  const params = await searchParams;
+  const fromCircle = params.from === "circle";
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-6 py-12">
-      <RegisterForm />
-    </main>
+    <LuxuryAuthFrame>
+      <RegisterForm fromCircle={fromCircle} />
+    </LuxuryAuthFrame>
   );
 }
