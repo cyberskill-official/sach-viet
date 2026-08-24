@@ -137,6 +137,13 @@ textarea {
   transition-duration: var(--cs-motion-duration-fast);
 }
 
+/* Storefront header: .cs-button / .cs-badge set display and beat Tailwind .hidden on xs */
+@media (max-width: 639px) {
+  .sv-header-desktop-only {
+    display: none !important;
+  }
+}
+
 /* UX Pro Max checklist — shared affordances within CDS Thủy · ocean tokens */
 button:not(:disabled),
 a[href],
