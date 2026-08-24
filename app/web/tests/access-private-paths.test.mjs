@@ -34,4 +34,7 @@ test("defaultHomeForRole sends admins to portal not storefront", () => {
   assert.equal(defaultHomeForRole("super_admin"), "/admin");
   assert.equal(defaultHomeForRole("customer"), "/account");
   assert.equal(defaultHomeForRole("vendor"), "/vendor");
+  assert.equal(defaultHomeForRole("employee"), "/employee");
+  assert.equal(defaultHomeForRole("employee_b2c"), "/retail");
+  assert.equal(defaultHomeForRole("employee_supplier"), "/account");
 });

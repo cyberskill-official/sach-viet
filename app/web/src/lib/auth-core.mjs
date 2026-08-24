@@ -296,14 +296,38 @@ async function upgradePhpassHashIfNeeded(store, user, password) {
   return true;
 }
 
+function signSessionToken(sessionId, role, sessionSecret) {
+  const secret = requireSessionSecret(sessionSecret);
+  const payload = role ? `${sessionId}.${role}` : sessionId;
+  return createHmac("sha256", secret).update(payload).digest("base64url");
+}
+
+/** @returns {{ id: string, role?: string, signature: string, legacy: boolean } | null} */
+function parseSessionToken(token) {
+  if (typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length === 2) {
+    const [id, signature] = parts;
+    if (!id || !signature) return null;
+    return { id, signature, legacy: true };
+  }
+  if (parts.length === 3) {
+    const [id, role, signature] = parts;
+    if (!id || !role || !signature) return null;
+    return { id, role, signature, legacy: false };
+  }
+  return null;
+}
+
 export async function createSessionCookie(store, user, sessionSecret) {
   const secret = requireSessionSecret(sessionSecret);
   const id = randomBytes(32).toString("base64url");
+  const role = typeof user?.role === "string" ? user.role : "customer";
   const expiresAt = store.now() + SESSION_DURATION_MS;
   await store.db.prepare("INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)")
     .run(id, user.id, expiresAt, store.now());
-  const signature = createHmac("sha256", secret).update(id).digest("base64url");
-  const token = `${id}.${signature}`;
+  const signature = signSessionToken(id, role, secret);
+  const token = `${id}.${role}.${signature}`;
   return { token, expiresAt, cookie: serializeCookie(token, expiresAt, store.now()) };
 }
 
@@ -339,24 +363,31 @@ export function clearSessionCookieOptions() {
 }
 
 export async function readSession(store, token, sessionSecret) {
-  if (typeof token !== "string") return null;
-  const [id, signature] = token.split(".");
-  if (!id || !signature) return null;
-  const expected = createHmac("sha256", requireSessionSecret(sessionSecret)).update(id).digest("base64url");
-  if (!constantTimeEqual(signature, expected)) {
+  const parsed = parseSessionToken(token);
+  if (!parsed) return null;
+  const expected = signSessionToken(parsed.id, parsed.role, sessionSecret);
+  if (!constantTimeEqual(parsed.signature, expected)) {
     store.log("auth_session_rejected", { reason: "signature", result: "rejected" });
     return null;
   }
+  if (parsed.role && !isKnownRole(parsed.role)) {
+    store.log("auth_session_rejected", { reason: "role_claim", result: "rejected" });
+    return null;
+  }
   const session = await store.db.prepare(`SELECT sessions.id, sessions.expires_at, users.id AS user_id, users.email, users.role, users.locale
-    FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.id = ?`).get(id);
+    FROM sessions JOIN users ON users.id = sessions.user_id WHERE sessions.id = ?`).get(parsed.id);
   if (!session) return null;
   if (session.expires_at <= store.now()) {
-    await store.db.prepare("DELETE FROM sessions WHERE id = ?").run(id);
+    await store.db.prepare("DELETE FROM sessions WHERE id = ?").run(parsed.id);
     store.log("auth_session_rejected", { reason: "expired", result: "rejected" });
     return null;
   }
+  if (parsed.role && parsed.role !== session.role) {
+    store.log("auth_session_rejected", { reason: "role_mismatch", result: "rejected" });
+    return null;
+  }
   return {
-    id,
+    id: parsed.id,
     user: {
       id: session.user_id,
       email: session.email,
@@ -414,12 +445,32 @@ export function safeRedirect(value) {
 export function verifySessionTokenSignature(token, sessionSecret) {
   if (typeof token !== "string" || typeof sessionSecret !== "string") return false;
   try {
-    const [id, signature] = token.split(".");
-    if (!id || !signature) return false;
-    const expected = createHmac("sha256", requireSessionSecret(sessionSecret)).update(id).digest("base64url");
-    return constantTimeEqual(signature, expected);
+    const parsed = parseSessionToken(token);
+    if (!parsed) return false;
+    const expected = signSessionToken(parsed.id, parsed.role, sessionSecret);
+    return constantTimeEqual(parsed.signature, expected);
   } catch {
     return false;
+  }
+}
+
+/**
+ * Decode a signed domain role from the session token without a DB lookup.
+ * Legacy two-part tokens (no role claim) return null — callers must fail closed.
+ * @param {string | undefined | null} token
+ * @param {string | undefined} sessionSecret
+ * @returns {string | null}
+ */
+export function decodeSessionRoleFromToken(token, sessionSecret) {
+  if (typeof token !== "string" || typeof sessionSecret !== "string") return null;
+  try {
+    const parsed = parseSessionToken(token);
+    if (!parsed || parsed.legacy || !parsed.role) return null;
+    const expected = signSessionToken(parsed.id, parsed.role, sessionSecret);
+    if (!constantTimeEqual(parsed.signature, expected)) return null;
+    return isKnownRole(parsed.role) ? parsed.role : null;
+  } catch {
+    return null;
   }
 }
 

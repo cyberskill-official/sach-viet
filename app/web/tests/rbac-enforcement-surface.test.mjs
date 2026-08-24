@@ -11,6 +11,9 @@ test("proxy requires signed session for private API prefixes", () => {
   const source = readFileSync(resolve(root, "src/proxy.ts"), "utf8");
   assert.match(source, /requiresApiAuth/);
   assert.match(source, /Unauthenticated/);
+  assert.match(source, /decodeSessionRoleFromToken/);
+  assert.match(source, /canAccessPortal/);
+  assert.match(source, /\/forbidden/);
   assert.equal(requiresApiAuth("/api/admin/flags"), true);
 });
 
@@ -43,6 +46,7 @@ test("UI surfaces Guest User Admin display tiers", () => {
     assert.match(source, /displayTier/);
   }
   assert.match(storefront, /data-access-tier/);
+  assert.match(storefront, /portalNavHrefForRole/);
   assert.match(features, /canOpenFeature/);
   assert.match(features, /unauthorizedAction|signInRequired/);
 });

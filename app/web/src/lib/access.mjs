@@ -70,7 +70,7 @@ export const PERMISSIONS = Object.freeze({
   "support.tickets.own": ALL_AUTHENTICATED,
   "notifications.own": ALL_AUTHENTICATED,
   "storage.upload": ALL_AUTHENTICATED,
-  "vendor.apply": ALL_AUTHENTICATED,
+  "vendor.apply": ["customer"],
   "auth.me": ALL_AUTHENTICATED,
   "auth.logout": ALL_AUTHENTICATED,
 
@@ -187,6 +187,11 @@ const apiPermissionRules = Object.freeze([
   { prefix: "/api/orders", permission: "orders.read.own" },
   { prefix: "/api/checkout", permission: "checkout.create" },
   { prefix: "/api/notifications", permission: "notifications.own" },
+  { prefix: "/api/support/tickets/", match: (path) => path.includes("/messages"), permission: "support.tickets.own", writePermission: "support.tickets.own" },
+  { prefix: "/api/support/tickets/", match: (path) => !path.includes("/messages"), permission: "support.tickets.own", writePermission: "support.tickets.staff" },
+  { prefix: "/api/support/tickets", permission: "support.tickets.own", writePermission: "support.tickets.own" },
+  { prefix: "/api/support/goods-requests", permission: "support.tickets.own" },
+  { prefix: "/api/support/reviews", permission: "support.tickets.own" },
   { prefix: "/api/support", permission: "support.tickets.own" },
   { prefix: "/api/storage", permission: "storage.upload" },
   { prefix: "/api/auth/me", permission: "auth.me" },
@@ -198,6 +203,12 @@ const apiPermissionRules = Object.freeze([
 ]);
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function pathMatchesPrefix(pathname, prefix) {
+  if (pathname === prefix) return true;
+  const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;
+  return pathname.startsWith(normalized);
+}
 
 export function normalizeRole(role) {
   return role === "super_admin" ? "admin" : role;
@@ -331,12 +342,13 @@ export function defaultHomeForRole(role) {
     case "school_librarian":
       return "/institution";
     case "employee":
+      return "/employee";
     case "employee_b2c":
       return "/retail";
     case "employee_b2b":
       return "/b2b";
     case "employee_supplier":
-      return "/supplier";
+      return "/account";
     default:
       return "/account";
   }
@@ -376,18 +388,23 @@ export function requiresApiAuth(pathname) {
 export function permissionForApiPath(pathname, method = "GET") {
   if (typeof pathname !== "string") return null;
   for (const rule of apiPermissionRules) {
-    if (pathname === rule.prefix || pathname.startsWith(`${rule.prefix}/`)) {
-      if (MUTATING.has(String(method).toUpperCase()) && rule.writePermission) {
-        return rule.writePermission;
-      }
-      return rule.permission;
+    if (!pathMatchesPrefix(pathname, rule.prefix)) continue;
+    if (typeof rule.match === "function" && !rule.match(pathname)) continue;
+    if (MUTATING.has(String(method).toUpperCase()) && rule.writePermission) {
+      return rule.writePermission;
     }
+    return rule.permission;
   }
   return null;
 }
 
+/** Portal nav href when the role has an accessible dedicated portal; null otherwise. */
+export function portalNavHrefForRole(role) {
+  const item = storefrontNavItems(role).find((entry) => entry.key === "portal");
+  return item?.href ?? null;
+}
+
 /**
- * Storefront / features nav items visible for a session role.
  * Guests only see public links; authenticated users see account surfaces;
  * portal link only when the role has a dedicated portal home.
  * @param {string | null | undefined} role

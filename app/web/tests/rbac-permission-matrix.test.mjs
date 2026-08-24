@@ -96,8 +96,20 @@ test("permissionForApiPath maps admin and partner prefixes", () => {
   assert.equal(permissionForApiPath("/api/admin/catalog/products", "GET"), "admin.catalog.read");
   assert.equal(permissionForApiPath("/api/finance/compute", "POST"), "admin.finance.compute");
   assert.equal(permissionForApiPath("/api/vendor/offers"), "vendor.offers");
+  assert.equal(permissionForApiPath("/api/vendor/applications", "POST"), "vendor.apply");
+  assert.equal(permissionForApiPath("/api/support/tickets/ticket-1", "PATCH"), "support.tickets.staff");
   assert.equal(permissionForApiPath("/api/catalog/products"), "catalog.read");
   assert.equal(permissionForApiPath("/api/wishlist", "DELETE"), "wishlist.write");
+});
+
+test("vendor.apply and employee portal homes align with domain rules", () => {
+  assert.equal(can(CUSTOMER, "vendor.apply"), true);
+  assert.equal(can(VENDOR, "vendor.apply"), false);
+  assert.equal(can(ADMIN, "vendor.apply"), false);
+  const employeeNav = storefrontNavItems("employee").map((item) => item.href);
+  assert.ok(employeeNav.includes("/employee"));
+  assert.ok(!employeeNav.includes("/retail"));
+  assert.ok(!storefrontNavItems("employee_supplier").some((item) => item.key === "portal"));
 });
 
 test("requiresApiAuth covers private APIs but not public catalog or webhooks", () => {

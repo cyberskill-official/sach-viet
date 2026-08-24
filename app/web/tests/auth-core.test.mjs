@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import test from "node:test";
 import { canAccessOwnedRecord, canAccessPortal, normalizeRole } from "../src/lib/access.mjs";
-import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, expiredCookie, getIdentitySnapshot, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, syncAdminEmailFromEnv, syncAdminPasswordFromEnv, verifyPassword } from "../src/lib/auth-core.mjs";
+import { bootstrapFirstAdmin, clearLoginLock, createAuthStore, decodeSessionRoleFromToken, expiredCookie, getIdentitySnapshot, hashPassword, hashPhpassPassword, login, readSession, revokeSession, safeRedirect, syncAdminEmailFromEnv, syncAdminPasswordFromEnv, verifyPassword } from "../src/lib/auth-core.mjs";
 
 const sessionSecret = "a-session-secret-that-is-long-enough-for-the-test-suite";
 
@@ -353,6 +353,8 @@ test("signed opaque sessions reject tampering, expire, and can be revoked", asyn
     assert.equal(result.cookie.includes("SameSite=Lax"), true);
     assert.equal(await readSession(testStore.store, `${result.token}changed`, sessionSecret), null);
     assert.equal((await readSession(testStore.store, result.token, sessionSecret)).user.role, "admin");
+    assert.equal(decodeSessionRoleFromToken(result.token, sessionSecret), "admin");
+    assert.equal(result.token.split(".").length, 3);
     await revokeSession(testStore.store, result.token, sessionSecret);
     assert.equal(await readSession(testStore.store, result.token, sessionSecret), null);
     const newResult = await login(testStore.store, { email: "admin@example.test", password: "correct horse battery staple", sessionSecret });

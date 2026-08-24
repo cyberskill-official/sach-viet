@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
-import { defaultHomeForRole, displayTier, displayTierLabel, formatRoleForDisplay } from "@/lib/access.mjs";
+import { displayTier, displayTierLabel, formatRoleForDisplay, portalNavHrefForRole } from "@/lib/access.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 import { MotionReveal } from "@/components/motion-reveal";
@@ -225,7 +225,7 @@ export function Storefront({
     window.location.assign("/");
   }
 
-  const portalHome = sessionUser ? defaultHomeForRole(sessionUser.role) : "/account";
+  const portalHome = sessionUser ? portalNavHrefForRole(sessionUser.role) : null;
   const accessLabel = displayTierLabel(sessionUser?.role ?? null, locale === "vi" ? "vi" : "en");
   const tier = displayTier(sessionUser?.role ?? null);
   const secondaryLinks = sessionUser
@@ -294,7 +294,7 @@ export function Storefront({
                 <span className="cs-badge hidden sm:inline-flex" data-access-tier={tier} title={formatRoleForDisplay(sessionUser.role, locale === "vi" ? "vi" : "en")}>
                   {accessLabel}
                 </span>
-                {portalHome !== "/account" ? (
+                {portalHome ? (
                   <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
                 ) : null}
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/account">{t("nav.account")}</Link>
