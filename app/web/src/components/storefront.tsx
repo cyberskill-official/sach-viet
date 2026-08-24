@@ -286,7 +286,7 @@ export function Storefront({
               <TourLauncher tourId="tour.storefront" />
             </div>
             <a
-              className="cs-button cs-button--ghost hidden min-h-11 min-w-11 sm:inline-flex sm:items-center sm:justify-center"
+              className="cs-button cs-button--ghost sv-header-desktop-only min-h-11 min-w-11 sm:inline-flex sm:items-center sm:justify-center"
               href={`?lang=${locale === "en" ? "vi" : "en"}`}
               aria-label={t("common.language")}
               onClick={(event) => {
@@ -298,20 +298,20 @@ export function Storefront({
             </a>
             {sessionReady && sessionUser ? (
               <>
-                <span className="cs-badge hidden sm:inline-flex" data-access-tier={tier} title={formatRoleForDisplay(sessionUser.role, locale === "vi" ? "vi" : "en")}>
+                <span className="cs-badge sv-header-desktop-only sm:inline-flex" data-access-tier={tier} title={formatRoleForDisplay(sessionUser.role, locale === "vi" ? "vi" : "en")}>
                   {accessLabel}
                 </span>
                 {portalHome ? (
-                  <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
+                  <Link className="cs-button cs-button--ghost sv-header-desktop-only sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
                 ) : null}
-                <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/account">{t("nav.account")}</Link>
-                <button type="button" className="cs-button min-h-11" onClick={logout}>{t("common.signOut")}</button>
+                <Link className="cs-button cs-button--ghost sv-header-desktop-only sm:inline-flex" href="/account">{t("nav.account")}</Link>
+                <button type="button" className="cs-button sv-header-desktop-only min-h-11 sm:inline-flex" onClick={logout}>{t("common.signOut")}</button>
               </>
             ) : sessionReady ? (
               <>
-                <span className="cs-badge hidden sm:inline-flex" data-access-tier="guest">{t("common.roleGuest")}</span>
-                <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
-                <Link className="cs-button min-h-11 hidden sm:inline-flex" href="/login">{t("nav.login")}</Link>
+                <span className="cs-badge sv-header-desktop-only sm:inline-flex" data-access-tier="guest">{t("common.roleGuest")}</span>
+                <Link className="cs-button cs-button--ghost sv-header-desktop-only sm:inline-flex" href="/register">{t("nav.register")}</Link>
+                <Link className="cs-button sv-header-desktop-only min-h-11 sm:inline-flex" href="/login">{t("nav.login")}</Link>
               </>
             ) : null}
             <div className="relative" ref={menuRef}>
