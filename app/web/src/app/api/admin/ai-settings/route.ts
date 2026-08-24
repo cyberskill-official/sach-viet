@@ -2,8 +2,18 @@ import { NextResponse } from "next/server";
 import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { assertAiChatEnabled, createAiSettingsStore, getAiSettings, updateAiSettings } from "@/lib/ai-settings-core.mjs";
 
-async function sessionFrom(request: Request) {
-  const auth = await requireApiPermission(request);
+function statusFor(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("retired on Production")) return 410;
+  if (message.includes("Administrator access")) return 403;
+  if (message.includes("AI_SETTINGS_SECRET")) return 400;
+  return 400;
+}
+
+export async function GET(request: Request) {
+  try {
+    assertAiChatEnabled();
+    const auth = await requireApiPermission(request);
     if (!auth.ok) return auth.response;
     const store = await createAiSettingsStore();
     try {
@@ -22,8 +32,8 @@ async function sessionFrom(request: Request) {
 export async function PUT(request: Request) {
   try {
     assertAiChatEnabled();
-    const session = await sessionFrom(request);
-    if (!session) return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
+    const auth = await requireApiPermission(request);
+    if (!auth.ok) return auth.response;
     const body = await request.json().catch(() => ({}));
     const store = await createAiSettingsStore();
     try {
