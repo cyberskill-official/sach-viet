@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 
-export function RegisterForm() {
+export function RegisterForm({ fromCircle = false }: { fromCircle?: boolean }) {
   const { locale, setLocale, t } = useLocale();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -36,8 +36,8 @@ export function RegisterForm() {
 
   if (done) {
     return (
-      <section className="cs-surface-heavy w-full rounded-2xl p-7">
-        <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
+      <section className="w-full">
+        <p className="sv-lux-eyebrow">{t("common.brand")}</p>
         <p className="cs-alert mt-8" role="status">
           {t("auth.checkEmail")}{" "}
           <Link className="sv-text-link" href="/login">{t("auth.signIn")}</Link>
@@ -47,9 +47,9 @@ export function RegisterForm() {
   }
 
   return (
-    <section className="cs-surface-heavy w-full rounded-2xl p-7">
+    <section className="w-full">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-        <Link className="cs-button cs-button--ghost text-sm" href="/features">{t("nav.features")}</Link>
+        <Link className="cs-button cs-button--ghost text-sm" href="/membership">{t("storefront.membershipEyebrow")}</Link>
         <div className="flex flex-wrap items-center gap-2">
           <TourLauncher tourId="tour.auth" />
           <button
@@ -63,9 +63,9 @@ export function RegisterForm() {
           </button>
         </div>
       </div>
-      <p className="cs-eyebrow text-accent-strong">{t("common.brand")}</p>
-      <h1 className="mt-3 text-3xl font-extrabold">{t("auth.createAccount")}</h1>
-      <p className="mt-2 text-sm leading-6 text-muted">{t("auth.registerHint")}</p>
+      <p className="sv-lux-eyebrow">{t("common.brand")}</p>
+      <h1 className="sv-font-display mt-3 text-3xl tracking-tight">{t("auth.createAccount")}</h1>
+      <p className="mt-2 text-sm leading-6 text-muted">{fromCircle ? t("auth.registerCircleHint") : t("auth.registerHint")}</p>
       <form className="mt-8 grid gap-4" method="post" data-tour="auth-form" onSubmit={submit}>
         <label className="cs-field">
           <span className="cs-field__label">{t("common.email")}</span>

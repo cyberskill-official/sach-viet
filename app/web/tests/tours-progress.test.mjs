@@ -9,7 +9,7 @@ import {
   TOUR_IDS,
   PORTAL_TOUR_ROLES,
   getTourDefinition,
-  joyrideStepsFor,
+  driverStepsFor,
   listPortalTourIds,
   resolveTourIdForPath,
   shouldAutoStartTour,
@@ -76,13 +76,15 @@ test("auth tour does not auto-start", () => {
   assert.equal(shouldAutoStartTour("tour.portal_vendor"), true);
 });
 
-test("joyride steps localize content and use data-tour targets", () => {
-  const en = joyrideStepsFor("tour.storefront", "en", { onlyPresent: false });
-  const vi = joyrideStepsFor("tour.storefront", "vi", { onlyPresent: false });
-  assert.ok(en[0].content.includes("Welcome") || en[0].content.includes("Sách"));
-  assert.notEqual(en[0].content, vi[0].content);
-  assert.ok(en[0].target.startsWith("[data-tour="));
-  assert.equal(en[0].skipBeacon, true);
+test("driver steps localize description and use data-tour elements", () => {
+  const en = driverStepsFor("tour.storefront", "en", { onlyPresent: false });
+  const vi = driverStepsFor("tour.storefront", "vi", { onlyPresent: false });
+  assert.ok(
+    en[0].popover.description.includes("Welcome") || en[0].popover.description.includes("Sách"),
+  );
+  assert.notEqual(en[0].popover.description, vi[0].popover.description);
+  assert.ok(en[0].element.startsWith("[data-tour="));
+  assert.equal(en[0].popover.align, "start");
 });
 
 test("pathForTourId returns primary routeHint", async () => {

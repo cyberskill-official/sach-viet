@@ -400,8 +400,8 @@ export function RolePortalPanel({
       {financeNote ? <p className="text-sm text-muted" id="budget">{financeNote}</p> : null}
 
       {portal === "vendor" ? (
-        <form id="offers" className="cs-surface-standard space-y-3 rounded-2xl p-4" data-tour="portal-primary" onSubmit={(event) => { void saveOffer(event); }}>
-          <h3 className="font-semibold">{t("portals.createEditOffer")}</h3>
+        <form id="offers" className="sv-glass-card space-y-3 rounded-2xl p-4" data-tour="portal-primary" onSubmit={(event) => { void saveOffer(event); }}>
+          <h3 className="sv-font-display text-xl font-medium">{t("portals.createEditOffer")}</h3>
           <input aria-label={t("portals.offerId")} className="cs-field__control w-full" placeholder={t("portals.offerId")} value={offerForm.id} onChange={(event) => setOfferForm((current) => ({ ...current, id: event.target.value }))} />
           <input required aria-label={t("portals.productId")} className="cs-field__control w-full" placeholder={t("portals.productId")} value={offerForm.productId} onChange={(event) => setOfferForm((current) => ({ ...current, productId: event.target.value }))} />
           <input required aria-label={t("portals.priceUsd")} className="cs-field__control w-full" placeholder={t("portals.priceUsd")} value={offerForm.priceUsd} onChange={(event) => setOfferForm((current) => ({ ...current, priceUsd: event.target.value }))} />

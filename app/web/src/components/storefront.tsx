@@ -2,11 +2,24 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState, type CSSProperties } from "react";
+import {
+  ArrowRight,
+  BookOpen,
+  Crown,
+  Heart,
+  MagnifyingGlass,
+  SealCheck,
+  ShoppingBag,
+  Sparkle,
+  UsersThree,
+} from "@phosphor-icons/react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
 import { defaultHomeForRole } from "@/lib/access.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 import { MotionReveal } from "@/components/motion-reveal";
+import { ProductCover } from "@/components/product-cover";
+import type { ProductMedia } from "@/lib/product-cover";
 
 type Product = {
   id: string;
@@ -14,23 +27,11 @@ type Product = {
   title: string;
   description: string;
   category: { slug: string; name: string };
+  media?: ProductMedia[];
   primaryOffer: null | { id: string; priceUsd: string; listPriceUsd?: string | null; stockQuantity: number };
 };
 
 type CategoryOption = { slug: string; name: string };
-
-const COVER_TONES = [
-  "from-[color-mix(in_oklab,var(--cs-accent-strong)_88%,#031018)] to-[color-mix(in_oklab,var(--cs-accent)_55%,#0a2a38)]",
-  "from-[color-mix(in_oklab,var(--cs-accent)_75%,#04283a)] to-[color-mix(in_oklab,var(--cs-accent-strong)_40%,#0d3d4f)]",
-  "from-[#0b3a4a] to-[color-mix(in_oklab,var(--cs-accent)_65%,#125566)]",
-  "from-[#12364a] to-[color-mix(in_oklab,var(--cs-accent-strong)_50%,#1a5a6e)]",
-];
-
-function coverTone(slug: string) {
-  let hash = 0;
-  for (let i = 0; i < slug.length; i += 1) hash = (hash + slug.charCodeAt(i) * (i + 3)) % COVER_TONES.length;
-  return COVER_TONES[hash];
-}
 
 function apiMessage(body: Record<string, unknown>, fallback: string) {
   const error = body.error;
@@ -226,6 +227,13 @@ export function Storefront({
   }
 
   const portalHome = sessionUser ? defaultHomeForRole(sessionUser.role) : "/account";
+  const featuredProducts = products.slice(0, 3);
+  const brandValues = [
+    { icon: Sparkle, titleKey: "storefront.valueCuratedTitle", bodyKey: "storefront.valueCuratedBody" },
+    { icon: SealCheck, titleKey: "storefront.valueAuthenticTitle", bodyKey: "storefront.valueAuthenticBody" },
+    { icon: Heart, titleKey: "storefront.valueServiceTitle", bodyKey: "storefront.valueServiceBody" },
+    { icon: UsersThree, titleKey: "storefront.valueCommunityTitle", bodyKey: "storefront.valueCommunityBody" },
+  ] as const;
   const secondaryLinks = [
     { href: "/account", label: t("nav.account") },
     { href: "/wishlist", label: t("nav.wishlist") },
@@ -234,17 +242,19 @@ export function Storefront({
   ] as const;
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-30 border-b border-border/80 bg-[color-mix(in_oklab,var(--cs-color-surface-panel)_88%,transparent)] backdrop-blur-xl">
+    <main className="sv-luxury min-h-screen bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border/60 sv-glass-heavy">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-5 py-4 sm:px-8">
-          <Link href="/" className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-color-accent-ochre,#f4ba17)]" data-tour="storefront-brand">
-            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] font-bold text-white shadow-[0_10px_30px_color-mix(in_oklab,var(--cs-accent)_35%,transparent)]" aria-hidden="true">SV</span>
+          <Link href="/" className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" data-tour="storefront-brand">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[var(--sv-lux-stone-900)] to-[var(--sv-lux-gold-strong)] text-white shadow-[0_10px_30px_color-mix(in_oklab,var(--sv-lux-gold)_28%,transparent)]" aria-hidden="true">
+              <Crown size={22} weight="duotone" aria-hidden="true" />
+            </span>
             <span className="min-w-0">
-              <strong className="block truncate text-lg tracking-tight">{t("common.brand")}</strong>
-              <small className="hidden text-muted sm:block">{t("common.tagline")}</small>
+              <strong className="sv-font-display block truncate text-xl tracking-tight">{t("common.brand")}</strong>
+              <small className="hidden text-xs tracking-[0.14em] text-muted uppercase sm:block">{t("common.tagline")}</small>
             </span>
           </Link>
-          <nav className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-2" data-tour="storefront-nav">
+          <nav className="flex shrink-0 items-center gap-1.5 text-sm sm:gap-2" data-tour="storefront-nav" aria-label={t("common.navigation")}>
             <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/features">{t("nav.features")}</Link>
             <div className="relative hidden lg:flex lg:items-center lg:gap-1.5">
               {secondaryLinks.map((link) => (
@@ -254,7 +264,7 @@ export function Storefront({
             <div className="relative lg:hidden" ref={menuRef}>
               <button
                 type="button"
-                className="cs-button cs-button--ghost"
+                className="cs-button cs-button--ghost min-h-11 min-w-11"
                 aria-expanded={menuOpen}
                 aria-haspopup="menu"
                 aria-controls="storefront-more-menu"
@@ -264,7 +274,7 @@ export function Storefront({
                 {t("nav.moreMenu")}
               </button>
               {menuOpen ? (
-                <div id="storefront-more-menu" role="menu" className="cs-surface-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
+                <div id="storefront-more-menu" role="menu" className="sv-glass-heavy absolute right-0 top-12 z-50 min-w-48 rounded-2xl p-2 shadow-xl">
                   <Link className="cs-button cs-button--ghost flex w-full justify-start sm:hidden" href="/features" role="menuitem" onClick={() => setMenuOpen(false)}>{t("nav.features")}</Link>
                   {secondaryLinks.map((link) => (
                     <Link key={link.href} className="cs-button cs-button--ghost flex w-full justify-start" href={link.href} role="menuitem" onClick={() => setMenuOpen(false)}>{link.label}</Link>
@@ -272,10 +282,14 @@ export function Storefront({
                 </div>
               ) : null}
             </div>
-            <Link className="cs-button cs-button--secondary" href="/ecom/cart">{t("nav.cart")} ({cartCount})</Link>
+            <Link className="cs-button cs-button--secondary inline-flex min-h-11 items-center gap-2" href="/ecom/cart" aria-label={`${t("nav.cart")} (${cartCount})`}>
+              <ShoppingBag size={18} weight="regular" aria-hidden="true" />
+              <span className="hidden sm:inline">{t("nav.cart")}</span>
+              <span aria-hidden="true">({cartCount})</span>
+            </Link>
             <TourLauncher tourId="tour.storefront" />
             <a
-              className="cs-button cs-button--ghost"
+              className="cs-button cs-button--ghost min-h-11 min-w-11"
               href={`?lang=${locale === "en" ? "vi" : "en"}`}
               aria-label={t("common.language")}
               onClick={(event) => {
@@ -291,57 +305,175 @@ export function Storefront({
                   <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
                 ) : null}
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/account">{t("nav.account")}</Link>
-                <button type="button" className="cs-button" onClick={logout}>{t("common.signOut")}</button>
+                <button type="button" className="cs-button min-h-11" onClick={logout}>{t("common.signOut")}</button>
               </>
             ) : sessionReady ? (
               <>
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
-                <Link className="cs-button" href="/login">{t("nav.login")}</Link>
+                <Link className="cs-button min-h-11" href="/login">{t("nav.login")}</Link>
               </>
             ) : null}
           </nav>
         </div>
       </header>
 
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,color-mix(in_oklab,var(--cs-accent)_28%,transparent),transparent_55%),radial-gradient(ellipse_at_bottom_right,color-mix(in_oklab,var(--cs-accent-strong)_22%,transparent),transparent_50%),linear-gradient(180deg,color-mix(in_oklab,var(--cs-color-surface-page)_70%,#061821),var(--cs-color-surface-page))]" />
-        <div className="cs-aurora-wash sv-aurora-live pointer-events-none absolute inset-0 opacity-40" />
-        <div className="relative mx-auto grid max-w-7xl gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:py-24">
+      <section className="relative overflow-hidden border-b border-border/70 sv-lux-hero-glow">
+        <div className="pointer-events-none absolute inset-0 opacity-50">
+          <div className="sv-aurora-live absolute -left-24 top-0 h-72 w-72 rounded-full bg-[color-mix(in_oklab,var(--sv-lux-gold)_18%,transparent)] blur-3xl" />
+          <div className="sv-aurora-live absolute -right-16 bottom-0 h-80 w-80 rounded-full bg-[color-mix(in_oklab,var(--sv-lux-stone-900)_14%,transparent)] blur-3xl" style={{ animationDelay: "-4s" } as CSSProperties} />
+        </div>
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-5 py-16 sm:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:py-28">
           <div>
-            <p className="cs-eyebrow sv-motion-fade-up text-accent-strong">{t("storefront.eyebrow")}</p>
-            <h1 className="sv-motion-fade-up sv-motion-delay-1 mt-4 max-w-3xl text-4xl font-extrabold leading-[1.08] tracking-tight text-balance sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
-            <p className="sv-motion-fade-up sv-motion-delay-2 mt-5 max-w-2xl text-lg leading-8 text-muted">{t("storefront.heroBody")}</p>
-            <form onSubmit={submitSearch} className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-3 mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 shadow-[0_20px_60px_color-mix(in_oklab,var(--cs-accent)_18%,transparent)] sm:flex-row sm:items-end" data-tour="storefront-search">
+            <p className="sv-lux-eyebrow sv-motion-fade-up">{t("storefront.eyebrow")}</p>
+            <h1 className="sv-font-display sv-motion-fade-up sv-motion-delay-1 mt-5 max-w-3xl text-4xl leading-[1.06] tracking-tight text-balance sm:text-5xl lg:text-6xl">{t("storefront.heroTitle")}</h1>
+            <p className="sv-motion-fade-up sv-motion-delay-2 mt-6 max-w-2xl text-base leading-8 text-muted sm:text-lg">{t("storefront.heroBody")}</p>
+            <form onSubmit={submitSearch} className="sv-glass sv-motion-fade-up sv-motion-delay-3 mt-10 flex max-w-2xl flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-end" data-tour="storefront-search">
               <div className="cs-field min-w-0 flex-1">
                 <label className="cs-field__label" htmlFor={searchFieldId}>{t("storefront.searchLabel")}</label>
-                <input id={searchFieldId} className="cs-field__control w-full" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} autoComplete="off" enterKeyHint="search" />
+                <div className="relative">
+                  <MagnifyingGlass size={18} weight="regular" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" aria-hidden="true" />
+                  <input id={searchFieldId} className="cs-field__control w-full pl-10" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t("storefront.searchPlaceholder")} autoComplete="off" enterKeyHint="search" />
+                </div>
               </div>
-              <button className="cs-button shrink-0 sm:mb-0.5" type="submit">{t("storefront.searchSubmit")}</button>
+              <button className="cs-button inline-flex min-h-11 shrink-0 items-center gap-2 sm:mb-0.5" type="submit">
+                {t("storefront.searchSubmit")}
+                <ArrowRight size={16} weight="bold" aria-hidden="true" />
+              </button>
             </form>
-            <div className="sv-motion-fade-up sv-motion-delay-4 mt-6 flex flex-wrap gap-3 text-sm text-muted">
-              <span className="inline-flex min-h-9 items-center rounded-full border border-border bg-panel/70 px-3 py-1" aria-live="polite">{shelfBadgeLabel(loading, products.length, t)}</span>
-              <a className="sv-chip-link" href="#catalog">{t("storefront.browseCatalog")}</a>
+            <div className="sv-motion-fade-up sv-motion-delay-4 mt-8 flex flex-wrap items-center gap-3 text-sm">
+              <span className="sv-glass inline-flex min-h-11 items-center rounded-full px-4 py-2 text-muted" aria-live="polite">{shelfBadgeLabel(loading, products.length, t)}</span>
+              <a className="sv-chip-link min-h-11" href="#catalog">{t("storefront.browseCatalog")}</a>
+              <Link className="sv-chip-link min-h-11 inline-flex items-center gap-2" href="/membership">
+                <Crown size={16} weight="duotone" aria-hidden="true" />
+                {t("storefront.heroMembership")}
+              </Link>
             </div>
           </div>
-          <div className="relative hidden min-h-80 lg:block" aria-hidden="true">
-            <div className="sv-float absolute inset-y-6 left-8 w-[42%] rounded-[1.4rem] bg-gradient-to-br from-[var(--cs-accent-strong)] to-[var(--cs-accent)] opacity-90 shadow-2xl" style={{ "--sv-tilt": "-6deg" } as CSSProperties} />
-            <div className="sv-float-slow absolute inset-y-2 left-[28%] w-[46%] rounded-[1.4rem] bg-gradient-to-br from-[#0d4a5c] to-[var(--cs-accent)] shadow-2xl" style={{ "--sv-tilt": "3deg" } as CSSProperties} />
-            <div className="cs-surface-heavy sv-motion-fade-up sv-motion-delay-2 absolute inset-y-0 right-0 flex w-[58%] flex-col justify-end rounded-[2rem] p-8 shadow-[0_30px_80px_color-mix(in_oklab,#000_25%,transparent)]">
-              <p className="cs-eyebrow">{t("storefront.tipEyebrow")}</p>
-              <p className="mt-3 text-2xl font-bold leading-snug">{t("storefront.tipBody")}</p>
-              <Link className="cs-button cs-button--secondary mt-6 w-fit" href="/features">{t("storefront.seePlatformStatus")}</Link>
+          <div className="relative hidden min-h-[22rem] lg:block" aria-hidden="true">
+            <div className="sv-float absolute inset-y-8 left-6 w-[40%] rounded-[1.5rem] bg-gradient-to-br from-[var(--sv-lux-stone-900)] to-[var(--sv-lux-gold-strong)] opacity-90 shadow-2xl" style={{ "--sv-tilt": "-5deg" } as CSSProperties} />
+            <div className="sv-float-slow absolute inset-y-4 left-[26%] w-[44%] rounded-[1.5rem] bg-gradient-to-br from-[#292524] to-[var(--sv-lux-gold)] shadow-2xl" style={{ "--sv-tilt": "4deg" } as CSSProperties} />
+            <div className="sv-glass-heavy sv-motion-fade-up sv-motion-delay-2 absolute inset-y-0 right-0 flex w-[58%] flex-col justify-end rounded-[2rem] p-8">
+              <BookOpen size={28} weight="duotone" className="text-[var(--sv-lux-gold)]" aria-hidden="true" />
+              <p className="sv-lux-eyebrow mt-4">{t("storefront.tipEyebrow")}</p>
+              <p className="sv-font-display mt-3 text-2xl leading-snug">{t("storefront.tipBody")}</p>
+              <Link className="cs-button cs-button--secondary mt-6 inline-flex min-h-11 w-fit items-center gap-2" href="/features">
+                {t("storefront.seePlatformStatus")}
+                <ArrowRight size={16} weight="bold" aria-hidden="true" />
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="catalog" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-12 sm:px-8">
+      {!loading && featuredProducts.length > 0 && !submittedQuery ? (
+        <section className="border-b border-border/60 bg-[color-mix(in_oklab,var(--sv-lux-cream)_55%,var(--background))] py-16 sm:py-20" aria-labelledby="featured-heading">
+          <div className="mx-auto max-w-7xl px-5 sm:px-8">
+            <MotionReveal className="max-w-2xl">
+              <p className="sv-lux-eyebrow">{t("storefront.featuredEyebrow")}</p>
+              <h2 id="featured-heading" className="sv-font-display mt-3 text-3xl tracking-tight sm:text-4xl">{t("storefront.featuredTitle")}</h2>
+            </MotionReveal>
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              {featuredProducts.map((product, index) => (
+                <MotionReveal key={product.id} as="article" delayMs={index * 80} className="sv-glass-card sv-product-spotlight sv-card-lift group flex min-h-[28rem] flex-col overflow-hidden rounded-[1.75rem]">
+                  <div className="sv-cover-sheen relative mx-4 mt-4 h-52 overflow-hidden rounded-2xl">
+                    <ProductCover slug={product.slug} title={product.title} media={product.media} className="h-full w-full rounded-2xl" priority={index === 0} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                    <div className="absolute inset-y-0 left-0 w-1.5 bg-black/25" />
+                    <div className="relative flex h-full items-end p-6 text-white">
+                      <div>
+                        <p className="text-[0.65rem] font-semibold tracking-[0.2em] uppercase text-white/75">{product.category.name}</p>
+                        <p className="sv-font-display mt-2 max-w-[12ch] text-3xl leading-tight">{product.title.slice(0, 32)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-1 flex-col p-6 pt-5">
+                    <h3 className="sv-font-display text-2xl leading-snug">
+                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
+                    </h3>
+                    <p className="mt-3 line-clamp-3 text-sm leading-7 text-muted">{product.description}</p>
+                    <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">
+                      <div>
+                        {product.primaryOffer ? (
+                          <>
+                            <strong className="text-xl">{formatUsd(product.primaryOffer.priceUsd, locale)}</strong>
+                            {product.primaryOffer.listPriceUsd ? <small className="ml-2 text-muted line-through">{formatUsd(product.primaryOffer.listPriceUsd, locale)}</small> : null}
+                          </>
+                        ) : <span className="cs-badge">{t("storefront.outOfStock")}</span>}
+                      </div>
+                      <Link className="cs-button cs-button--secondary inline-flex min-h-11 items-center gap-2" href={`/products/${product.slug}`}>
+                        {t("common.open")}
+                        <ArrowRight size={16} weight="bold" aria-hidden="true" />
+                      </Link>
+                    </div>
+                  </div>
+                </MotionReveal>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="border-b border-border/60 py-16 sm:py-24" aria-labelledby="editorial-heading">
+        <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-2 lg:items-center">
+          <MotionReveal>
+            <p className="sv-lux-eyebrow">{t("storefront.editorialEyebrow")}</p>
+            <h2 id="editorial-heading" className="sv-font-display mt-4 text-3xl tracking-tight sm:text-4xl">{t("storefront.editorialTitle")}</h2>
+            <p className="mt-6 text-base leading-8 text-muted sm:text-lg">{t("storefront.editorialBody")}</p>
+          </MotionReveal>
+          <MotionReveal delayMs={120}>
+            <blockquote className="sv-glass-heavy relative rounded-[2rem] p-8 sm:p-10">
+              <div className="sv-lux-divider mb-8" />
+              <p className="sv-font-display text-2xl leading-snug text-balance sm:text-3xl">&ldquo;{t("storefront.editorialQuote")}&rdquo;</p>
+              <footer className="mt-6 text-sm tracking-[0.12em] text-muted uppercase">{t("common.brand")}</footer>
+            </blockquote>
+          </MotionReveal>
+        </div>
+      </section>
+
+      <section className="border-b border-border/60 bg-[color-mix(in_oklab,var(--panel)_40%,var(--background))] py-16 sm:py-20" aria-labelledby="values-heading">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          <MotionReveal className="max-w-2xl">
+            <p className="sv-lux-eyebrow">{t("storefront.valuesEyebrow")}</p>
+            <h2 id="values-heading" className="sv-font-display mt-3 text-3xl tracking-tight sm:text-4xl">{t("storefront.valuesTitle")}</h2>
+          </MotionReveal>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {brandValues.map(({ icon: Icon, titleKey, bodyKey }, index) => (
+              <MotionReveal key={titleKey} delayMs={index * 70} className="sv-glass-card rounded-2xl p-6">
+                <span className="inline-flex size-11 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--sv-lux-gold)_14%,transparent)] text-[var(--sv-lux-gold-strong)]" aria-hidden="true">
+                  <Icon size={22} weight="duotone" />
+                </span>
+                <h3 className="sv-font-display mt-5 text-xl">{t(titleKey)}</h3>
+                <p className="mt-3 text-sm leading-7 text-muted">{t(bodyKey)}</p>
+              </MotionReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden py-16 sm:py-20" aria-labelledby="membership-heading">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--sv-lux-gold)_16%,transparent),transparent_62%)]" />
+        <MotionReveal className="sv-glass-heavy relative mx-auto max-w-5xl rounded-[2rem] px-6 py-12 text-center sm:px-12 sm:py-16">
+          <Crown size={32} weight="duotone" className="mx-auto text-[var(--sv-lux-gold)]" aria-hidden="true" />
+          <p className="sv-lux-eyebrow mt-5">{t("storefront.membershipEyebrow")}</p>
+          <h2 id="membership-heading" className="sv-font-display mt-4 text-3xl tracking-tight sm:text-4xl">{t("storefront.membershipTitle")}</h2>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-muted">{t("storefront.membershipBody")}</p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Link className="cs-button inline-flex min-h-11 items-center gap-2 px-6" href="/membership" aria-label={t("storefront.membershipCta")}>
+              {t("storefront.membershipCta")}
+              <ArrowRight size={16} weight="bold" aria-hidden="true" />
+            </Link>
+            <Link className="cs-button cs-button--secondary min-h-11 px-6" href="/login?redirect=/membership" aria-label={t("storefront.membershipSecondary")}>{t("storefront.membershipSecondary")}</Link>
+          </div>
+        </MotionReveal>
+      </section>
+
+      <section id="catalog" className="mx-auto max-w-7xl scroll-mt-28 px-5 py-16 sm:px-8 sm:py-20">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="cs-eyebrow text-accent-strong">{t("storefront.catalogEyebrow")}</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight">{t("storefront.catalogTitle")}</h2>
+            <p className="sv-lux-eyebrow">{t("storefront.catalogEyebrow")}</p>
+            <h2 className="sv-font-display mt-3 text-3xl tracking-tight sm:text-4xl">{t("storefront.catalogTitle")}</h2>
           </div>
-          <select aria-label={t("storefront.filterCategory")} className="cs-field__control min-w-48" value={category} onChange={(event) => { setLoading(true); setError(""); setCategory(event.target.value); }}>
+          <select aria-label={t("storefront.filterCategory")} className="cs-field__control min-h-11 min-w-48" value={category} onChange={(event) => { setLoading(true); setError(""); setCategory(event.target.value); }}>
             <option value="">{t("storefront.allCategories")}</option>
             {categories.map((item) => <option key={item.slug} value={item.slug}>{item.name}</option>)}
           </select>
@@ -350,11 +482,11 @@ export function Storefront({
         {loading ? <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-live="polite">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="cs-skeleton h-96 rounded-3xl" aria-hidden="true" />)}</div> : null}
         {error ? <div className="cs-alert cs-alert--danger mt-8" role="alert" tabIndex={-1}>{error}<button type="button" className="sv-text-link ml-3" onClick={() => { setLoading(true); setError(""); setSubmittedQuery((value) => `${value} `); }}>{t("common.retry")}</button></div> : null}
         {!loading && !error && products.length === 0 ? (
-          <div className="cs-surface-standard mt-8 overflow-hidden rounded-3xl">
-            <div className="border-b border-border bg-[radial-gradient(circle_at_top,color-mix(in_oklab,var(--cs-accent)_22%,transparent),transparent_60%)] px-6 py-10 sm:px-10">
-              <h3 className="text-2xl font-bold">{t("storefront.emptyTitle")}</h3>
+          <div className="sv-glass-card mt-8 overflow-hidden rounded-3xl">
+            <div className="border-b border-border bg-[radial-gradient(circle_at_top,color-mix(in_oklab,var(--sv-lux-gold)_16%,transparent),transparent_60%)] px-6 py-10 sm:px-10">
+              <h3 className="sv-font-display text-2xl">{t("storefront.emptyTitle")}</h3>
               <p className="mt-3 max-w-xl text-muted">{t("storefront.emptyBody")}</p>
-              <button type="button" className="cs-button cs-button--secondary mt-6" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>{t("storefront.viewAll")}</button>
+              <button type="button" className="cs-button cs-button--secondary mt-6 min-h-11" onClick={() => { setQuery(""); setSubmittedQuery(""); setCategory(""); }}>{t("storefront.viewAll")}</button>
             </div>
           </div>
         ) : null}
@@ -362,17 +494,21 @@ export function Storefront({
           <>
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {products.map((product, index) => (
-                <MotionReveal key={product.id} as="article" delayMs={Math.min(index, 8) * 55} className="cs-surface-standard sv-card-lift group flex min-h-[26rem] flex-col overflow-hidden rounded-3xl">
-                  <div className={`sv-cover-sheen relative mx-4 mt-4 flex h-40 items-end overflow-hidden rounded-2xl bg-gradient-to-br p-5 text-white ${coverTone(product.slug)}`}>
+                <MotionReveal key={product.id} as="article" delayMs={Math.min(index, 8) * 55} className="sv-glass-card sv-card-lift group flex min-h-[26rem] flex-col overflow-hidden rounded-3xl">
+                  <div className="sv-cover-sheen relative mx-4 mt-4 h-40 overflow-hidden rounded-2xl">
+                    <ProductCover slug={product.slug} title={product.title} media={product.media} className="h-full w-full rounded-2xl" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                     <div className="absolute inset-y-0 left-0 w-2 bg-black/20" />
-                    <div className="relative">
-                      <p className="text-xs uppercase tracking-[0.18em] text-white/70">{product.category.name}</p>
-                      <p className="mt-2 max-w-[14ch] text-2xl font-extrabold leading-tight">{product.title.slice(0, 28)}</p>
+                    <div className="relative flex h-full items-end p-5 text-white">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.18em] text-white/70">{product.category.name}</p>
+                        <p className="sv-font-display mt-2 max-w-[14ch] text-2xl leading-tight">{product.title.slice(0, 28)}</p>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-1 flex-col p-6 pt-5">
-                    <h3 className="text-xl font-bold leading-snug">
-                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cs-color-accent-ochre,#f4ba17)]" href={`/products/${product.slug}`}>{product.title}</Link>
+                    <h3 className="sv-font-display text-xl leading-snug">
+                      <Link className="rounded-sm hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href={`/products/${product.slug}`}>{product.title}</Link>
                     </h3>
                     <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted">{product.description}</p>
                     <div className="mt-auto flex flex-wrap items-end justify-between gap-3 pt-6">
@@ -385,7 +521,7 @@ export function Storefront({
                           </>
                         ) : <span className="cs-badge">{t("storefront.outOfStock")}</span>}
                       </div>
-                      <button type="button" className={`cs-button shrink-0 ${addedId === product.id ? "sv-added-pop" : ""}`} disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
+                      <button type="button" className={`cs-button min-h-11 shrink-0 ${addedId === product.id ? "sv-added-pop" : ""}`} disabled={!product.primaryOffer} onClick={() => addToCart(product)}>
                         {addedId === product.id ? t("storefront.added") : t("storefront.addToCart")}
                       </button>
                     </div>
@@ -395,7 +531,7 @@ export function Storefront({
             </div>
             {hasMore ? (
               <div className="mt-10 flex justify-center">
-                <button className="cs-button cs-button--secondary" disabled={loadingMore} type="button" onClick={() => { void loadMore(); }}>
+                <button className="cs-button cs-button--secondary min-h-11 px-8" disabled={loadingMore} type="button" onClick={() => { void loadMore(); }}>
                   {loadingMore ? t("storefront.loadingMore") : t("storefront.loadMore")}
                 </button>
               </div>

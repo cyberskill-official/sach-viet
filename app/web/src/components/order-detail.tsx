@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "@phosphor-icons/react";
 import { formatUsd } from "@/lib/portal-ui-core.mjs";
 import { useLocale } from "@/components/locale-provider";
+import { LuxuryShell } from "@/components/luxury-shell";
 
 type TimelineEvent = { at: number; kind: string; label: string; status: string; orderItemId?: string };
 type Line = { id: string; title: string; quantity: number; unitPriceUsd: string; fulfillmentStatus?: string | null };
@@ -79,14 +81,17 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-6 py-12">
-      <Link className="text-sm text-accent-strong hover:underline" href="/ecom/orders">← {t("orders.backToOrders")}</Link>
-      <p className="cs-eyebrow mt-8 text-accent-strong">{t("nav.account")}</p>
-      <h1 className="mt-2 text-4xl font-extrabold">{t("orders.detail")}</h1>
+    <LuxuryShell width="lg" tourId="tour.orders">
+      <Link className="inline-flex min-h-11 items-center gap-2 text-sm text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--sv-lux-gold-soft,#ca8a04)]" href="/ecom/orders">
+        <ArrowLeft size={16} weight="bold" aria-hidden="true" />
+        {t("orders.backToOrders")}
+      </Link>
+      <p className="sv-lux-eyebrow mt-8">{t("nav.account")}</p>
+      <h1 className="sv-font-display mt-2 text-4xl tracking-tight">{t("orders.detail")}</h1>
       {loading ? <div className="cs-skeleton mt-8 h-48 rounded-2xl" /> : null}
       {error ? <p className="cs-alert cs-alert--danger mt-8" role="alert">{error}</p> : null}
       {order ? (
-        <section className="cs-surface-standard mt-8 space-y-6 rounded-2xl p-6">
+        <section className="sv-glass-card mt-8 space-y-6 rounded-2xl p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">#{order.id.slice(0, 10)}</p>
@@ -96,7 +101,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 <p className="mt-2 text-sm text-muted">{pendingHold}</p>
               ) : null}
             </div>
-            <strong className="text-2xl">{formatUsd(order.totalUsd ?? order.subtotalUsd, locale)}</strong>
+            <strong className="sv-font-display text-2xl">{formatUsd(order.totalUsd ?? order.subtotalUsd, locale)}</strong>
           </div>
           <dl className="grid gap-2 text-sm sm:grid-cols-3">
             <div className="rounded-xl border border-border p-3">
@@ -114,7 +119,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </dl>
           <p className="text-sm text-muted">{t("cart.policyPayments")}</p>
           <div>
-            <h2 className="text-xl font-bold">{t("orders.fulfillment")}</h2>
+            <h2 className="sv-font-display text-xl">{t("orders.fulfillment")}</h2>
             <ul className="mt-3 space-y-2">
               {order.items.map((item) => (
                 <li key={item.id} className="rounded-xl border border-border p-3">
@@ -125,7 +130,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             </ul>
           </div>
           <div>
-            <h2 className="text-xl font-bold">{t("orders.status")}</h2>
+            <h2 className="sv-font-display text-xl">{t("orders.status")}</h2>
             <ol className="mt-3 space-y-2">
               {order.timeline.map((event, index) => (
                 <li key={`${event.kind}-${event.at}-${index}`} className="rounded-xl border border-border p-3">
@@ -142,6 +147,6 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </p>
         </section>
       ) : null}
-    </main>
+    </LuxuryShell>
   );
 }
