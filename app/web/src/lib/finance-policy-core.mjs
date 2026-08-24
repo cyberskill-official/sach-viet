@@ -3,6 +3,8 @@
  * (interim-owner-defaults-2026-08-21). Rates are DEC-sourced only — do not invent extras.
  */
 
+import { canRole } from "./access.mjs";
+
 export const FINANCE_POLICY_VERSION = "interim-owner-defaults-2026-08-21";
 
 /** @see docs/decisions/DEC-SET-001.md */
@@ -180,8 +182,7 @@ export function isOperationalMoneyAmount(amountUsd) {
  * @param {{ role?: string }} actor
  */
 export function applyB2bDiscount(subtotalUsd, discountPercent, actor = {}) {
-  const role = actor?.role;
-  if (role !== "admin") {
+  if (!canRole(actor?.role, "admin.b2b.discount")) {
     throw new Error("DEC-B2B-001: discount authority is admin-only.");
   }
   const percent = Number(discountPercent);

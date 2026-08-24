@@ -31,6 +31,10 @@ export const messagesEn = Object.freeze({
     close: "Close",
     showNavigation: "Show navigation",
     hideNavigation: "Hide navigation",
+    roleGuest: "Guest",
+    roleUser: "User",
+    roleAdmin: "Admin",
+    accessTier: "Access",
   },
   nav: {
     account: "Account",
@@ -69,6 +73,8 @@ export const messagesEn = Object.freeze({
     accessDenied: "Access denied",
     accessDeniedBody: "Your account does not have access to this portal.",
     backToStorefront: "Back to storefront",
+    signInRequired: "Sign in to open",
+    unauthorizedAction: "Not available for your access level",
   },
   storefront: {
     eyebrow: "A bookshelf for Vietnamese readers",

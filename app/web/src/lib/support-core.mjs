@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase, tableExists } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { can, normalizeRole } from "./access.mjs";
 
 const id = () => randomBytes(16).toString("hex");
 const required = (value, name) => { if (typeof value !== "string" || value.trim() === "") throw new Error(`${name} is required.`); return value.trim(); };
-const staff = (user) => ["admin", "employee", "employee_b2c", "employee_b2b"].includes(normalizeRole(user?.role));
+const staff = (user) => can(user, "support.tickets.staff");
 
 export async function createSupportStore({ dbPath, clock = () => Date.now(), log = (event, fields = {}) => console.info(JSON.stringify({ event, task_id: "TASK-REBUILD-006", ...fields })) } = {}) {
   const db = await openDatabase(dbPath);

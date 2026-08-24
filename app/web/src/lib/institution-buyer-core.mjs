@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { beginImmediateWithRetry, openDatabase, tableExists } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission, normalizeRole } from "./access.mjs";
 import { requireStoredObjectKey } from "./storage-core.mjs";
 import { normalizeMoney } from "./catalog-core.mjs";
 
@@ -11,17 +11,13 @@ const required = (value, name) => {
 };
 
 function institutionActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  const role = normalizeRole(user.role);
-  if (role !== "school_librarian" && role !== "admin") throw new Error("Institution access is required.");
-  return role;
+  assertPermission(user, "institution.quotes", "Institution access is required.");
+  return normalizeRole(user.role);
 }
 
 function staffActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  const role = normalizeRole(user.role);
-  if (role !== "employee_b2b" && role !== "admin") throw new Error("B2B staff access is required.");
-  return role;
+  assertPermission(user, "b2b.quotes", "B2B staff access is required.");
+  return normalizeRole(user.role);
 }
 
 async function membership(store, userId) {

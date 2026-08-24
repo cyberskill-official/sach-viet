@@ -1,4 +1,4 @@
-import { normalizeRole } from "./access.mjs";
+import { assertPermission } from "./access.mjs";
 import {
   addProductMedia,
   createCatalogStore,
@@ -11,7 +11,7 @@ import {
 } from "./catalog-core.mjs";
 
 function adminOnly(user) {
-  if (!user?.id || normalizeRole(user.role) !== "admin") throw new Error("Administrator access is required.");
+  assertPermission(user, "admin.catalog.read", "Administrator access is required.");
 }
 
 function defaultLog(event, fields = {}) {

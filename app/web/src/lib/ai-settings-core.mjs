@@ -7,7 +7,7 @@
  */
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission } from "./access.mjs";
 import { openDatabase } from "./db.mjs";
 import { assertNotProductionRetired } from "./production-retirement.mjs";
 
@@ -78,9 +78,7 @@ function required(value, label) {
 }
 
 function adminOnly(user) {
-  if (!user?.id || normalizeRole(user.role) !== "admin") {
-    throw new Error("Administrator access is required.");
-  }
+  assertPermission(user, "admin.ai", "Administrator access is required.");
 }
 
 /**

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { featureCatalog, featuresByCategory, featureTitle, featureDescription } from "@/lib/features-catalog.mjs";
+import { useEffect, useState } from "react";
+import { featureCatalog, featuresByCategory, featureTitle, featureDescription, portalFeatureHref } from "@/lib/features-catalog.mjs";
+import { canOpenFeature, displayTier, displayTierLabel } from "@/lib/access.mjs";
 import { TOUR_IDS, tourTitleKey } from "@/lib/tours/registry.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
@@ -26,6 +28,33 @@ const availabilityKeys: Record<string, string> = {
 export function FeaturesCatalog() {
   const { locale, setLocale, t } = useLocale();
   const groups = featuresByCategory() as Map<string, FeatureItem[]>;
+  const [sessionRole, setSessionRole] = useState<string | null>(null);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/me", { credentials: "same-origin", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) {
+          setSessionRole(null);
+          return;
+        }
+        const body = await response.json();
+        setSessionRole(typeof body?.user?.role === "string" ? body.user.role : null);
+      })
+      .catch(() => setSessionRole(null))
+      .finally(() => setSessionReady(true));
+    return () => controller.abort();
+  }, []);
+
+  const tier = displayTier(sessionRole);
+  const tierLabel = displayTierLabel(sessionRole, locale === "vi" ? "vi" : "en");
+
+  function featureHref(feature: FeatureItem) {
+    if (feature.id === "role-portals") return portalFeatureHref(sessionRole);
+    if (!canOpenFeature(feature, sessionRole) && !sessionRole) return "/login";
+    return feature.href;
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -37,6 +66,9 @@ export function FeaturesCatalog() {
           </Link>
           <nav className="flex flex-wrap items-center gap-2 text-sm">
             <Link className="cs-button cs-button--ghost" href="/">{t("nav.home")}</Link>
+            {sessionReady ? (
+              <span className="cs-badge" data-access-tier={tier}>{tierLabel}</span>
+            ) : null}
             <TourLauncher tourId="tour.features" />
             <button type="button" className="cs-button cs-button--ghost" aria-label={t("common.language")} onClick={() => setLocale(locale === "en" ? "vi" : "en")}>
               {locale === "en" ? "VI" : "EN"}
@@ -68,23 +100,31 @@ export function FeaturesCatalog() {
             <section key={category} className="scroll-mt-28">
               <h2 className="text-xl font-bold sm:text-2xl">{t(categoryKeys[category] || category)}</h2>
               <ul className="mt-6 grid gap-6 sm:grid-cols-2">
-                {features.map((feature, index) => (
-                  <MotionReveal key={feature.id} as="li" delayMs={Math.min(index, 6) * 60} className="cs-surface-standard sv-card-lift flex h-full flex-col rounded-2xl p-5 sm:p-6">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-bold sm:text-xl">{featureTitle(locale, feature)}</h3>
-                      <span className="cs-badge" data-availability={feature.availability}>{t(availabilityKeys[feature.availability] || feature.availability)}</span>
-                    </div>
-                    <p className="mt-3 flex-1 text-sm leading-6 text-muted">{featureDescription(locale, feature)}</p>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                      {feature.availability === "available" ? (
-                        <Link className="cs-button" href={feature.href}>{t("features.ctaOpen")}</Link>
-                      ) : (
-                        <span className="cs-button cs-button--ghost pointer-events-none opacity-60" aria-disabled="true">{t("features.ctaLearn")}</span>
-                      )}
-                      {feature.tourId ? <TourLauncher tourId={feature.tourId} className="cs-button cs-button--secondary" /> : null}
-                    </div>
-                  </MotionReveal>
-                ))}
+                {features.map((feature, index) => {
+                  const allowed = canOpenFeature(feature, sessionRole);
+                  const href = featureHref(feature);
+                  return (
+                    <MotionReveal key={feature.id} as="li" delayMs={Math.min(index, 6) * 60} className="cs-surface-standard sv-card-lift flex h-full flex-col rounded-2xl p-5 sm:p-6">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold sm:text-xl">{featureTitle(locale, feature)}</h3>
+                        <span className="cs-badge" data-availability={feature.availability}>{t(availabilityKeys[feature.availability] || feature.availability)}</span>
+                      </div>
+                      <p className="mt-3 flex-1 text-sm leading-6 text-muted">{featureDescription(locale, feature)}</p>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {feature.availability === "upcoming" ? (
+                          <span className="cs-button cs-button--ghost pointer-events-none opacity-60" aria-disabled="true">{t("features.ctaLearn")}</span>
+                        ) : allowed ? (
+                          <Link className="cs-button" href={href}>{t("features.ctaOpen")}</Link>
+                        ) : sessionRole ? (
+                          <span className="cs-button cs-button--ghost pointer-events-none opacity-60" aria-disabled="true">{t("auth.unauthorizedAction")}</span>
+                        ) : (
+                          <Link className="cs-button cs-button--secondary" href="/login">{t("auth.signInRequired")}</Link>
+                        )}
+                        {feature.tourId ? <TourLauncher tourId={feature.tourId} className="cs-button cs-button--secondary" /> : null}
+                      </div>
+                    </MotionReveal>
+                  );
+                })}
               </ul>
             </section>
           ))}

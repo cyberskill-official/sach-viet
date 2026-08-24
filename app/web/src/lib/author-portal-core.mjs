@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { openDatabase } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission, normalizeRole } from "./access.mjs";
 import { requireStoredObjectKey } from "./storage-core.mjs";
 import {
   assertRoyaltyActivationGate,
@@ -14,10 +14,8 @@ const required = (value, label) => {
 };
 
 function authorActor(user) {
-  if (!user?.id) throw new Error("Authentication is required.");
-  const role = normalizeRole(user.role);
-  if (role !== "author" && role !== "admin") throw new Error("Author access is required.");
-  return role;
+  assertPermission(user, "author.dashboard", "Author access is required.");
+  return normalizeRole(user.role);
 }
 
 function resolveAuthorId(actor, requestedAuthorId) {

@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { normalizeRole } from "./access.mjs";
+import { canRole } from "./access.mjs";
 import { ensureAuthLegacyColumns, normalizeEmail } from "./auth-core.mjs";
 import { ensureCommerceLegacyColumns } from "./commerce-core.mjs";
 import { beginImmediateWithRetry } from "./db.mjs";
@@ -13,7 +13,7 @@ function defaultLog(event, fields = {}) {
 }
 
 function requireAdmin(actor) {
-  if (normalizeRole(actor?.role) !== "admin") {
+  if (!canRole(actor?.role, "admin.wordpress")) {
     throw new Error("Admin access is required.");
   }
 }

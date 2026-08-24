@@ -9,6 +9,7 @@ import { useLocale } from "./locale-provider";
 import { TourLauncher } from "./tours/tour-provider";
 import { themes } from "@/lib/web-foundations.mjs";
 import { navigationForPortal } from "@/lib/portal-ui-core.mjs";
+import { displayTier, displayTierLabel, formatRoleForDisplay } from "@/lib/access.mjs";
 import { tourIdForPortal } from "@/lib/tours/registry.mjs";
 
 export function PortalShell({ portal, locale: localeProp, user, children }: { portal: string; locale?: string; user?: { id: string; role: string } | null; children: React.ReactNode }) {
@@ -19,6 +20,9 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
   const links = navigationForPortal(portal, locale) as Array<{ href: string; key: string; label: string }>;
   const tourId = tourIdForPortal(portal);
   const [navOpen, setNavOpen] = useState(false);
+  const tier = displayTier(user?.role ?? null);
+  const tierLabel = displayTierLabel(user?.role ?? null, locale === "vi" ? "vi" : "en");
+  const roleDisplay = formatRoleForDisplay(user?.role ?? null, locale === "vi" ? "vi" : "en");
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -56,6 +60,11 @@ export function PortalShell({ portal, locale: localeProp, user, children }: { po
           </div>
           <nav className="flex max-w-full flex-wrap items-center gap-2 text-sm">
             <Link className="cs-button cs-button--ghost" href="/features">{t("nav.features")}</Link>
+            {user ? (
+              <span className="cs-badge" data-access-tier={tier} title={roleDisplay}>
+                {tierLabel}
+              </span>
+            ) : null}
             {user ? <NotificationCenter locale={locale} /> : null}
             <TourLauncher tourId={tourId} />
             <Link

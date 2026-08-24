@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_NAME, verifySessionTokenSignature } from "@/lib/auth-core.mjs";
-import { portalForPath, requiresAuthPath } from "@/lib/access.mjs";
+import { portalForPath, requiresApiAuth, requiresAuthPath } from "@/lib/access.mjs";
 import { isSameOriginRequest } from "@/lib/csrf.mjs";
 import { isRetiredSupplierPath } from "@/lib/production-retirement.mjs";
 
@@ -46,6 +46,11 @@ export function proxy(request: NextRequest) {
 
   if (pathname.startsWith("/api/") && MUTATING.has(request.method) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
+  }
+
+  // Defense-in-depth: require a signed session for private APIs (role still enforced in handlers).
+  if (requiresApiAuth(pathname) && !hasSignedSession(request)) {
+    return NextResponse.json({ error: "Unauthenticated." }, { status: 401 });
   }
 
   if (requiresAuthPath(pathname) && !hasSignedSession(request)) {

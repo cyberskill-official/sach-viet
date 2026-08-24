@@ -3,6 +3,8 @@
  * Do not invent rates; availability must match Accepted DEC text.
  */
 
+import { defaultHomeForRole } from "./access.mjs";
+
 export const FEATURE_AVAILABILITY = Object.freeze(["available", "restricted", "upcoming"]);
 
 export const featureCatalog = Object.freeze([
@@ -58,6 +60,7 @@ export const featureCatalog = Object.freeze([
     titleKey: "features.item.accountProfile.title",
     descriptionKey: "features.item.accountProfile.description",
     href: "/account",
+    permission: "account.read",
     tourId: "tour.account",
   },
   {
@@ -67,6 +70,7 @@ export const featureCatalog = Object.freeze([
     titleKey: "features.item.wishlistSupport.title",
     descriptionKey: "features.item.wishlistSupport.description",
     href: "/wishlist",
+    permission: "wishlist.read",
     tourId: "tour.wishlist",
   },
   {
@@ -85,6 +89,7 @@ export const featureCatalog = Object.freeze([
     titleKey: "features.item.settlementRoyalty.title",
     descriptionKey: "features.item.settlementRoyalty.description",
     href: "/vendor",
+    permission: "vendor.payouts",
     tourId: null,
   },
   {
@@ -194,3 +199,14 @@ export function featuresByCategory() {
 export function availabilityFor(featureId) {
   return featureCatalog.find((item) => item.id === featureId)?.availability || null;
 }
+
+/**
+ * Resolve a portal CTA href for the signed-in role (admin → /admin, vendor → /vendor, etc.).
+ * @param {string | null | undefined} role
+ */
+export function portalFeatureHref(role) {
+  if (!role) return "/login";
+  const home = defaultHomeForRole(role);
+  return home === "/account" ? "/features" : home;
+}
+

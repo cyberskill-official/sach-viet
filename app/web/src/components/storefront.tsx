@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { addCartItem, CART_KEY, formatUsd, normalizeCart } from "@/lib/portal-ui-core.mjs";
-import { defaultHomeForRole } from "@/lib/access.mjs";
+import { defaultHomeForRole, displayTier, displayTierLabel, formatRoleForDisplay } from "@/lib/access.mjs";
 import { useLocale } from "@/components/locale-provider";
 import { TourLauncher } from "@/components/tours/tour-provider";
 import { MotionReveal } from "@/components/motion-reveal";
@@ -226,12 +226,16 @@ export function Storefront({
   }
 
   const portalHome = sessionUser ? defaultHomeForRole(sessionUser.role) : "/account";
-  const secondaryLinks = [
-    { href: "/account", label: t("nav.account") },
-    { href: "/wishlist", label: t("nav.wishlist") },
-    { href: "/support", label: t("nav.support") },
-    { href: "/ecom/orders", label: t("nav.orders") },
-  ] as const;
+  const accessLabel = displayTierLabel(sessionUser?.role ?? null, locale === "vi" ? "vi" : "en");
+  const tier = displayTier(sessionUser?.role ?? null);
+  const secondaryLinks = sessionUser
+    ? ([
+        { href: "/account", label: t("nav.account") },
+        { href: "/wishlist", label: t("nav.wishlist") },
+        { href: "/support", label: t("nav.support") },
+        { href: "/ecom/orders", label: t("nav.orders") },
+      ] as const)
+    : ([{ href: "/support", label: t("nav.support") }] as const);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -287,6 +291,9 @@ export function Storefront({
             </a>
             {sessionReady && sessionUser ? (
               <>
+                <span className="cs-badge hidden sm:inline-flex" data-access-tier={tier} title={formatRoleForDisplay(sessionUser.role, locale === "vi" ? "vi" : "en")}>
+                  {accessLabel}
+                </span>
                 {portalHome !== "/account" ? (
                   <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href={portalHome}>{t("nav.portal")}</Link>
                 ) : null}
@@ -295,6 +302,7 @@ export function Storefront({
               </>
             ) : sessionReady ? (
               <>
+                <span className="cs-badge hidden sm:inline-flex" data-access-tier="guest">{t("common.roleGuest")}</span>
                 <Link className="cs-button cs-button--ghost hidden sm:inline-flex" href="/register">{t("nav.register")}</Link>
                 <Link className="cs-button" href="/login">{t("nav.login")}</Link>
               </>

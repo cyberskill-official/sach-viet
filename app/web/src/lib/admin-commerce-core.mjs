@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { beginImmediateWithRetry, isUniqueViolationError, openDatabase } from "./db.mjs";
-import { normalizeRole } from "./access.mjs";
+import { assertPermission, normalizeRole } from "./access.mjs";
 
 const identifier = () => randomBytes(16).toString("hex");
 const required = (value, label) => { if (typeof value !== "string" || value.trim() === "") throw new Error(`${label} is required.`); return value.trim(); };
-const adminOnly = (user) => { if (!user?.id || normalizeRole(user.role) !== "admin") throw new Error("Administrator access is required."); };
+const adminOnly = (user) => { assertPermission(user, "admin.vendors.review", "Administrator access is required."); };
 
 function moneyUnits(value) { const [whole, fraction = ""] = value.split("."); return BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, "0")); }
 function moneyString(value) { return `${value / 10000n}.${String(value % 10000n).padStart(4, "0")}`; }
