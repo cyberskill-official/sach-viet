@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthStore } from "@/lib/auth-core.mjs";
 import { requireApiPermission } from "@/lib/authz-http.mjs";
 import { getWordpressImportStatus } from "@/lib/wordpress-import-core.mjs";
 

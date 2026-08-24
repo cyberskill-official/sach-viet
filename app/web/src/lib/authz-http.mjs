@@ -15,6 +15,13 @@ import {
   permissionForApiPath,
 } from "./access.mjs";
 
+/**
+ * @typedef {{ id: string, role: string, email?: string }} AuthUser
+ * @typedef {{ ok: true, session: object, user: AuthUser, requestId: string }} AuthOk
+ * @typedef {{ ok: false, response: Response }} AuthFail
+ * @typedef {AuthOk | AuthFail} AuthResult
+ */
+
 function tokenFrom(request) {
   return (
     sessionTokenFrom(request) ||
@@ -25,7 +32,7 @@ function tokenFrom(request) {
 
 /**
  * @param {Request} request
- * @returns {Promise<{ ok: true, session: object, user: object, requestId: string } | { ok: false, response: Response }>}
+ * @returns {Promise<AuthResult>}
  */
 export async function requireSession(request) {
   const requestId = createRequestId(request);
@@ -60,6 +67,7 @@ export async function requireSession(request) {
  * @param {Request} request
  * @param {string} permission
  * @param {{ message?: string }} [options]
+ * @returns {Promise<AuthResult>}
  */
 export async function requirePermission(request, permission, options = {}) {
   const auth = await requireSession(request);
@@ -81,6 +89,7 @@ export async function requirePermission(request, permission, options = {}) {
  * Resolve permission from the request URL + method, then enforce it.
  * @param {Request} request
  * @param {{ permission?: string, message?: string }} [options]
+ * @returns {Promise<AuthResult>}
  */
 export async function requireApiPermission(request, options = {}) {
   const url = new URL(request.url);
