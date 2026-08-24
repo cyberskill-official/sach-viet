@@ -71,7 +71,8 @@ export const PERMISSIONS = Object.freeze({
   "notifications.own": ALL_AUTHENTICATED,
   "storage.upload": ALL_AUTHENTICATED,
   "vendor.apply": ["customer"],
-  "auth.me": ALL_AUTHENTICATED,
+  // Public session probe — returns { user: null } for guests (no 401 noise).
+  "auth.me": "*",
   "auth.logout": ALL_AUTHENTICATED,
 
   // Portal shells (aligned with portalRoles)
@@ -142,7 +143,6 @@ const apiAuthPrefixes = Object.freeze([
   "/api/support",
   "/api/storage",
   "/api/finance/compute",
-  "/api/auth/me",
 ]);
 
 /** Map API pathname → permission (first match wins). */

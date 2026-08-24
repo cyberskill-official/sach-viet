@@ -120,7 +120,8 @@ test("requiresApiAuth covers private APIs but not public catalog or webhooks", (
   assert.equal(requiresApiAuth("/api/quote"), false);
   assert.equal(requiresApiAuth("/api/health"), false);
   assert.equal(requiresApiAuth("/api/auth/login"), false);
-  assert.equal(requiresApiAuth("/api/auth/me"), true);
+  // Soft session probe: guests get 200 + null user (not proxy 401).
+  assert.equal(requiresApiAuth("/api/auth/me"), false);
 });
 
 test("storefront nav hides private links for guests and shows portal for partners", () => {

@@ -18,6 +18,8 @@ const EXEMPT_ROUTE_SUFFIXES = [
   "/auth/reset/route.ts",
   "/auth/verify/route.ts",
   "/auth/logout/route.ts",
+  // Soft session probe: 200 + null for guests; not requireApiPermission.
+  "/auth/me/route.ts",
 ];
 
 function findRouteFiles(dir, acc = []) {
